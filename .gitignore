@@ -1,0 +1,20 @@
+# Archivos de Gradle y compilación
+.gradle
+/build
+/captures
+
+# Configuración del IDE (Android Studio / IntelliJ)
+.idea/
+*.iml
+
+# Archivos locales y del sistema
+local.properties
+.DS_Store
+
+# Cachés de compilación nativa y Kotlin
+.externalNativeBuild
+.cxx
+/.kotlin
+
+# --- CONFIGURACIÓN DE FIREBASE ---
+app/google-services.json
