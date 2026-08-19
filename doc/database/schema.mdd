@@ -1,0 +1,125 @@
+# Data Schema — Spenvo
+
+Document version: **1.0** (M0). Status: baseline draft, versioned with every change.
+
+## 1. Source of truth and model
+
+Two stores, one domain model:
+
+- **Firestore** — remote source of truth (collections below). Writes via native
+  offline cache. Deny-by-default rules with server-side roles (draft in
+  `firestore.rules`, final in M3).
+- **Room + SQLCipher** — encrypted local presentation cache. Provided by `:core:data`.
+  Room JSON exports are versioned in `doc/database/schemas/<package>.<DB>/`.
+
+Golden rule: **the UI always reads from Room; writes go to Firestore**.
+Conflict: LWW with `editedBy`/`editedAt` (server-set) + visible conflict in the UI.
+
+## 2. Firestore (draft v1.0)
+
+### ER (Mermaid)
+
+```mermaid
+erDiagram
+    USUARIOS ||--o{ ACCESO_PLAN : "accesses"
+    PLANES_FINANCIEROS ||--o{ ACCESO_PLAN : "is accessed by"
+    PLANES_FINANCIEROS ||--o{ CATEGORIAS : "has"
+    PLANES_FINANCIEROS ||--o{ GASTOS : "has"
+    PLANES_FINANCIEROS ||--o{ INGRESOS : "has"
+    CATEGORIAS ||--o{ GASTOS : "classifies"
+    CATEGORIAS ||--o{ INGRESOS : "classifies"
+```
+
+### Collections
+
+#### `usuarios/{usuarioId}`
+| Field | Type | Notes |
+|---|---|---|
+| nombre | string | |
+| email | string | (server rules: owner-only read) |
+| avatar_url | string? | M7 (Storage) |
+| createdAt | timestamp | |
+| updatedAt | timestamp | |
+
+#### `planes_financieros/{planId}`
+| Field | Type | Notes |
+|---|---|---|
+| nombre | string | |
+| descripcion | string? | |
+| moneda | string | ISO 4217 code |
+| createdBy | string | creator uid |
+| createdAt | timestamp | |
+| updatedAt | timestamp | |
+| editedBy | string | server-set (M5) |
+| editedAt | timestamp | server-set (M5) |
+| deletedAt | timestamp? | soft-delete |
+
+#### `acceso_plan_financiero/{usuarioId}_{planId}` (N:M pivot)
+| Field | Type | Notes |
+|---|---|---|
+| usuarioId | string | uid |
+| planId | string | |
+| rol | enum | `owner` \| `admin` \| `editor` \| `viewer` |
+| invitacionEstado | enum | `pendiente` \| `aceptada` (M3) |
+| createdAt | timestamp | |
+| updatedAt | timestamp | |
+
+#### `categorias/{categoriaId}`
+| Field | Type | Notes |
+|---|---|---|
+| planId | string | scoped to the plan |
+| nombre | string | |
+| icono | string | default icon key (M4) |
+| iconoUrl | string? | custom icon (M7) |
+| tipo | enum | `gasto` \| `ingreso` |
+| editedBy | string | |
+| editedAt | timestamp | |
+| deletedAt | timestamp? | |
+
+#### `gastos/{gastoId}` and `ingresos/{ingresoId}`
+| Field | Type | Notes |
+|---|---|---|
+| planId | string | |
+| categoriaId | string | |
+| monto | number | in minor units of the currency (cents) |
+| fecha | date | movement date |
+| descripcion | string? | |
+| creadoPor | string | uid |
+| createdAt | timestamp | |
+| updatedAt | timestamp | |
+| editedBy | string | server-set (M5) |
+| editedAt | timestamp | server-set (M5) |
+| deletedAt | timestamp? | soft-delete |
+
+### Cross-cutting conventions
+- Amounts always in **minor units** (cents) to avoid floating-point errors.
+- `deletedAt != null` = soft-deleted; rules filter it and the UI does not show it.
+- `editedBy`/`editedAt` are written by Firestore (rules) with `request.auth.uid` and `request.time`;
+  the client never chooses them.
+
+## 3. Room (version 1 — M0)
+
+### `sync_state` (current table)
+| Column | Type | Notes |
+|---|---|---|
+| id | TEXT (PK) | singleton `"default"` |
+| lastSyncedAtMillis | INTEGER? | sync metadata (M1/M2) |
+
+### Version plan
+- **v1 (M0)**: `sync_state` — validates the Room+KSP+SQLCipher toolchain.
+- **v1.1 (M1)**: local domain entities (users, plans, categories, expenses,
+  income) as cache; indexes; `editedBy/editedAt`.
+- Migrations with `Migration` + SQLCipher (upgrade test included).
+
+## 4. Firestore indexes (draft)
+
+See `firestore.indexes.json`. Rules:
+- Index by `planId + fecha` on `gastos` and `ingresos` (monthly listings).
+- Index by `planId + tipo` on `categorias`.
+- No wildcard indexes.
+
+## 5. Change control
+
+| Date | Doc version | Schema | Change |
+|---|---|---|---|
+| 2026-08-19 | 1.0 | Room v1 / Firestore draft | M0 baseline |
