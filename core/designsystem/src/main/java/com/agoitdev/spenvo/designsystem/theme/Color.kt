@@ -1,4 +1,4 @@
-package com.agoitdev.spenvo.ui.theme
+package com.agoitdev.spenvo.designsystem.theme
 
 import androidx.compose.ui.graphics.Color
 

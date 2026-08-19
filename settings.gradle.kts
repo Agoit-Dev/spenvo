@@ -24,3 +24,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Spenvo"
 include(":app")
+include(":core:domain")
+include(":core:data")
+include(":core:designsystem")
+include(":feature:movimientos")
