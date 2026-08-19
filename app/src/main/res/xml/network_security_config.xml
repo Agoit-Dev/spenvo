@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network security baseline (deny-by-default).
+    Traffic must always be encrypted; cleartext domains are not allowed.
+    Firestore/Storage use HTTPS by default.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

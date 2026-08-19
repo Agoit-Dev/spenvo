@@ -1,0 +1,11 @@
+# Custom detekt config — builds on top of the default config (buildUponDefaultConfig).
+naming:
+  FunctionNaming:
+    active: true
+    ignoreAnnotated:
+      - 'Composable'
+
+style:
+  MagicNumber:
+    active: true
+    ignorePropertyDeclaration: true
