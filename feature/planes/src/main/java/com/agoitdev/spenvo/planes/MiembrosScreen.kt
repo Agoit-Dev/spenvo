@@ -75,12 +75,12 @@ Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.miembros_titulo)) },
+                title = { Text(stringResource(R.string.members_title)) },
                 actions = {
                     IconButton(onClick = { mostrarDialogoInvitar = true }) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.miembros_invitar),
+                            contentDescription = stringResource(R.string.members_invite),
                         )
                     }
                 },
@@ -112,7 +112,7 @@ private fun ListaMiembros(
 ) {
     if (miembros.isEmpty()) {
         Text(
-            text = stringResource(R.string.miembros_vacio),
+            text = stringResource(R.string.members_empty),
             modifier = modifier
                 .fillMaxSize()
                 .padding(16.dp),
@@ -157,13 +157,13 @@ private fun InvitarDialog(
 
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text(stringResource(R.string.miembros_invitar)) },
+        title = { Text(stringResource(R.string.members_invite)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = usuarioId,
                     onValueChange = { usuarioId = it },
-                    label = { Text(stringResource(R.string.miembros_invitar_uid)) },
+                    label = { Text(stringResource(R.string.members_invite_uid)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -184,13 +184,13 @@ private fun InvitarDialog(
                 if (cargando) {
                     CircularProgressIndicator(modifier = Modifier.padding(4.dp))
                 } else {
-                    Text(stringResource(R.string.miembros_invitar_confirmar))
+                    Text(stringResource(R.string.members_invite_confirm))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onCancelar) {
-                Text(stringResource(R.string.miembros_invitar_cancelar))
+                Text(stringResource(R.string.members_invite_cancel))
             }
         },
     )
@@ -214,7 +214,7 @@ private fun RolSelector(
             value = rol.name.lowercase(),
             onValueChange = {},
             readOnly = true,
-            label = { Text(stringResource(R.string.miembros_invitar_rol)) },
+            label = { Text(stringResource(R.string.members_invite_role)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandido) },
             modifier = Modifier
                 .menuAnchor(

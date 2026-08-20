@@ -54,7 +54,7 @@ fun CuentaScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.cuenta_registro_titulo)) })
+            TopAppBar(title = { Text(stringResource(R.string.account_registration_title)) })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
@@ -84,14 +84,14 @@ private fun RegistroForm(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = stringResource(R.string.cuenta_registro_subtitulo),
+            text = stringResource(R.string.account_registration_subtitle),
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
-            label = { Text(stringResource(R.string.cuenta_registro_nombre)) },
+            label = { Text(stringResource(R.string.account_registration_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -99,7 +99,7 @@ private fun RegistroForm(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text(stringResource(R.string.cuenta_registro_email)) },
+            label = { Text(stringResource(R.string.account_registration_email)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -107,7 +107,7 @@ private fun RegistroForm(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text(stringResource(R.string.cuenta_registro_password)) },
+            label = { Text(stringResource(R.string.account_registration_password)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -120,7 +120,7 @@ private fun RegistroForm(
             if (cargando) {
                 CircularProgressIndicator(modifier = Modifier.height(20.dp))
             } else {
-                Text(stringResource(R.string.cuenta_registro_crear))
+                Text(stringResource(R.string.account_registration_create))
             }
         }
     }

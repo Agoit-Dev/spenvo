@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plans_title">Plans</string>
+    <string name="plans_empty">No plans yet. Tap + to create your first plan.</string>
+    <string name="plans_create">New plan</string>
+    <string name="plans_create_name">Plan name</string>
+    <string name="plans_create_currency">Currency (ISO 4217)</string>
+    <string name="plans_create_confirm">Create</string>
+    <string name="plans_create_cancel">Cancel</string>
+    <string name="plans_invitations_title">Pending invitations</string>
+    <string name="plans_invitation_accept">Accept</string>
+    <string name="plans_invitation_plan">Plan</string>
+    <string name="plans_invitation_role">Role</string>
+    <string name="account_menu_description">Account</string>
+    <string name="account_guest_state">Guest</string>
+    <string name="account_create">Create account</string>
+    <string name="members_title">Members</string>
+    <string name="members_empty">No members yet.</string>
+    <string name="members_invite">Invite member</string>
+    <string name="members_invite_uid">User UID</string>
+    <string name="members_invite_role">Role</string>
+    <string name="members_invite_confirm">Invite</string>
+    <string name="members_invite_cancel">Cancel</string>
+</resources>

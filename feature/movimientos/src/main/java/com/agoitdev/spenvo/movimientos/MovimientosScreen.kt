@@ -24,12 +24,12 @@ fun MovimientosScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.movimientos_title)) },
+                title = { Text(stringResource(R.string.movements_title)) },
                 actions = {
                     IconButton(onClick = onVerMiembros) {
                         Icon(
                             imageVector = Icons.Filled.Person,
-                            contentDescription = stringResource(R.string.movimientos_ver_miembros),
+                            contentDescription = stringResource(R.string.movements_view_members),
                         )
                     }
                 },
@@ -37,7 +37,7 @@ fun MovimientosScreen(
         },
     ) { innerPadding ->
         Text(
-            text = stringResource(R.string.movimientos_placeholder, planId),
+            text = stringResource(R.string.movements_placeholder, planId),
             modifier = Modifier.padding(innerPadding),
         )
     }

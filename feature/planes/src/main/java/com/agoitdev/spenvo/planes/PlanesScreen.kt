@@ -85,7 +85,7 @@ fun PlanesScreen(
             FloatingActionButton(onClick = { mostrarDialogoCrear = true }) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(R.string.planes_crear),
+                    contentDescription = stringResource(R.string.plans_create),
                 )
             }
         },
@@ -118,13 +118,13 @@ private fun PlanesTopBar(
     onCrearCuenta: () -> Unit,
 ) {
     TopAppBar(
-        title = { Text(stringResource(R.string.planes_titulo)) },
+        title = { Text(stringResource(R.string.plans_title)) },
         actions = {
             CuentaMenu(
                 estado = when {
                     !sesion.estaAutenticada -> null
                     sesion.email != null -> sesion.email
-                    else -> stringResource(R.string.cuenta_estado_invitado)
+                    else -> stringResource(R.string.account_guest_state)
                 },
                 onCrearCuenta = onCrearCuenta,
             )
@@ -148,7 +148,7 @@ private fun PlanesLista(
         if (invitaciones.isNotEmpty()) {
             item {
                 Text(
-                    text = stringResource(R.string.planes_invitaciones_titulo),
+                    text = stringResource(R.string.plans_invitations_title),
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -162,7 +162,7 @@ private fun PlanesLista(
         if (planes.isEmpty() && invitaciones.isEmpty()) {
             item {
                 Text(
-                    text = stringResource(R.string.planes_vacio),
+                    text = stringResource(R.string.plans_empty),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             }
@@ -200,11 +200,11 @@ private fun InvitacionCard(acceso: AccesoPlan, onAceptar: () -> Unit) {
         ) {
             Text(text = acceso.planId, style = MaterialTheme.typography.titleMedium)
             Text(
-                text = stringResource(R.string.planes_invitacion_rol) + ": " + acceso.rol.name.lowercase(),
+                text = stringResource(R.string.plans_invitation_role) + ": " + acceso.rol.name.lowercase(),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Button(onClick = onAceptar) {
-                Text(stringResource(R.string.planes_invitacion_aceptar))
+                Text(stringResource(R.string.plans_invitation_accept))
             }
         }
     }
@@ -221,20 +221,20 @@ private fun CrearPlanDialog(
 
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text(stringResource(R.string.planes_crear)) },
+        title = { Text(stringResource(R.string.plans_create)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
-                    label = { Text(stringResource(R.string.planes_crear_nombre)) },
+                    label = { Text(stringResource(R.string.plans_create_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = moneda,
                     onValueChange = { moneda = it.uppercase() },
-                    label = { Text(stringResource(R.string.planes_crear_moneda)) },
+                    label = { Text(stringResource(R.string.plans_create_currency)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -248,13 +248,13 @@ private fun CrearPlanDialog(
                 if (cargando) {
                     CircularProgressIndicator(modifier = Modifier.padding(4.dp))
                 } else {
-                    Text(stringResource(R.string.planes_crear_confirmar))
+                    Text(stringResource(R.string.plans_create_confirm))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onCancelar) {
-                Text(stringResource(R.string.planes_crear_cancelar))
+                Text(stringResource(R.string.plans_create_cancel))
             }
         },
     )
@@ -266,7 +266,7 @@ private fun CuentaMenu(estado: String?, onCrearCuenta: () -> Unit) {
     IconButton(onClick = { abierto = true }) {
         Icon(
             imageVector = Icons.Filled.AccountCircle,
-            contentDescription = stringResource(R.string.cuenta_menu_descripcion),
+            contentDescription = stringResource(R.string.account_menu_description),
         )
     }
     DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
@@ -280,7 +280,7 @@ private fun CuentaMenu(estado: String?, onCrearCuenta: () -> Unit) {
             )
         }
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.cuenta_crear)) },
+            text = { Text(stringResource(R.string.account_create)) },
             onClick = {
                 abierto = false
                 onCrearCuenta()

@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-08-20
+
+### Fixed (i18n)
+
+- Spanish is now the default UI language (`values/`), matching the project
+  convention (`ui-strings-i18n`); the previous build had Spanish in `values-es/`
+  and English as the default, so devices on an English locale showed English.
+- String keys renamed to English (snake_case): `plans_*`, `account_*`,
+  `members_*`, `movements_*` (was `planes_*`, `cuenta_*`, `miembros_*`,
+  `movimientos_*`). All `R.string.*` references updated in the four composables.
+- English moved to `values-en/` (additive translation); `values-es/` removed.
+- Note: `0.3.0`'s "Spanish strings (`values-es`)" entry documented the earlier,
+  incorrect location.
+
 ## [0.4.0] - 2026-08-20
 
 ### Added (M3 — Plans, access, final rules + usable MVP)

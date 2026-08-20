@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="cuenta_registro_titulo">Create account</string>
-    <string name="cuenta_registro_subtitulo">Your guest data will be attached to this account.</string>
-    <string name="cuenta_registro_nombre">Name</string>
-    <string name="cuenta_registro_email">Email</string>
-    <string name="cuenta_registro_password">Password</string>
-    <string name="cuenta_registro_crear">Create account</string>
+    <string name="account_registration_title">Crear cuenta</string>
+    <string name="account_registration_subtitle">Tus datos de invitado se guardarán en esta cuenta.</string>
+    <string name="account_registration_name">Nombre</string>
+    <string name="account_registration_email">Correo</string>
+    <string name="account_registration_password">Contraseña</string>
+    <string name="account_registration_create">Crear cuenta</string>
 </resources>
