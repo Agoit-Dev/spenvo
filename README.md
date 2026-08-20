@@ -21,10 +21,12 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 ```
 :app                    — entry point, root NavDisplay, DI
 :core:domain            — pure domain (no Android)
-:core:data              — Room+SQLCipher, DataStore, repos
+:core:data              — Room+SQLCipher, DataStore, repos, Firestore sync
 :core:security          — Keystore-backed SQLCipher passphrase
 :core:designsystem      — theme and UI components
-:feature:movimientos    — expenses + income
+:feature:cuenta         — account creation / email+password linking
+:feature:planes         — plans, shared access, invitations
+:feature:movimientos    — expenses + income (plan-scoped)
 ```
 
 ## How to run
@@ -37,7 +39,18 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 ./gradlew dependencies --write-locks   # regenerate lockfiles
 ```
 
-Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sdk.dir`.
+### Firestore rules tests (Node)
+
+```bash
+cd rules-tests
+npm install                       # install firebase-tools + rules-unit-testing
+npm test                          # run the rules matrix against the Emulator (14 tests)
+```
+
+The emulator uses `projectId: spenvo-dev` and listens on port 8081 (`firebase.json`).
+
+Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sdk.dir`;
+Node 20+ (only for the `rules-tests/` subproject).
 
 ## Documentation
 
@@ -50,5 +63,8 @@ Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sd
 
 ## Status
 
-Milestone **M2 (Guest-first identity)** in progress (anonymous auth + App Check
-wired; account entry point in `Movimientos`). See `CHANGELOG.md`.
+Milestone **M3 (Plans, access, final rules, usable MVP)** in progress: account
+creation (email/password linking the anonymous UID), plans with shared access and
+invitations, and the finalized Firestore rules validated against the Emulator.
+Deploy the rules (`firebase deploy --only firestore:rules`) to go live. See
+`CHANGELOG.md`.

@@ -7,5 +7,7 @@ interface AuthRepository {
     fun observeSesion(): Flow<Sesion>
 
     suspend fun iniciarSesionAnonima()
+
+    suspend fun vincularEmail(email: String, password: String, nombre: String)
 }
 

@@ -1,0 +1,13 @@
+{
+  "name": "spenvo-rules-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase --config ../firebase.json --project spenvo-dev emulators:exec --only firestore \"node --test --test-force-exit rules.test.mjs\"",
+    "emulators": "firebase emulators:start --only firestore"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase-tools": "^15.28.1"
+  }
+}

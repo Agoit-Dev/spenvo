@@ -2,8 +2,11 @@ package com.agoitdev.spenvo.data.auth
 
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.UserProfileChangeRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -35,9 +38,35 @@ class FirebaseAuthRepository @Inject constructor(
                 .addOnFailureListener { cont.resumeWithException(it) }
         }
     }
+
+    override suspend fun vincularEmail(email: String, password: String, nombre: String) {
+        val currentUser = auth.currentUser
+            ?: throw FirebaseAuthException("NO_CURRENT_USER", "No hay una sesión activa para vincular")
+        val credencial = EmailAuthProvider.getCredential(email, password)
+        suspendCancellableCoroutine { cont ->
+            currentUser.linkWithCredential(credencial)
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resumeWithException(it) }
+        }
+        if (nombre.isNotBlank()) {
+            suspendCancellableCoroutine { cont ->
+                val perfil = UserProfileChangeRequest.Builder()
+                    .setDisplayName(nombre)
+                    .build()
+                currentUser.updateProfile(perfil)
+                    .addOnSuccessListener { cont.resume(Unit) }
+                    .addOnFailureListener { cont.resumeWithException(it) }
+            }
+        }
+    }
 }
 
 private fun FirebaseUser?.toSesion(): Sesion = this?.let {
-    Sesion(uid = it.uid, esAnonima = it.isAnonymous)
+    Sesion(
+        uid = it.uid,
+        esAnonima = it.isAnonymous,
+        email = it.email,
+        nombre = it.displayName,
+    )
 } ?: Sesion.Anonima
 

@@ -105,6 +105,9 @@ abstract class SpenvoDatabase : RoomDatabase() {
         }
 
         fun build(context: Context, passphraseProvider: PassphraseProvider): SpenvoDatabase {
+            // SQLCipher 4.x no carga la lib nativa automáticamente; el consumidor
+            // debe cargarla explícitamente antes de abrir la DB.
+            System.loadLibrary("sqlcipher")
             val passphrase = passphraseProvider.getOrCreate()
             return Room.databaseBuilder(context, SpenvoDatabase::class.java, DATABASE_NAME)
                 .openHelperFactory(SupportOpenHelperFactory(String(passphrase).toByteArray(Charsets.UTF_8)))

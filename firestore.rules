@@ -1,29 +1,30 @@
 rules_version = '2';
 
-// BORRADOR M0 — deny-by-default con roles server-side.
-// NO DESPLEGAR en producción hasta M3 (firestore-rules-audit + tests con Emulator).
-// editedBy/editedAt se setean aquí con request.auth.uid / request.time (M5).
+// VERSIÓN FINAL M3 — deny-by-default con roles server-side.
+// Desplegar solo tras pasar firestore-rules-audit + tests con Emulator.
+// editedBy/editedAt se implementan en M5 (conflictos LWW), no aquí.
+//
+// NOTA (emulador v1.22): el get() con path concatenado (uid_planId) debe ir
+// DIRECTO en cada allow, pasando el Resource obtenido a la función (que no
+// vuelve a llamar get()). Dentro de una función el get()+concatenación falla.
 
 function isSignedIn() {
   return request.auth != null;
 }
 
-function isOwner(uid) {
-  return request.auth.uid == uid;
-}
-
-// El usuario tiene rol >= el pedido sobre un plan.
 // roles: owner(3) > admin(2) > editor(1) > viewer(0)
-function roleOf(planId) {
-  return get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid)_$(planId))
-    .data.rol;
+function roleLevel(rol) {
+  return rol == 'owner' ? 3 :
+         rol == 'admin' ? 2 :
+         rol == 'editor' ? 1 :
+         rol == 'viewer' ? 0 : -1;
 }
 
-function hasRole(planId, minRole) {
-  if (!isSignedIn()) return false;
-  let rol = roleOf(planId);
-  return rol == 'owner' || rol == 'admin' && minRole <= 2 ||
-    rol == 'editor' && minRole <= 1 || rol == 'viewer' && minRole <= 0;
+// Recibe el Resource del acceso ya obtenido por get() en el allow.
+// Comprueba null (emulador v1.22 devuelve null si no existe; producción un
+// Resource con exists==false). Con accesoDoc != null cubrimos ambos.
+function tieneRolMinimo(accesoDoc, minLevel) {
+  return accesoDoc != null && roleLevel(accesoDoc.data.rol) >= minLevel;
 }
 
 service cloud.firestore {
@@ -31,56 +32,107 @@ service cloud.firestore {
 
     // ---------- usuarios ----------
     match /usuarios/{usuarioId} {
-      allow read: if isOwner(usuarioId);
-      allow create: if isOwner(usuarioId)
+      allow read: if isSignedIn() && request.auth.uid == usuarioId;
+      allow create: if isSignedIn() && request.auth.uid == usuarioId
         && request.resource.data.uid == usuarioId;
-      allow update: if isOwner(usuarioId);
+      allow update: if isSignedIn() && request.auth.uid == usuarioId;
       allow delete: if false;
     }
 
     // ---------- planes_financieros ----------
     match /planes_financieros/{planId} {
-      allow read: if hasRole(planId, 0);
+      // viewer(0)+ lee. create no exige acceso previo (creador aún sin acceso).
+      allow read: if isSignedIn() && tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + planId)),
+        0
+      );
       allow create: if isSignedIn()
-        && request.resource.data.createdBy == request.auth.uid;
-      allow update: if hasRole(planId, 1) // editor+
-        && request.resource.data.editedBy == request.auth.uid; // M5
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.id == planId;
+      // editor(1)+ actualiza. editedBy/editedAt en M5.
+      allow update: if isSignedIn() && tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + planId)),
+        1
+      );
       allow delete: if false; // soft-delete via update
     }
 
     // ---------- acceso_plan_financiero (pivote N:M) ----------
     match /acceso_plan_financiero/{docId} {
+      // Cualquier usuario autenticado puede leer accesos (necesario para listar
+      // planes propios e invitaciones). El pivote solo contiene uid/planId/rol/estado.
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && docId == request.auth.uid + '_' + request.resource.data.planId
-        || hasRole(request.resource.data.planId, 2); // admin invita
-      allow update: if hasRole(resource.data.planId, 2); // admin gestiona roles
+      // Un usuario crea su propio acceso OWNER al crear el plan (debe ser el
+      // createdBy del plan), o un admin(2+) del plan invita a un miembro.
+      allow create: if isSignedIn() && (
+          (docId == request.auth.uid + '_' + request.resource.data.planId
+            && request.resource.data.usuarioId == request.auth.uid
+            && request.resource.data.rol == 'owner'
+            && get(/databases/$(database)/documents/planes_financieros/$(request.resource.data.planId)).data.createdBy == request.auth.uid)
+          || tieneRolMinimo(
+              get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
+              2
+            )
+        );
+      // admin(2)+ gestiona roles, o el propio usuario acepta su invitación pendiente.
+      allow update: if tieneRolMinimo(
+          get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
+          2
+        )
+        || (isSignedIn() && resource.data.usuarioId == request.auth.uid
+            && resource.data.invitacionEstado == 'pendiente'
+            && request.resource.data.invitacionEstado == 'aceptada');
       allow delete: if false;
     }
 
     // ---------- categorias ----------
     match /categorias/{categoriaId} {
-      allow read: if hasRole(request.resource.data.planId, 0);
-      allow create: if hasRole(request.resource.data.planId, 1); // editor+
-      allow update: if hasRole(resource.data.planId, 1)
-        && request.resource.data.editedBy == request.auth.uid; // M5
-      allow delete: if false;
+      allow read: if isSignedIn() && tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
+        0
+      );
+      allow create: if tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
+        1
+      );
+      allow update: if tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
+        1
+      );
+      allow delete: if false; // soft-delete via update
     }
 
     // ---------- gastos / ingresos ----------
     match /gastos/{gastoId} {
-      allow read: if hasRole(resource.data.planId, 0);
-      allow create: if hasRole(request.resource.data.planId, 1);
-      allow update: if hasRole(resource.data.planId, 1)
-        && request.resource.data.editedBy == request.auth.uid; // M5
-      allow delete: if false;
+      allow read: if isSignedIn() && tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
+        0
+      );
+      allow create: if tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
+        1
+      );
+      allow update: if tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
+        1
+      );
+      allow delete: if false; // soft-delete via update
     }
 
     match /ingresos/{ingresoId} {
-      allow read: if hasRole(resource.data.planId, 0);
-      allow create: if hasRole(request.resource.data.planId, 1);
-      allow update: if hasRole(resource.data.planId, 1)
-        && request.resource.data.editedBy == request.auth.uid; // M5
-      allow delete: if false;
+      allow read: if isSignedIn() && tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
+        0
+      );
+      allow create: if tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
+        1
+      );
+      allow update: if tieneRolMinimo(
+        get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
+        1
+      );
+      allow delete: if false; // soft-delete via update
     }
   }
 }

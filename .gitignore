@@ -24,3 +24,8 @@ local.properties
 
 # --- CONFIGURACIÓN DE FIREBASE ---
 **/google-services.json
+
+# --- TESTING DE FIRESTORE RULES (subproyecto Node) ---
+rules-tests/node_modules/
+rules-tests/firestore-debug.log
+firestore-debug.log
