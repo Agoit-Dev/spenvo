@@ -1,0 +1,16 @@
+{
+  "projectId": "spenvo-dev",
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8081,
+      "singleProjectMode": false
+    },
+    "ui": {
+      "enabled": false
+    }
+  }
+}
