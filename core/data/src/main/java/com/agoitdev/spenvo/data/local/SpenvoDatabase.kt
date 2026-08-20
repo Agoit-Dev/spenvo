@@ -4,23 +4,111 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.agoitdev.spenvo.data.local.converter.Converters
+import com.agoitdev.spenvo.data.local.dao.AccesoPlanDao
+import com.agoitdev.spenvo.data.local.dao.CategoriaDao
+import com.agoitdev.spenvo.data.local.dao.GastoDao
+import com.agoitdev.spenvo.data.local.dao.IngresoDao
+import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
+import com.agoitdev.spenvo.data.local.dao.UsuarioDao
+import com.agoitdev.spenvo.data.local.entity.AccesoPlanEntity
+import com.agoitdev.spenvo.data.local.entity.CategoriaEntity
+import com.agoitdev.spenvo.data.local.entity.GastoEntity
+import com.agoitdev.spenvo.data.local.entity.IngresoEntity
+import com.agoitdev.spenvo.data.local.entity.PlanFinancieroEntity
+import com.agoitdev.spenvo.data.local.entity.UsuarioEntity
+import com.agoitdev.spenvo.security.PassphraseProvider
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
-    entities = [SyncStateEntity::class],
-    version = 1,
+    entities = [
+        SyncStateEntity::class,
+        UsuarioEntity::class,
+        PlanFinancieroEntity::class,
+        AccesoPlanEntity::class,
+        CategoriaEntity::class,
+        GastoEntity::class,
+        IngresoEntity::class,
+    ],
+    version = 2,
     exportSchema = true,
 )
+@TypeConverters(Converters::class)
 abstract class SpenvoDatabase : RoomDatabase() {
 
     abstract fun syncStateDao(): SyncStateDao
+    abstract fun usuarioDao(): UsuarioDao
+    abstract fun planFinancieroDao(): PlanFinancieroDao
+    abstract fun accesoPlanDao(): AccesoPlanDao
+    abstract fun categoriaDao(): CategoriaDao
+    abstract fun gastoDao(): GastoDao
+    abstract fun ingresoDao(): IngresoDao
 
     companion object {
         const val DATABASE_NAME = "spenvo.db"
 
-        fun build(context: Context, passphrase: CharArray): SpenvoDatabase {
+        val MIGRATION_1_2: Migration = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `usuarios` (" +
+                        "`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `email` TEXT NOT NULL, " +
+                        "`avatarUrl` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `planes_financieros` (" +
+                        "`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `descripcion` TEXT, `moneda` TEXT NOT NULL, " +
+                        "`createdBy` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                        "`editedBy` TEXT, `editedAt` INTEGER, `deletedAt` INTEGER, " +
+                        "PRIMARY KEY(`id`))",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `acceso_plan_financiero` (" +
+                        "`usuarioId` TEXT NOT NULL, `planId` TEXT NOT NULL, " +
+                        "`rol` TEXT NOT NULL, `invitacionEstado` TEXT NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`usuarioId`, `planId`))",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `categorias` (" +
+                        "`id` TEXT NOT NULL, `planId` TEXT NOT NULL, `nombre` TEXT NOT NULL, " +
+                        "`icono` TEXT NOT NULL, `iconoUrl` TEXT, `tipo` TEXT NOT NULL, " +
+                        "`editedBy` TEXT, `editedAt` INTEGER, `deletedAt` INTEGER, " +
+                        "PRIMARY KEY(`id`))",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_categorias_planId_tipo` " +
+                        "ON `categorias` (`planId`, `tipo`)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `gastos` (" +
+                        "`id` TEXT NOT NULL, `planId` TEXT NOT NULL, `categoriaId` TEXT NOT NULL, " +
+                        "`montoUnidadesMenores` INTEGER NOT NULL, `fecha` TEXT NOT NULL, `descripcion` TEXT, " +
+                        "`creadoPor` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                        "`editedBy` TEXT, `editedAt` INTEGER, `deletedAt` INTEGER, " +
+                        "PRIMARY KEY(`id`))",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_gastos_planId_fecha` ON `gastos` (`planId`, `fecha`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `ingresos` (" +
+                        "`id` TEXT NOT NULL, `planId` TEXT NOT NULL, `categoriaId` TEXT NOT NULL, " +
+                        "`montoUnidadesMenores` INTEGER NOT NULL, `fecha` TEXT NOT NULL, `descripcion` TEXT, " +
+                        "`creadoPor` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                        "`editedBy` TEXT, `editedAt` INTEGER, `deletedAt` INTEGER, " +
+                        "PRIMARY KEY(`id`))",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_ingresos_planId_fecha` ON `ingresos` (`planId`, `fecha`)")
+            }
+        }
+
+        fun build(context: Context, passphraseProvider: PassphraseProvider): SpenvoDatabase {
+            val passphrase = passphraseProvider.getOrCreate()
             return Room.databaseBuilder(context, SpenvoDatabase::class.java, DATABASE_NAME)
                 .openHelperFactory(SupportOpenHelperFactory(String(passphrase).toByteArray(Charsets.UTF_8)))
+                .addMigrations(MIGRATION_1_2)
                 .build()
         }
     }

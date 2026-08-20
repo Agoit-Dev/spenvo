@@ -26,5 +26,6 @@ rootProject.name = "Spenvo"
 include(":app")
 include(":core:domain")
 include(":core:data")
+include(":core:security")
 include(":core:designsystem")
 include(":feature:movimientos")

@@ -1,6 +1,6 @@
 # Data Schema — Spenvo
 
-Document version: **1.0** (M0). Status: baseline draft, versioned with every change.
+Document version: **1.1** (M1). Status: baseline draft, versioned with every change.
 
 ## 1. Source of truth and model
 
@@ -97,17 +97,91 @@ erDiagram
 - `editedBy`/`editedAt` are written by Firestore (rules) with `request.auth.uid` and `request.time`;
   the client never chooses them.
 
-## 3. Room (version 1 — M0)
+## 3. Room (version 2 — M1)
 
-### `sync_state` (current table)
+Room is the encrypted local cache. Schema exports are versioned in
+`core/data/schemas/com.agoitdev.spenvo.data.local.SpenvoDatabase/` (`1.json`, `2.json`).
+
+### `sync_state` (v1, unchanged)
 | Column | Type | Notes |
 |---|---|---|
 | id | TEXT (PK) | singleton `"default"` |
 | lastSyncedAtMillis | INTEGER? | sync metadata (M1/M2) |
 
+### `usuarios` (new in v2)
+| Column | Type | Notes |
+|---|---|---|
+| id | TEXT (PK) | uid |
+| nombre | TEXT | |
+| email | TEXT | |
+| avatarUrl | TEXT? | M7 (Storage) |
+| createdAt | INTEGER | epoch millis |
+| updatedAt | INTEGER | |
+
+### `planes_financieros` (new in v2)
+| Column | Type | Notes |
+|---|---|---|
+| id | TEXT (PK) | |
+| nombre | TEXT | |
+| descripcion | TEXT? | |
+| moneda | TEXT | ISO 4217 code |
+| createdBy | TEXT | creator uid |
+| createdAt | INTEGER | |
+| updatedAt | INTEGER | |
+| editedBy | TEXT? | server-set (M5) |
+| editedAt | INTEGER? | server-set (M5) |
+| deletedAt | INTEGER? | soft-delete |
+
+### `acceso_plan_financiero` (new in v2, N:M pivot)
+| Column | Type | Notes |
+|---|---|---|
+| usuarioId | TEXT (PK, part 1) | uid |
+| planId | TEXT (PK, part 2) | |
+| rol | TEXT | `owner` \| `admin` \| `editor` \| `viewer` |
+| invitacionEstado | TEXT | `pendiente` \| `aceptada` (M3) |
+| createdAt | INTEGER | |
+| updatedAt | INTEGER | |
+
+### `categorias` (new in v2)
+| Column | Type | Notes |
+|---|---|---|
+| id | TEXT (PK) | |
+| planId | TEXT | scoped to the plan |
+| nombre | TEXT | |
+| icono | TEXT | default icon key (M4) |
+| iconoUrl | TEXT? | custom icon (M7) |
+| tipo | TEXT | `gasto` \| `ingreso` |
+| editedBy | TEXT? | |
+| editedAt | INTEGER? | |
+| deletedAt | INTEGER? | |
+| Index | `planId, tipo` | `index_categorias_planId_tipo` |
+
+### `gastos` and `ingresos` (new in v2)
+| Column | Type | Notes |
+|---|---|---|
+| id | TEXT (PK) | |
+| planId | TEXT | |
+| categoriaId | TEXT | |
+| montoUnidadesMenores | INTEGER | in minor units of the currency |
+| fecha | TEXT | movement date (ISO) |
+| descripcion | TEXT? | |
+| creadoPor | TEXT | uid |
+| createdAt | INTEGER | |
+| updatedAt | INTEGER | |
+| editedBy | TEXT? | server-set (M5) |
+| editedAt | INTEGER? | server-set (M5) |
+| deletedAt | INTEGER? | soft-delete |
+| Index | `planId, fecha` | `index_gastos_planId_fecha` / `index_ingresos_planId_fecha` |
+
+### Migration v1 → v2
+`SpenvoDatabase.MIGRATION_1_2` creates the six new tables and three indexes above;
+`sync_state` is preserved. Validated by an instrumented migration test
+(`SpenvoDatabaseMigrationTest`, SQLCipher + `MigrationTestHelper`) and by the Room
+exported schema (`2.json`).
+
 ### Version plan
 - **v1 (M0)**: `sync_state` — validates the Room+KSP+SQLCipher toolchain.
-- **v1.1 (M1)**: local domain entities (users, plans, categories, expenses,
+- **v2 (M1)**: local domain entities (users, plans, categories, expenses,
   income) as cache; indexes; `editedBy/editedAt`.
 - Migrations with `Migration` + SQLCipher (upgrade test included).
 
@@ -123,3 +197,4 @@ See `firestore.indexes.json`. Rules:
 | Date | Doc version | Schema | Change |
 |---|---|---|---|
 | 2026-08-19 | 1.0 | Room v1 / Firestore draft | M0 baseline |
+| 2026-08-20 | 1.1 | Room v2 | M1 — local entities as cache (migration v1→v2, validated) |

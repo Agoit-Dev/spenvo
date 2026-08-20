@@ -13,11 +13,18 @@ android {
 
     defaultConfig {
         minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        getByName("androidTest") {
+            assets.directories.add("$projectDir/schemas")
+        }
     }
 }
 
@@ -34,6 +41,7 @@ ksp {
 
 dependencies {
     implementation(project(":core:domain"))
+    implementation(project(":core:security"))
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -48,5 +56,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
+
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.junit)
 }
