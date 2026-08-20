@@ -14,6 +14,9 @@ Documentation lives in the repo and stays up to date in the same commit as the c
    one per DB version. Never regenerated without review.
 
 ## Rules
+- **Every phase, feature or milestone closes with a docs review**: before finishing,
+  update `README.md` (status, modules, stack, commands) and the affected `doc/`
+  files in the same commit as the code. Never leave docs stale after the work is done.
 - Every commit with data logic touches `doc/database/schema.mdd` if the schema changed.
 - Every commit with an important decision touches `doc/architecture.md`.
 - `README.md` is the front door: stack, how to run, commands.

@@ -11,6 +11,7 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 - **Navigation**: Navigation 3 (1.1.4) state-driven
 - **DI**: Hilt 2.60.1 + KSP2 (2.2.10-2.0.2)
 - **Data**: Room 2.8.4 + SQLCipher 4.18.0 · DataStore 1.2.1 · Coroutines/Flow 1.11.0
+- **Security**: SQLCipher passphrase in the Android Keystore (AES-256/GCM, `:core:security`)
 - **Backend** (M2+): Firebase Auth · Firestore · Storage · App Check (BOM 34.17.0)
 - **Images**: Coil 3.4.0
 - **Quality**: detekt 1.23.8 · blocking lint (HardcodedText, MissingTranslation)
@@ -21,6 +22,7 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 :app                    — entry point, root NavDisplay, DI
 :core:domain            — pure domain (no Android)
 :core:data              — Room+SQLCipher, DataStore, repos
+:core:security          — Keystore-backed SQLCipher passphrase
 :core:designsystem      — theme and UI components
 :feature:movimientos    — expenses + income
 ```
@@ -30,6 +32,7 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 ```bash
 ./gradlew :app:assembleDebug      # build
 ./gradlew testDebugUnitTest       # unit tests
+./gradlew connectedDebugAndroidTest  # instrumented tests (device/emulator)
 ./gradlew lintDebug detekt        # quality
 ./gradlew dependencies --write-locks   # regenerate lockfiles
 ```
@@ -47,4 +50,4 @@ Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sd
 
 ## Status
 
-Milestone **M0 (Bootstrap)** in progress. See `CHANGELOG.md`.
+Milestone **M1 (Local data layer)** complete. See `CHANGELOG.md`.

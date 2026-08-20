@@ -24,13 +24,15 @@ tests before committing.
  :core:designsystem (theme, UI components)
  :feature:movimientos (expenses + income)
  :core:domain (models, use cases, contracts — pure Kotlin)
+ :core:security (Keystore-backed SQLCipher passphrase)
  :core:data (Room + SQLCipher, DataStore, remote repos, mappers)
 ```
 
 Dependencies:
 - `:app` → `:core:domain`, `:core:data`, `:core:designsystem`, `:feature:movimientos`.
 - `:feature:movimientos` → `:core:domain`, `:core:designsystem`.
-- `:core:data` → `:core:domain`.
+- `:core:data` → `:core:domain`, `:core:security`.
+- `:core:security` → Android Keystore only.
 - `:core:domain` has no Android dependencies.
 - `:core:designsystem` has no feature or data dependencies.
 
@@ -69,8 +71,6 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 
 - **Wireless ADB**: the on-device install hung during M0. The M3 e2e smoke will
   resume it (local emulator preferred).
-- **SQLCipher passphrase**: the Keystore module is implemented in M1 (generation on
-  first use + storage in Android Keystore AES).
 - **Firebase**: `google-services.json` and the plugin are added in M2 once the
   Firebase project exists.
 - **Rules/indexes**: drafts in M0; finalization + rules tests in M3.
