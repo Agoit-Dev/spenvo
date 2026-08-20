@@ -22,17 +22,22 @@ tests before committing.
 ```
 :app (root NavDisplay, root DI, Application)
  :core:designsystem (theme, UI components)
- :feature:movimientos (expenses + income)
+ :feature:cuenta (account creation / email+password linking)
+ :feature:planes (plans, shared access, invitations)
+ :feature:movimientos (expenses + income, plan-scoped)
  :core:domain (models, use cases, contracts — pure Kotlin)
  :core:security (Keystore-backed SQLCipher passphrase)
- :core:data (Room + SQLCipher, DataStore, remote repos, mappers)
+ :core:data (Room + SQLCipher, DataStore, Firestore repos + sync, mappers)
 ```
 
 Dependencies:
-- `:app` → `:core:domain`, `:core:data`, `:core:designsystem`, `:feature:movimientos`.
-- `:feature:movimientos` → `:core:domain`, `:core:designsystem`, `:core:data`
-  (Hilt binding for the auth/session repository).
-- `:core:data` → `:core:domain`, `:core:security`.
+- `:app` → `:core:domain`, `:core:data`, `:core:designsystem`,
+  `:feature:cuenta`, `:feature:planes`, `:feature:movimientos`.
+- `:feature:cuenta` → `:core:domain`, `:core:designsystem`, `:core:data`.
+- `:feature:planes` → `:core:domain`, `:core:designsystem`, `:core:data`
+  (auth/session + plan repositories, sync).
+- `:feature:movimientos` → `:core:domain`, `:core:designsystem`, `:core:data`.
+- `:core:data` → `:core:domain`, `:core:security`, Firebase (Auth, Firestore, App Check).
 - `:core:security` → Android Keystore only.
 - `:core:domain` has no Android dependencies.
 - `:core:designsystem` has no feature or data dependencies.
@@ -66,15 +71,24 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 | Navigation 3 (not Nav2) | state-driven, native List-Detail with Adaptive | plan v3 |
 | App Check in M2 | only legitimate clients against the backend | plan v3 |
 | Guest-first anonymous auth | app opens directly; account created on demand (M3 links it) | plan v3 (user decision) |
+| Email/password links the anonymous UID | `linkWithCredential` preserves local data, no merge | M3 |
+| Account + plans in separate features | `:feature:cuenta` + `:feature:planes`; movimientos stays plan-scoped | M3 (user decision) |
 | Auth/session repo in `:core:data` | keeps a single data layer for remote sources | M2 |
+| Firestore rules tested in a Node subproject | `rules-tests/` validates the matrix with the Emulator; app stack stays Kotlin | M3 |
 | Min SDK 26 | coverage/API balance | plan v3 |
 | es-default strings + blocking lint | additive i18n from day 1 | plan v3 |
 
 ## Known risks and debt
 
-- **Wireless ADB**: the on-device install hung during M0. The M3 e2e smoke will
-  resume it (local emulator preferred).
-- **Rules/indexes**: drafts in M0; finalization + rules tests in M3.
+- **Rules/indexes**: finalized in M3 and validated against the Emulator (14
+  tests). **Deploy `firebase deploy --only firestore:rules` to go live**; until
+  then the plan/access writes fail with permission-denied against the real project.
 - **Firebase console setup**: the Anonymous sign-in provider and the App Check
-  API must be enabled in the Firebase console (see `CHANGELOG` 0.3.0). The
-  App Check debug token is registered for debug builds.
+  API must be enabled (see `CHANGELOG` 0.3.0). The App Check debug token is
+  registered for debug builds.
+- **Firestore Emulator (v1.22) quirks**: `get()` with a concatenated path must be
+  written directly in an `allow` (it fails inside a function), and a `get()` on a
+  missing doc returns `null` (check `!= null`, not `.exists`). See
+  `rules-tests/` for the working pattern.
+- **Account registration is email/password only** in M3; Google Sign-In is
+  deferred (see M7).

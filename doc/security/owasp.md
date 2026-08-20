@@ -8,11 +8,12 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 | Control | Where | Status | Milestone |
 |---|---|---|---|
 | SQLCipher (encryption at rest) | `:core:data` | ✅ passphrase from Keystore (`:core:security`) | M1 |
-| Anonymous auth (guest-first) | `:core:data` + `:feature:movimientos` | ✅ background, offline-tolerant | M2 |
+| Anonymous auth (guest-first) | `:core:data` + `:feature:planes` | ✅ background, offline-tolerant | M2 |
+| Account creation (email/password) | `:feature:cuenta` | ✅ links the anonymous UID (`linkWithCredential`) | M3 |
 | App Check (Play Integrity / debug) | `:app` | ✅ wired; enforcement on Firestore in M3 | M2/M3 |
-| Deny-by-default rules + roles | `firestore.rules` | ⚠️ M0 draft | M3 |
+| Deny-by-default rules + roles | `firestore.rules` | ✅ finalized (owner/admin/editor/viewer) | M3 |
+| Rules tests (Emulator) | `rules-tests/` (`@firebase/rules-unit-testing`) | ✅ 14/14 green | M3 |
 | Server-side EditedBy/EditedAt | rules | 🔜 | M5 |
-| Rules tests (Emulator) | `@firebase/rules-unit-testing` | 🔜 | M3 |
 
 ## Risk → control map
 
@@ -27,10 +28,11 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 - **App Check** (M2) and **osv-scanner CI** (M8). 🔜.
 
 ### M3 - Insecure Authentication/Authorization
-- Firebase Auth **anonymous** (guest-first) wired in M2; email/password + Google
-  linking in M3; **optional MFA in M8**. 🔜 M3.
-- **Authorization**: server-side roles (`owner/admin/editor/viewer`) validated in rules.
-  🔜 M3.
+- Firebase Auth **anonymous** (guest-first) wired in M2; **email/password linking**
+  (links the anonymous UID, preserving local data) done in M3; Google linking in M7;
+  **optional MFA in M8**. ✅ M3 (email/password).
+- **Authorization**: server-side roles (`owner/admin/editor/viewer`) validated in
+  the finalized rules, tested against the Emulator (14 tests). ✅ M3.
 - Session/persistence: `FirebaseAuth` handles automatic token refresh. ✅ M2.
 
 ### M4 - Insufficient Input/Output Validation
@@ -74,7 +76,7 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 5. Logs without sensitive data. ✅ rule.
 
 ## Pending implementation (M0 debt)
-- Account linking (email/Google) + registration screen → **M3**.
-- Final rules + tests + Emulator → **M3**.
+- Google Sign-In linking → **M7**.
 - Server-side `editedBy/editedAt` → **M5**.
+- Deploy the finalized rules to production (`firebase deploy --only firestore:rules`) — user action to go live.
 - osv-scanner in CI + MFA → **M8**.

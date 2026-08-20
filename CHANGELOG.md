@@ -5,6 +5,57 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-20
+
+### Added (M3 — Plans, access, final rules + usable MVP)
+
+- Account creation via email/password linking the anonymous UID
+  (`linkWithCredential`), preserving local data without a merge:
+  `AuthRepository.vincularEmail` + `VincularCredencialUseCase` in `:core:domain`
+  (TDD), `FirebaseAuthRepository` update in `:core:data`, and the new
+  `:feature:cuenta` screen (name, email, password). The account menu now shows the
+  linked email instead of "Guest".
+- Plans and shared access domain (TDD) in `:core:domain`: `PlanFinancieroRepository`,
+  `AccesoPlanRepository` and use cases (`CrearPlan`, `ObservarPlanesDelUsuario`,
+  `ObservarPlan`, `ActualizarPlan`, `InvitarMiembro`, `AceptarInvitacion`).
+- Firestore remote layer in `:core:data`: `FirebasePlanFinancieroRepository`,
+  `FirebaseAccesoPlanRepository`, DTO mappers, a `Task.await()` coroutine helper,
+  and a `PlanSincronizador` (snapshot listener on the user's accesses → Room) that
+  lives only while its Flow is collected (AGENTS rule 3). New DI wiring for the
+  Room database (previously not in Hilt), DAOs, `PassphraseProvider`,
+  `FirebaseFirestore`, and the plan use cases.
+- `:feature:planes` (new): plan list (from Room), create-plan dialog (name +
+  ISO 4217 currency), pending invitations with "Accept", and the account menu.
+  The navigation root is now the plan list; `MovimientosRoute(planId)` is
+  plan-scoped with a members action.
+- `:feature:planes`/`:feature:cuenta` member screens: list members, invite by UID
+  with a role selector, accept pending invitations.
+- Final `firestore.rules` (M3): deny-by-default with server-side roles
+  (owner/admin/editor/viewer); `editedBy`/`editedAt` deferred to M5. An owner
+  creates their plan + OWNER access; admins invite; a user accepts their own
+  pending invitation. `firestore.indexes.json` finalized (categories by
+  planId+tipo; expenses/income by planId+fecha; access is single-field).
+- `rules-tests/` (Node subproject): `firebase-tools` + `@firebase/rules-unit-testing`
+  validate the rules matrix (14 tests) against the Firestore Emulator; `firebase.json`
+  added at the repo root (`projectId: spenvo-dev`, emulator on port 8081).
+  `node_modules/` and `firestore-debug.log` are gitignored.
+
+### Changed
+
+- Navigation root moved from `MovimientosRoute` to `PlanesRoute`; `MovimientosRoute`
+  now carries a `planId` and its account menu moved to the plan list.
+- Anonymous sign-in and sync now start from `PlanesViewModel` (was `MovimientosViewModel`).
+- `:core:data` loads the SQLCipher native library in `SpenvoDatabase.build`
+  (runtime, in addition to the migration-test fix), fixing a startup crash
+  (`UnsatisfiedLinkError` on `SQLiteConnection.nativeOpen`).
+- Added `libs.firebase.firestore` and regenerated dependency locks for
+  `:core:data`, `:app`, `:feature:movimientos`, `:feature:cuenta`, `:feature:planes`.
+
+### Docs
+
+- `doc/architecture.md`: plans/access data flow, new modules, decisions.
+- `doc/security/owasp.md`: Firestore rules + App Check status.
+
 ## [0.3.0] - 2026-08-20
 
 ### Added (M2 — Guest-first identity: anonymous auth + App Check)
