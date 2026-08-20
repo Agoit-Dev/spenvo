@@ -35,5 +35,9 @@ private class FakeAuthRepository : AuthRepository {
         lamadasInicio++
         sesion.value = Sesion(uid = "anon-1", esAnonima = true)
     }
+
+    override suspend fun vincularEmail(email: String, password: String, nombre: String) {
+        sesion.value = Sesion(uid = sesion.value.uid, esAnonima = false)
+    }
 }
 

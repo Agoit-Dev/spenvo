@@ -2,6 +2,7 @@ package com.agoitdev.spenvo.data.auth
 
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.usecase.IniciarSesionAnonimaUseCase
+import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import com.google.firebase.auth.FirebaseAuth
 import dagger.Binds
 import dagger.Module
@@ -31,5 +32,10 @@ object FirebaseModule {
     fun provideIniciarSesionAnonima(
         authRepository: AuthRepository,
     ): IniciarSesionAnonimaUseCase = IniciarSesionAnonimaUseCase(authRepository)
+
+    @Provides
+    fun provideVincularCredencial(
+        authRepository: AuthRepository,
+    ): VincularCredencialUseCase = VincularCredencialUseCase(authRepository)
 }
 
