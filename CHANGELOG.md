@@ -5,6 +5,42 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-20
+
+### Added (M1 — Local data layer)
+
+- Room schema v2 (`SpenvoDatabase`): six local cache entities (`usuarios`,
+  `planes_financieros`, `acceso_plan_financiero`, `categorias`, `gastos`, `ingresos`)
+  plus `sync_state` (v1, unchanged), all encrypted with SQLCipher.
+- `MIGRATION_1_2` in SQL with the same DDL as the exported schema (`2.json`),
+  validated by an instrumented migration test (`MigrationTestHelper` +
+  SQLCipher `SupportOpenHelperFactory`).
+- Mappers between domain models and Room entities, covered by unit tests.
+- Schema wiring for the androidTest source set (`assets.directories`).
+- New module `:core:security`: `PassphraseProvider` + `AndroidKeystorePassphraseProvider`
+  (AES-256/GCM key in the Android Keystore; 256-bit passphrase generated on first
+  use, stored encrypted). Instrumented lifecycle test
+  (create/insert/close/reopen/read with SQLCipher).
+- `SpenvoDatabase.build` now takes a `PassphraseProvider` (wired to
+  `:core:security`) instead of a raw passphrase.
+- Living docs updated: `doc/database/schema.mdd` v1.1 (Room v2),
+  `doc/security/owasp.md` (Keystore control now active).
+
+### Changed
+
+- SQLCipher native library now loaded explicitly with `System.loadLibrary("sqlcipher")`
+  (the 4.x `SQLiteDatabase.loadLibs` API was removed).
+- `core:data` androidTest dependency lock updated (Room testing + androidx.test).
+- New module `:core:security` added to the build (`settings.gradle.kts`) with its
+  dependency lock; `androidx.sqlite:sqlite` catalog accessor added.
+
+### Fixed
+
+- Root cause of the earlier `MissingType` KSP error: the Room database file was
+  corrupted; rewritten clean with all entities and converters.
+- Instrumented migration test failed with `UnsatisfiedLinkError` on
+  `SQLiteConnection.nativeOpen`; fixed by loading the native library in `@Before`.
+
 ## [0.1.0] - 2026-08-19
 
 ### Added (M0 — Bootstrap)

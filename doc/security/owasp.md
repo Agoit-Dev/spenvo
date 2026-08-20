@@ -7,7 +7,7 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 
 | Control | Where | Status | Milestone |
 |---|---|---|---|
-| SQLCipher (encryption at rest) | `:core:data` | ⚠️ factory ready, Keystore in M1 | M1 |
+| SQLCipher (encryption at rest) | `:core:data` | ✅ passphrase from Keystore (`:core:security`) | M1 |
 | App Check (Play Integrity) | `:app` + Firestore | 🔜 | M2 |
 | Deny-by-default rules + roles | `firestore.rules` | ⚠️ M0 draft | M3 |
 | Server-side EditedBy/EditedAt | rules | 🔜 | M5 |
@@ -17,7 +17,7 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 
 ### M1 - Improper Credential Usage (credential and data encryption)
 - **Data**: SQLCipher active; passphrase generated on first use and stored in
-  Android Keystore (AES). Never in cleartext or hardcoded. ✅/🔜 M1.
+  Android Keystore (AES-256/GCM). Never in cleartext or hardcoded. ✅ M1.
 - **Keys**: Firebase keys in `google-services.json` (gitignored) or build config.
 
 ### M2 - Inadequate Supply Chain Security
@@ -56,12 +56,12 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 - No API keys in strings. ✅ M0.
 
 ### M9 - Insecure Data Storage & Exports
-- Encrypted Room (SQLCipher). ⚠️→M1.
+- Encrypted Room (SQLCipher). ✅ M1.
 - No FileProvider/data export outside the app. ✅.
 - Backups disabled. ✅ M0.
 
 ### M10 - Insufficient Cryptography
-- Keystore AES-256 passphrase; SQLCipher (XChaCha20 / AES-256-CBC depending on version). ⚠️→M1.
+- Keystore AES-256 passphrase; SQLCipher (XChaCha20 / AES-256-CBC depending on version). ✅ M1.
 - No weak algorithms; crypto review in `security-review`. ✅.
 
 ## Mandatory practices (M0)
@@ -72,7 +72,6 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 5. Logs without sensitive data. ✅ rule.
 
 ## Pending implementation (M0 debt)
-- Android Keystore module for the SQLCipher passphrase → **M1**.
 - App Check → **M2**.
 - Final rules + tests + Emulator → **M3**.
 - Server-side `editedBy/editedAt` → **M5**.
