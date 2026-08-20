@@ -8,7 +8,8 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 | Control | Where | Status | Milestone |
 |---|---|---|---|
 | SQLCipher (encryption at rest) | `:core:data` | ✅ passphrase from Keystore (`:core:security`) | M1 |
-| App Check (Play Integrity) | `:app` + Firestore | 🔜 | M2 |
+| Anonymous auth (guest-first) | `:core:data` + `:feature:movimientos` | ✅ background, offline-tolerant | M2 |
+| App Check (Play Integrity / debug) | `:app` | ✅ wired; enforcement on Firestore in M3 | M2/M3 |
 | Deny-by-default rules + roles | `firestore.rules` | ⚠️ M0 draft | M3 |
 | Server-side EditedBy/EditedAt | rules | 🔜 | M5 |
 | Rules tests (Emulator) | `@firebase/rules-unit-testing` | 🔜 | M3 |
@@ -26,10 +27,11 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 - **App Check** (M2) and **osv-scanner CI** (M8). 🔜.
 
 ### M3 - Insecure Authentication/Authorization
-- Firebase Auth (email/password + Google) in M2; **optional MFA in M8**. 🔜.
+- Firebase Auth **anonymous** (guest-first) wired in M2; email/password + Google
+  linking in M3; **optional MFA in M8**. 🔜 M3.
 - **Authorization**: server-side roles (`owner/admin/editor/viewer`) validated in rules.
   🔜 M3.
-- Session/persistence: `FirebaseAuth` handles automatic token refresh. 🔜 M2.
+- Session/persistence: `FirebaseAuth` handles automatic token refresh. ✅ M2.
 
 ### M4 - Insufficient Input/Output Validation
 - Validation in the domain (use cases) + amount bounds.
@@ -72,7 +74,7 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 5. Logs without sensitive data. ✅ rule.
 
 ## Pending implementation (M0 debt)
-- App Check → **M2**.
+- Account linking (email/Google) + registration screen → **M3**.
 - Final rules + tests + Emulator → **M3**.
 - Server-side `editedBy/editedAt` → **M5**.
 - osv-scanner in CI + MFA → **M8**.

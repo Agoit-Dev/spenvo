@@ -30,7 +30,8 @@ tests before committing.
 
 Dependencies:
 - `:app` → `:core:domain`, `:core:data`, `:core:designsystem`, `:feature:movimientos`.
-- `:feature:movimientos` → `:core:domain`, `:core:designsystem`.
+- `:feature:movimientos` → `:core:domain`, `:core:designsystem`, `:core:data`
+  (Hilt binding for the auth/session repository).
 - `:core:data` → `:core:domain`, `:core:security`.
 - `:core:security` → Android Keystore only.
 - `:core:domain` has no Android dependencies.
@@ -64,6 +65,8 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 | LWW with visible conflict | honest and auditable sync | plan v3 |
 | Navigation 3 (not Nav2) | state-driven, native List-Detail with Adaptive | plan v3 |
 | App Check in M2 | only legitimate clients against the backend | plan v3 |
+| Guest-first anonymous auth | app opens directly; account created on demand (M3 links it) | plan v3 (user decision) |
+| Auth/session repo in `:core:data` | keeps a single data layer for remote sources | M2 |
 | Min SDK 26 | coverage/API balance | plan v3 |
 | es-default strings + blocking lint | additive i18n from day 1 | plan v3 |
 
@@ -71,6 +74,7 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 
 - **Wireless ADB**: the on-device install hung during M0. The M3 e2e smoke will
   resume it (local emulator preferred).
-- **Firebase**: `google-services.json` and the plugin are added in M2 once the
-  Firebase project exists.
 - **Rules/indexes**: drafts in M0; finalization + rules tests in M3.
+- **Firebase console setup**: the Anonymous sign-in provider and the App Check
+  API must be enabled in the Firebase console (see `CHANGELOG` 0.3.0). The
+  App Check debug token is registered for debug builds.
