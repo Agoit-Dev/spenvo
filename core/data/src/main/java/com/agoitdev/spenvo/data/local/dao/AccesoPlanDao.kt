@@ -19,4 +19,7 @@ interface AccesoPlanDao {
 
     @Query("SELECT * FROM acceso_plan_financiero WHERE planId = :planId")
     fun observeByPlan(planId: String): Flow<List<AccesoPlanEntity>>
+
+    @Query("SELECT * FROM acceso_plan_financiero WHERE usuarioId = :usuarioId AND planId = :planId")
+    suspend fun get(usuarioId: String, planId: String): AccesoPlanEntity?
 }
