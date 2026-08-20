@@ -14,13 +14,25 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.agoitdev.spenvo.cuenta.CuentaScreen
 import com.agoitdev.spenvo.designsystem.theme.SpenvoTheme
 import com.agoitdev.spenvo.movimientos.MovimientosScreen
+import com.agoitdev.spenvo.planes.MiembrosScreen
+import com.agoitdev.spenvo.planes.PlanesScreen
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
 
 @Serializable
-data object MovimientosRoute : NavKey
+data object PlanesRoute : NavKey
+
+@Serializable
+data class MovimientosRoute(val planId: String) : NavKey
+
+@Serializable
+data class MiembrosRoute(val planId: String) : NavKey
+
+@Serializable
+data object CuentaRoute : NavKey
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -37,7 +49,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SpenvoApp(modifier: Modifier = Modifier) {
-    val backStack = rememberNavBackStack(MovimientosRoute)
+    val backStack = rememberNavBackStack(PlanesRoute)
     Surface(modifier = modifier.fillMaxSize()) {
         NavDisplay(
             backStack = backStack,
@@ -47,8 +59,25 @@ fun SpenvoApp(modifier: Modifier = Modifier) {
                 rememberViewModelStoreNavEntryDecorator(),
             ),
             entryProvider = entryProvider {
-                entry<MovimientosRoute> {
-                    MovimientosScreen()
+                entry<PlanesRoute> {
+                    PlanesScreen(
+                        onCrearCuenta = { backStack.add(CuentaRoute) },
+                        onAbrirPlan = { planId -> backStack.add(MovimientosRoute(planId)) },
+                    )
+                }
+                entry<MovimientosRoute> { route ->
+                    MovimientosScreen(
+                        planId = route.planId,
+                        onVerMiembros = { backStack.add(MiembrosRoute(route.planId)) },
+                    )
+                }
+                entry<MiembrosRoute> { route ->
+                    MiembrosScreen(planId = route.planId)
+                }
+                entry<CuentaRoute> {
+                    CuentaScreen(
+                        onRegistroCompletado = { backStack.removeLastOrNull() },
+                    )
                 }
             },
         )

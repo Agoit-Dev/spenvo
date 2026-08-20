@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="movimientos_title">Movimientos</string>
-    <string name="movimientos_placeholder">Lista de gastos e ingresos (M5)</string>
-    <string name="cuenta_menu_descripcion">Cuenta</string>
-    <string name="cuenta_estado_invitado">Invitado</string>
-    <string name="cuenta_crear">Crear cuenta</string>
-    <string name="cuenta_proximamente">Disponible en M3</string>
+    <string name="movimientos_placeholder">Movimientos del plan %1$s (M5)</string>
+    <string name="movimientos_ver_miembros">Miembros</string>
 </resources>
