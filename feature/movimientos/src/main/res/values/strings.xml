@@ -2,4 +2,8 @@
 <resources>
     <string name="movimientos_title">Movimientos</string>
     <string name="movimientos_placeholder">Lista de gastos e ingresos (M5)</string>
+    <string name="cuenta_menu_descripcion">Account</string>
+    <string name="cuenta_estado_invitado">Guest</string>
+    <string name="cuenta_crear">Create account</string>
+    <string name="cuenta_proximamente">Available in M3</string>
 </resources>

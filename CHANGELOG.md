@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-20
+
+### Added (M2 — Guest-first identity: anonymous auth + App Check)
+
+- Firebase wired into `:app` (google-services plugin) and `:core:data`
+  (`firebase-bom`, `firebase-auth`); App Check provider
+  (`firebase-appcheck` + play-integrity in release, debug provider in debug).
+- Guest-first anonymous session: `Sesion` model + `AuthRepository` contract +
+  `IniciarSesionAnonimaUseCase` in `:core:domain` (TDD); `FirebaseAuthRepository`
+  in `:core:data` signs in anonymously in the background and exposes the session
+  as a `Flow`. Offline-first: the app opens directly to Movimientos; a failed
+  sign-in is silent and retried every 30s.
+- Account entry point in the `Movimientos` top app bar: shows the session state
+  ("Guest"/"Invitado") and a "Create account" item that links to the M3 screen
+  (placeholder).
+- `android.permission.INTERNET` declared (required for any Firebase traffic).
+- `:feature:movimientos` now depends on `:core:data` (Hilt binding for the
+  auth repository); dependency locks regenerated.
+- `:core:domain` keeps zero DI dependencies: the anonymous sign-in use case is
+  provided via `@Provides` in `:core:data`.
+
+### Changed
+
+- `doc/architecture.md`: `:feature:movimientos → :core:data` edge added.
+- Spanish strings (`values-es`) added for the account menu.
+
 ## [0.2.0] - 2026-08-20
 
 ### Added (M1 — Local data layer)

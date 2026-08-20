@@ -12,7 +12,7 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 - **DI**: Hilt 2.60.1 + KSP2 (2.2.10-2.0.2)
 - **Data**: Room 2.8.4 + SQLCipher 4.18.0 · DataStore 1.2.1 · Coroutines/Flow 1.11.0
 - **Security**: SQLCipher passphrase in the Android Keystore (AES-256/GCM, `:core:security`)
-- **Backend** (M2+): Firebase Auth · Firestore · Storage · App Check (BOM 34.17.0)
+- **Backend** (M2+): Firebase Auth (anonymous guest-first) · Firestore · Storage · App Check (BOM 34.17.0)
 - **Images**: Coil 3.4.0
 - **Quality**: detekt 1.23.8 · blocking lint (HardcodedText, MissingTranslation)
 
@@ -50,4 +50,5 @@ Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sd
 
 ## Status
 
-Milestone **M1 (Local data layer)** complete. See `CHANGELOG.md`.
+Milestone **M2 (Guest-first identity)** in progress (anonymous auth + App Check
+wired; account entry point in `Movimientos`). See `CHANGELOG.md`.
