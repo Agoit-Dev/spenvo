@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="planes_titulo">Plans</string>
-    <string name="planes_vacio">No plans yet. Tap + to create your first plan.</string>
-    <string name="planes_crear">New plan</string>
-    <string name="planes_crear_nombre">Plan name</string>
-    <string name="planes_crear_moneda">Currency (ISO 4217)</string>
-    <string name="planes_crear_confirmar">Create</string>
-    <string name="planes_crear_cancelar">Cancel</string>
-    <string name="planes_invitaciones_titulo">Pending invitations</string>
-    <string name="planes_invitacion_aceptar">Accept</string>
-    <string name="planes_invitacion_plan">Plan</string>
-    <string name="planes_invitacion_rol">Role</string>
-    <string name="cuenta_menu_descripcion">Account</string>
-    <string name="cuenta_estado_invitado">Guest</string>
-    <string name="cuenta_crear">Create account</string>
-    <string name="miembros_titulo">Members</string>
-    <string name="miembros_vacio">No members yet.</string>
-    <string name="miembros_invitar">Invite member</string>
-    <string name="miembros_invitar_uid">User UID</string>
-    <string name="miembros_invitar_rol">Role</string>
-    <string name="miembros_invitar_confirmar">Invite</string>
-    <string name="miembros_invitar_cancelar">Cancel</string>
+    <string name="plans_title">Planes</string>
+    <string name="plans_empty">Todavía no hay planes. Toca + para crear tu primer plan.</string>
+    <string name="plans_create">Nuevo plan</string>
+    <string name="plans_create_name">Nombre del plan</string>
+    <string name="plans_create_currency">Moneda (ISO 4217)</string>
+    <string name="plans_create_confirm">Crear</string>
+    <string name="plans_create_cancel">Cancelar</string>
+    <string name="plans_invitations_title">Invitaciones pendientes</string>
+    <string name="plans_invitation_accept">Aceptar</string>
+    <string name="plans_invitation_plan">Plan</string>
+    <string name="plans_invitation_role">Rol</string>
+    <string name="account_menu_description">Cuenta</string>
+    <string name="account_guest_state">Invitado</string>
+    <string name="account_create">Crear cuenta</string>
+    <string name="members_title">Miembros</string>
+    <string name="members_empty">Aún no hay miembros.</string>
+    <string name="members_invite">Invitar miembro</string>
+    <string name="members_invite_uid">UID del usuario</string>
+    <string name="members_invite_role">Rol</string>
+    <string name="members_invite_confirm">Invitar</string>
+    <string name="members_invite_cancel">Cancelar</string>
 </resources>

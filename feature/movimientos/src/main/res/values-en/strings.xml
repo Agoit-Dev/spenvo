@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="movements_title">Movements</string>
+    <string name="movements_placeholder">Movements for plan %1$s (M5)</string>
+    <string name="movements_view_members">Members</string>
+</resources>

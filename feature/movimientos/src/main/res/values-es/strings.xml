@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="movimientos_title">Movimientos</string>
-    <string name="movimientos_placeholder">Movimientos del plan %1$s (M5)</string>
-    <string name="movimientos_ver_miembros">Miembros</string>
-</resources>

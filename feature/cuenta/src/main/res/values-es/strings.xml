@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="cuenta_registro_titulo">Crear cuenta</string>
-    <string name="cuenta_registro_subtitulo">Tus datos de invitado se guardarán en esta cuenta.</string>
-    <string name="cuenta_registro_nombre">Nombre</string>
-    <string name="cuenta_registro_email">Correo</string>
-    <string name="cuenta_registro_password">Contraseña</string>
-    <string name="cuenta_registro_crear">Crear cuenta</string>
-</resources>
