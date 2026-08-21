@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-08-21
+
+### Changed (M3 close)
+
+- Verified all M3 gates: `:app:assembleDebug`, `testDebugUnitTest`, `lintDebug`
+  and `detekt` pass; Firestore rules validated against the Emulator (`spenvo-dev`,
+  14/14 tests).
+- Deployed the finalized `firestore.rules` and `firestore.indexes.json` to the
+  production project (`spenvo-6d10a`), making the deny-by-default role-based rules
+  live. `README.md` and `doc/security/owasp.md` updated.
+- Remaining M3 manual step: confirm the Anonymous + Email/Password sign-in
+  providers and App Check enforcement in the Firebase console.
+
 ## [0.4.1] - 2026-08-20
 
 ### Fixed (i18n)
