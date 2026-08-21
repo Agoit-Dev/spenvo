@@ -15,9 +15,9 @@ interface CategoriaDao {
     @Upsert
     suspend fun upsertAll(categorias: List<CategoriaEntity>)
 
-    @Query("SELECT * FROM categorias WHERE planId = :planId")
+    @Query("SELECT * FROM categorias WHERE planId = :planId AND deletedAt IS NULL")
     fun observeByPlan(planId: String): Flow<List<CategoriaEntity>>
 
-    @Query("SELECT * FROM categorias WHERE planId = :planId AND tipo = :tipo")
+    @Query("SELECT * FROM categorias WHERE planId = :planId AND tipo = :tipo AND deletedAt IS NULL")
     fun observeByPlanAndTipo(planId: String, tipo: TipoCategoria): Flow<List<CategoriaEntity>>
 }

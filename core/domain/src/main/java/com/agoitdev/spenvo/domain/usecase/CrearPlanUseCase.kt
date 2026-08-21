@@ -19,6 +19,7 @@ data class CrearPlanRequest(
 class CrearPlanUseCase(
     private val planesRepository: PlanFinancieroRepository,
     private val accesosRepository: AccesoPlanRepository,
+    private val sembrarCategorias: SembrarCategoriasPorDefectoUseCase,
 ) {
     suspend operator fun invoke(request: CrearPlanRequest): PlanFinanciero {
         val now = Instant.now()
@@ -40,6 +41,7 @@ class CrearPlanUseCase(
                 invitacionEstado = InvitacionEstado.ACEPTADA,
             ),
         )
+        sembrarCategorias(plan.id)
         return plan
     }
 }

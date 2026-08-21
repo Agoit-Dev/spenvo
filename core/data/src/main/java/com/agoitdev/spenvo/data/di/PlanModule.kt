@@ -1,6 +1,7 @@
 package com.agoitdev.spenvo.data.di
 
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
 import com.agoitdev.spenvo.domain.usecase.AceptarInvitacionUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarPlanUseCase
@@ -8,7 +9,9 @@ import com.agoitdev.spenvo.domain.usecase.CrearPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.InvitarMiembroUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.SembrarCategoriasPorDefectoUseCase
 import com.agoitdev.spenvo.data.remote.repository.FirebaseAccesoPlanRepository
+import com.agoitdev.spenvo.data.remote.repository.FirebaseCategoriaRepository
 import com.agoitdev.spenvo.data.remote.repository.FirebasePlanFinancieroRepository
 import dagger.Binds
 import dagger.Module
@@ -32,6 +35,12 @@ abstract class PlanModule {
     abstract fun bindAccesoPlanRepository(
         impl: FirebaseAccesoPlanRepository,
     ): AccesoPlanRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCategoriaRepository(
+        impl: FirebaseCategoriaRepository,
+    ): CategoriaRepository
 }
 
 @Module
@@ -42,7 +51,8 @@ object PlanUseCaseModule {
     fun provideCrearPlan(
         planesRepository: PlanFinancieroRepository,
         accesosRepository: AccesoPlanRepository,
-    ): CrearPlanUseCase = CrearPlanUseCase(planesRepository, accesosRepository)
+        sembrarCategorias: SembrarCategoriasPorDefectoUseCase,
+    ): CrearPlanUseCase = CrearPlanUseCase(planesRepository, accesosRepository, sembrarCategorias)
 
     @Provides
     fun provideObservarPlanesDelUsuario(
@@ -68,4 +78,9 @@ object PlanUseCaseModule {
     fun provideAceptarInvitacion(
         accesosRepository: AccesoPlanRepository,
     ): AceptarInvitacionUseCase = AceptarInvitacionUseCase(accesosRepository)
+
+    @Provides
+    fun provideSembrarCategoriasPorDefecto(
+        categoriasRepository: CategoriaRepository,
+    ): SembrarCategoriasPorDefectoUseCase = SembrarCategoriasPorDefectoUseCase(categoriasRepository)
 }
