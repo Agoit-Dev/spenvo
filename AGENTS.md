@@ -22,6 +22,7 @@ reimplements it with Clean Architecture, security and tests from the first commi
 |---|---|---|
 | Build | AGP + built-in Kotlin | 9.3.1 / Kotlin 2.2.10 |
 | Compose | BOM + Material 3 + Adaptive (List-Detail) | 2026.02.01 / 1.3.0 |
+| Icons | Compose Material Icons Extended | via Compose BOM |
 | Navigation | Navigation 3 (`androidx.navigation3`) | 1.1.4 |
 | DI | Hilt + KSP2 | 2.60.1 / 2.2.10-2.0.2 |
 | Persistence | Room + SQLCipher | 2.8.4 / 4.18.0 |

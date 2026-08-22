@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="categories_title">Categories</string>
+    <string name="categories_empty">No categories of this type yet.</string>
+    <string name="categories_add">New category</string>
+    <string name="categories_edit">Edit category</string>
+    <string name="categories_name">Name</string>
+    <string name="categories_save">Save</string>
+    <string name="categories_delete">Delete</string>
+    <string name="categories_delete_confirm_title">Delete category</string>
+    <string name="categories_delete_confirm_message">This action cannot be undone.</string>
+    <string name="categories_cancel">Cancel</string>
+    <string name="categories_filter_expense">Expenses</string>
+    <string name="categories_filter_income">Income</string>
+</resources>
