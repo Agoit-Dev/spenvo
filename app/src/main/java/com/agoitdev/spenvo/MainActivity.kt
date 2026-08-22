@@ -14,6 +14,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.agoitdev.spenvo.categorias.CategoriasScreen
 import com.agoitdev.spenvo.cuenta.CuentaScreen
 import com.agoitdev.spenvo.designsystem.theme.SpenvoTheme
 import com.agoitdev.spenvo.movimientos.MovimientosScreen
@@ -30,6 +31,9 @@ data class MovimientosRoute(val planId: String) : NavKey
 
 @Serializable
 data class MiembrosRoute(val planId: String) : NavKey
+
+@Serializable
+data class CategoriasRoute(val planId: String) : NavKey
 
 @Serializable
 data object CuentaRoute : NavKey
@@ -69,10 +73,14 @@ fun SpenvoApp(modifier: Modifier = Modifier) {
                     MovimientosScreen(
                         planId = route.planId,
                         onVerMiembros = { backStack.add(MiembrosRoute(route.planId)) },
+                        onGestionarCategorias = { backStack.add(CategoriasRoute(route.planId)) },
                     )
                 }
                 entry<MiembrosRoute> { route ->
                     MiembrosScreen(planId = route.planId)
+                }
+                entry<CategoriasRoute> { route ->
+                    CategoriasScreen(planId = route.planId)
                 }
                 entry<CuentaRoute> {
                     CuentaScreen(

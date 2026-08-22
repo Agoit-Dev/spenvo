@@ -3,10 +3,10 @@ package com.agoitdev.spenvo.data.remote.sync
 import com.agoitdev.spenvo.data.local.dao.AccesoPlanDao
 import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
 import com.agoitdev.spenvo.data.local.mapper.toEntity
-import com.agoitdev.spenvo.data.remote.await
 import com.agoitdev.spenvo.data.remote.dto.AccesoPlanDto
 import com.agoitdev.spenvo.data.remote.dto.PlanFinancieroDto
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.channels.awaitClose
@@ -16,8 +16,10 @@ import kotlinx.coroutines.launch
 
 /**
  * Syncs the user's plans and accesses from Firestore into Room while it is
- * collected. Snapshot listeners only live during collection (active scope),
- * per AGENTS.md rule 3.
+ * collected. Listens on the user's accesses and attaches a snapshot listener
+ * per active plan document, so remote plan edits (not only access changes) are
+ * reflected in Room. Listeners only live during collection (active scope), per
+ * AGENTS.md rule 3.
  */
 @Singleton
 class PlanSincronizador @Inject constructor(
@@ -27,31 +29,45 @@ class PlanSincronizador @Inject constructor(
 ) {
 
     fun sincronizar(usuarioId: String): Flow<Unit> = callbackFlow {
-        val listener = firestore.collection(ACCESO_COLLECTION)
+        val planListeners = mutableMapOf<String, ListenerRegistration>()
+        val accesoListener = firestore.collection(ACCESO_COLLECTION)
             .whereEqualTo("usuarioId", usuarioId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
                     return@addSnapshotListener
                 }
+                trySend(Unit)
                 val accesos = snapshot?.documents.orEmpty()
                     .mapNotNull { AccesoPlanDto.fromData(it.data ?: return@mapNotNull null) }
-                trySend(Unit)
+                val planIds = accesos.map { it.planId }.toSet()
                 accesos.forEach { acceso ->
-                    launch {
-                        accesoDao.upsert(acceso.toDomain().toEntity())
-                        val planDoc = firestore.collection(PLANES_COLLECTION)
-                            .document(acceso.planId)
-                            .get()
-                            .await()
-                        val plan = PlanFinancieroDto.fromData(planDoc.data ?: emptyMap())
-                        if (plan != null) {
-                            planDao.upsert(plan.toDomain().toEntity())
-                        }
+                    launch { accesoDao.upsert(acceso.toDomain().toEntity()) }
+                }
+                // Listener por plan activo: refleja ediciones remotas del plan.
+                planIds.forEach { planId ->
+                    if (!planListeners.containsKey(planId)) {
+                        planListeners[planId] = firestore.collection(PLANES_COLLECTION)
+                            .document(planId)
+                            .addSnapshotListener { doc, planError ->
+                                if (planError == null && doc != null && doc.data != null) {
+                                    val plan = PlanFinancieroDto.fromData(doc.data ?: emptyMap())
+                                    if (plan != null) {
+                                        launch { planDao.upsert(plan.toDomain().toEntity()) }
+                                    }
+                                }
+                            }
                     }
                 }
+                // Retira listeners de planes que ya no pertenecen al usuario.
+                planListeners.keys.filter { it !in planIds }.forEach { planId ->
+                    planListeners.remove(planId)?.remove()
+                }
             }
-        awaitClose { listener.remove() }
+        awaitClose {
+            planListeners.values.forEach { it.remove() }
+            accesoListener.remove()
+        }
     }
 
     private companion object {

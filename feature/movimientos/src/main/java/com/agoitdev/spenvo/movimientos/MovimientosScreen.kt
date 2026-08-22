@@ -2,6 +2,7 @@ package com.agoitdev.spenvo.movimientos
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -18,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 fun MovimientosScreen(
     planId: String,
     onVerMiembros: () -> Unit,
+    onGestionarCategorias: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -26,6 +28,12 @@ fun MovimientosScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.movements_title)) },
                 actions = {
+                    IconButton(onClick = onGestionarCategorias) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.List,
+                            contentDescription = stringResource(R.string.movements_manage_categories),
+                        )
+                    }
                     IconButton(onClick = onVerMiembros) {
                         Icon(
                             imageVector = Icons.Filled.Person,

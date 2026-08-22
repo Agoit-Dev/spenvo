@@ -25,6 +25,7 @@ tests before committing.
  :feature:cuenta (account creation / email+password linking)
  :feature:planes (plans, shared access, invitations)
  :feature:movimientos (expenses + income, plan-scoped)
+ :feature:categorias (categories: list, create/edit, delete, plan-scoped)
  :core:domain (models, use cases, contracts — pure Kotlin)
  :core:security (Keystore-backed SQLCipher passphrase)
  :core:data (Room + SQLCipher, DataStore, Firestore repos + sync, mappers)
@@ -37,6 +38,8 @@ Dependencies:
 - `:feature:planes` → `:core:domain`, `:core:designsystem`, `:core:data`
   (auth/session + plan repositories, sync).
 - `:feature:movimientos` → `:core:domain`, `:core:designsystem`, `:core:data`.
+- `:feature:categorias` → `:core:domain`, `:core:designsystem`, `:core:data`
+  (category repository, use cases, sync).
 - `:core:data` → `:core:domain`, `:core:security`, Firebase (Auth, Firestore, App Check).
 - `:core:security` → Android Keystore only.
 - `:core:domain` has no Android dependencies.
@@ -77,6 +80,9 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 | Firestore rules tested in a Node subproject | `rules-tests/` validates the matrix with the Emulator; app stack stays Kotlin | M3 |
 | Min SDK 26 | coverage/API balance | plan v3 |
 | es-default strings + blocking lint | additive i18n from day 1 | plan v3 |
+| Optimistic Room-first writes with rollback | Room updates immediately for a responsive UI; a permanent Firestore failure restores the prior local snapshot instead of leaving Room ahead of the backend | M4 |
+| Per-plan live snapshot listeners for plans/categories | `PlanSincronizador`/`CategoriaSincronizador`, active-scope only (open plan/category screen) | M4 |
+| Deterministic ids for default category seeding | `planId:clave` makes `SembrarCategoriasPorDefectoUseCase` idempotent and race-safe under a single batched write | M4 |
 
 ## Known risks and debt
 
@@ -92,3 +98,9 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
   `rules-tests/` for the working pattern.
 - **Account registration is email/password only** in M3; Google Sign-In is
   deferred (see M7).
+- **No ViewModel/Compose UI tests for `:feature:categorias`, `:feature:planes`,
+  `:feature:movimientos`, `:feature:cuenta`** (M4): `CategoriasViewModelTest` is
+  the first ViewModel test in the project (plain JUnit + hand-written fakes,
+  same convention as `:core:domain`); no Compose screen/instrumented tests yet.
+- **No color per category** (M4): matches the legacy `act02-app_gastos`
+  reference, which only has name/type/icon; a future milestone could add it.

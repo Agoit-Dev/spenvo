@@ -20,6 +20,9 @@ interface PlanFinancieroDao {
     @Query("SELECT * FROM planes_financieros WHERE id = :id")
     suspend fun get(id: String): PlanFinancieroEntity?
 
+    @Query("DELETE FROM planes_financieros WHERE id = :id")
+    suspend fun delete(id: String)
+
     @Query(
         """
         SELECT p.* FROM planes_financieros p

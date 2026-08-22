@@ -5,6 +5,47 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-22
+
+### Added (M4 — Categories)
+
+- Categories domain and Firestore data layer in `:core:domain`/`:core:data`:
+  `CategoriaRepository`, use cases (`CrearCategoria`, `ActualizarCategoria`,
+  `EliminarCategoria`, `ObservarCategorias`, `ObservarCategoriasPorTipo`,
+  `SembrarCategoriasPorDefecto`), `FirebaseCategoriaRepository` and a
+  `CategoriaSincronizador` (snapshot listener on the plan's categories → Room,
+  active-scope only, AGENTS rule 3).
+- Optimistic Room-first writes with rollback on permanent Firestore failure for
+  both categories and plans (`FirebaseCategoriaRepository`,
+  `FirebasePlanFinancieroRepository`): Room updates immediately, and any remote
+  failure restores the prior local snapshot before rethrowing. `PlanSincronizador`
+  now also attaches a live per-plan snapshot listener instead of a one-shot read.
+- Default category seeding is idempotent: deterministic `planId:clave` ids and a
+  single batched `crearCategorias` write (`SembrarCategoriasPorDefectoUseCase`).
+- `:feature:categorias` (new): category list (grid, filtered by Ingreso/Gasto),
+  create/edit in a bottom sheet (name, type, icon picker), delete with a
+  confirmation dialog. Reachable from `MovimientosScreen`'s top bar
+  (`CategoriasRoute(planId)`). UX referenced from the legacy
+  `act02-app_gastos` category screens.
+- New dependency added to the approved baseline:
+  `androidx.compose.material:material-icons-extended` (Compose BOM-managed),
+  needed for a per-category icon set richer than `material-icons-core`'s ~50
+  icons. Approved by the user and added to `AGENTS.md`'s "Stack (approved
+  baseline)" table.
+
+## [0.4.2] - 2026-08-21
+
+### Changed (M3 close)
+
+- Verified all M3 gates: `:app:assembleDebug`, `testDebugUnitTest`, `lintDebug`
+  and `detekt` pass; Firestore rules validated against the Emulator (`spenvo-dev`,
+  14/14 tests).
+- Deployed the finalized `firestore.rules` and `firestore.indexes.json` to the
+  production project (`spenvo-6d10a`), making the deny-by-default role-based rules
+  live. `README.md` and `doc/security/owasp.md` updated.
+- Remaining M3 manual step: confirm the Anonymous + Email/Password sign-in
+  providers and App Check enforcement in the Firebase console.
+
 ## [0.4.1] - 2026-08-20
 
 ### Fixed (i18n)

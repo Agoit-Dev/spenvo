@@ -1,26 +1,35 @@
 package com.agoitdev.spenvo.domain.usecase
 
 import com.agoitdev.spenvo.domain.model.AccesoPlan
+import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.InvitacionEstado
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.model.Rol
+import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CrearPlanUseCaseTest {
 
     private val planesRepo = FakePlanRepository()
     private val accesosRepo = FakeAccesoRepository()
+    private val categoriasRepo = FakeCategoriaSeedRepository()
 
     @Test
-    fun `crea plan y acceso OWNER aceptado`() = runTest {
-        val useCase = CrearPlanUseCase(planesRepo, accesosRepo)
+    fun `crea plan y acceso OWNER aceptado y siembra categorias`() = runTest {
+        val useCase = CrearPlanUseCase(
+            planesRepo,
+            accesosRepo,
+            SembrarCategoriasPorDefectoUseCase(categoriasRepo),
+        )
 
         val plan = useCase(
             CrearPlanRequest(
@@ -40,6 +49,9 @@ class CrearPlanUseCaseTest {
         assertEquals(plan.id, acceso.planId)
         assertEquals(Rol.OWNER, acceso.rol)
         assertEquals(InvitacionEstado.ACEPTADA, acceso.invitacionEstado)
+
+        assertEquals(SembrarCategoriasPorDefectoUseCase.DEFAULT_CATEGORIAS.size, categoriasRepo.creadas.size)
+        assertTrue(categoriasRepo.creadas.all { it.planId == plan.id })
     }
 }
 
@@ -153,5 +165,32 @@ private class FakeAccesoRepository : AccesoPlanRepository {
                 it
             }
         }
+    }
+}
+
+private class FakeCategoriaSeedRepository : CategoriaRepository {
+    val creadas = mutableListOf<Categoria>()
+
+    override fun observarCategorias(planId: String): Flow<List<Categoria>> = flowOf(emptyList())
+
+    override fun observarCategoriasPorTipo(
+        planId: String,
+        tipo: TipoCategoria,
+    ): Flow<List<Categoria>> = flowOf(emptyList())
+
+    override suspend fun crearCategoria(categoria: Categoria) {
+        creadas.add(categoria)
+    }
+
+    override suspend fun crearCategorias(categorias: List<Categoria>) {
+        creadas.addAll(categorias)
+    }
+
+    override suspend fun actualizarCategoria(categoria: Categoria) {
+        // no-op
+    }
+
+    override suspend fun eliminarCategoria(categoria: Categoria) {
+        // no-op
     }
 }

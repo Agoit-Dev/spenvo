@@ -3,6 +3,7 @@ package com.agoitdev.spenvo.data.di
 import android.content.Context
 import com.agoitdev.spenvo.data.local.SpenvoDatabase
 import com.agoitdev.spenvo.data.local.dao.AccesoPlanDao
+import com.agoitdev.spenvo.data.local.dao.CategoriaDao
 import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
 import com.agoitdev.spenvo.security.AndroidKeystorePassphraseProvider
 import com.agoitdev.spenvo.security.PassphraseProvider
@@ -38,6 +39,10 @@ object DatabaseModule {
     @Provides
     fun provideAccesoPlanDao(database: SpenvoDatabase): AccesoPlanDao =
         database.accesoPlanDao()
+
+    @Provides
+    fun provideCategoriaDao(database: SpenvoDatabase): CategoriaDao =
+        database.categoriaDao()
 
     @Provides
     @Singleton

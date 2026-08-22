@@ -78,5 +78,7 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 ## Pending implementation (M0 debt)
 - Google Sign-In linking → **M7**.
 - Server-side `editedBy/editedAt` → **M5**.
-- Deploy the finalized rules to production (`firebase deploy --only firestore:rules`) — user action to go live.
+- Rules and indexes deployed to production (`spenvo-6d10a`) — M3 done. Manual
+  verification pending: Anonymous + Email/Password sign-in providers enabled and
+  App Check enforcement active in the Firebase console.
 - osv-scanner in CI + MFA → **M8**.

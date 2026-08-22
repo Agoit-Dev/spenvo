@@ -63,8 +63,9 @@ Node 20+ (only for the `rules-tests/` subproject).
 
 ## Status
 
-Milestone **M3 (Plans, access, final rules, usable MVP)** in progress: account
+Milestone **M3 (Plans, access, final rules, usable MVP)** complete: account
 creation (email/password linking the anonymous UID), plans with shared access and
-invitations, and the finalized Firestore rules validated against the Emulator.
-Deploy the rules (`firebase deploy --only firestore:rules`) to go live. See
-`CHANGELOG.md`.
+invitations, and the finalized Firestore rules validated against the Emulator
+(14 tests) and deployed to production (`spenvo-6d10a`). Pending manual
+verification of the Auth sign-in providers and App Check in the Firebase console.
+See `CHANGELOG.md`.
