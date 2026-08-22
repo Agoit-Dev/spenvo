@@ -21,6 +21,7 @@ local.properties
 # Memoria y herramientas de agentes (locales, no se versionan)
 .engram/
 .mobiai/
+.atl
 
 # --- CONFIGURACIÓN DE FIREBASE ---
 **/google-services.json
