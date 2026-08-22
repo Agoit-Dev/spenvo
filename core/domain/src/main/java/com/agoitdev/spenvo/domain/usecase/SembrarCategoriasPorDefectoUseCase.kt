@@ -3,13 +3,14 @@ package com.agoitdev.spenvo.domain.usecase
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
-import java.util.UUID
 import kotlinx.coroutines.flow.first
 
 /**
- * Seeds the default categories for a plan. Idempotent: does nothing if the
- * plan already has any category, so it can be called safely both when a plan
- * is created and when the categories screen first opens.
+ * Seeds the default categories for a plan. Deterministic and idempotent: each
+ * seed uses a stable technical key, so the Firestore document id is
+ * `planId:clave` and re-running never duplicates. It does nothing when the plan
+ * already has any category (fast path); the deterministic ids make a concurrent
+ * race safe too.
  */
 class SembrarCategoriasPorDefectoUseCase(
     private val repository: CategoriaRepository,
@@ -17,17 +18,16 @@ class SembrarCategoriasPorDefectoUseCase(
     suspend operator fun invoke(planId: String) {
         if (repository.observarCategorias(planId).first().isNotEmpty()) return
 
-        DEFAULT_CATEGORIAS.forEach { seed ->
-            repository.crearCategoria(
-                Categoria(
-                    id = UUID.randomUUID().toString(),
-                    planId = planId,
-                    nombre = seed.nombre,
-                    icono = seed.icono,
-                    tipo = seed.tipo,
-                ),
+        val categorias = DEFAULT_CATEGORIAS.map { seed ->
+            Categoria(
+                id = "$planId:${seed.clave}",
+                planId = planId,
+                nombre = seed.nombre,
+                icono = seed.icono,
+                tipo = seed.tipo,
             )
         }
+        repository.crearCategorias(categorias)
     }
 
     companion object {
@@ -35,21 +35,22 @@ class SembrarCategoriasPorDefectoUseCase(
             val tipo: TipoCategoria,
             val nombre: String,
             val icono: String,
+            val clave: String,
         )
 
         val DEFAULT_CATEGORIAS: List<CategoriaSeed> = listOf(
-            CategoriaSeed(TipoCategoria.GASTO, "Comida", "comida"),
-            CategoriaSeed(TipoCategoria.GASTO, "Transporte", "transporte"),
-            CategoriaSeed(TipoCategoria.GASTO, "Entretenimiento", "entretenimiento"),
-            CategoriaSeed(TipoCategoria.GASTO, "Salud", "salud"),
-            CategoriaSeed(TipoCategoria.GASTO, "Vivienda", "vivienda"),
-            CategoriaSeed(TipoCategoria.GASTO, "Mercado", "mercado"),
-            CategoriaSeed(TipoCategoria.GASTO, "Ropa", "ropa"),
-            CategoriaSeed(TipoCategoria.GASTO, "Suministros", "suministros"),
-            CategoriaSeed(TipoCategoria.GASTO, "Otros gastos", "otra"),
-            CategoriaSeed(TipoCategoria.INGRESO, "Salario", "sueldo"),
-            CategoriaSeed(TipoCategoria.INGRESO, "Regalos", "regalos"),
-            CategoriaSeed(TipoCategoria.INGRESO, "Otros ingresos", "otra"),
+            CategoriaSeed(TipoCategoria.GASTO, "Comida", "comida", "gasto_comida"),
+            CategoriaSeed(TipoCategoria.GASTO, "Transporte", "transporte", "gasto_transporte"),
+            CategoriaSeed(TipoCategoria.GASTO, "Entretenimiento", "entretenimiento", "gasto_entretenimiento"),
+            CategoriaSeed(TipoCategoria.GASTO, "Salud", "salud", "gasto_salud"),
+            CategoriaSeed(TipoCategoria.GASTO, "Vivienda", "vivienda", "gasto_vivienda"),
+            CategoriaSeed(TipoCategoria.GASTO, "Mercado", "mercado", "gasto_mercado"),
+            CategoriaSeed(TipoCategoria.GASTO, "Ropa", "ropa", "gasto_ropa"),
+            CategoriaSeed(TipoCategoria.GASTO, "Suministros", "suministros", "gasto_suministros"),
+            CategoriaSeed(TipoCategoria.GASTO, "Otros gastos", "otra", "gasto_otros"),
+            CategoriaSeed(TipoCategoria.INGRESO, "Salario", "sueldo", "ingreso_salario"),
+            CategoriaSeed(TipoCategoria.INGRESO, "Regalos", "regalos", "ingreso_regalos"),
+            CategoriaSeed(TipoCategoria.INGRESO, "Otros ingresos", "otra", "ingreso_otros"),
         )
     }
 }

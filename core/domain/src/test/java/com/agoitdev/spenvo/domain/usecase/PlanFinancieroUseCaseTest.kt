@@ -182,6 +182,10 @@ private class FakeCategoriaSeedRepository : CategoriaRepository {
         creadas.add(categoria)
     }
 
+    override suspend fun crearCategorias(categorias: List<Categoria>) {
+        creadas.addAll(categorias)
+    }
+
     override suspend fun actualizarCategoria(categoria: Categoria) {
         // no-op
     }

@@ -230,6 +230,20 @@ class SembrarCategoriasPorDefectoUseCaseTest {
 
         assertTrue(repo.creadas.isEmpty())
     }
+
+    @Test
+    fun `es idempotente con ids deterministicos`() = runTest {
+        val repo = FakeCategoriaRepository()
+        val useCase = SembrarCategoriasPorDefectoUseCase(repo)
+
+        useCase("p1")
+        useCase("p1")
+
+        assertEquals(SembrarCategoriasPorDefectoUseCase.DEFAULT_CATEGORIAS.size, repo.creadas.size)
+        val ids = repo.creadas.map { it.id }
+        assertEquals(ids.toSet().size, ids.size)
+        assertTrue(ids.all { it.startsWith("p1:") })
+    }
 }
 
 private class FakeCategoriaRepository(
@@ -240,16 +254,20 @@ private class FakeCategoriaRepository(
     val eliminadas = mutableListOf<Categoria>()
 
     override fun observarCategorias(planId: String): Flow<List<Categoria>> =
-        flowOf(categorias.filter { it.planId == planId })
+        flowOf((categorias + creadas).filter { it.planId == planId })
 
     override fun observarCategoriasPorTipo(
         planId: String,
         tipo: TipoCategoria,
     ): Flow<List<Categoria>> =
-        flowOf(categorias.filter { it.planId == planId && it.tipo == tipo })
+        flowOf((categorias + creadas).filter { it.planId == planId && it.tipo == tipo })
 
     override suspend fun crearCategoria(categoria: Categoria) {
         creadas.add(categoria)
+    }
+
+    override suspend fun crearCategorias(categorias: List<Categoria>) {
+        creadas.addAll(categorias)
     }
 
     override suspend fun actualizarCategoria(categoria: Categoria) {

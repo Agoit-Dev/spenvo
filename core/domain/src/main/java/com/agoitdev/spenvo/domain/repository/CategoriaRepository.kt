@@ -11,6 +11,8 @@ interface CategoriaRepository {
 
     suspend fun crearCategoria(categoria: Categoria)
 
+    suspend fun crearCategorias(categorias: List<Categoria>)
+
     suspend fun actualizarCategoria(categoria: Categoria)
 
     suspend fun eliminarCategoria(categoria: Categoria)

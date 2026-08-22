@@ -13,6 +13,11 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+/**
+ * Optimistic Room-first writes: Room updates immediately, then Firestore. A
+ * permanent Firestore error rolls Room back to the previous snapshot (see
+ * `data-consistency.md` write contract).
+ */
 @Singleton
 class FirebasePlanFinancieroRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -27,22 +32,35 @@ class FirebasePlanFinancieroRepository @Inject constructor(
     override fun observarPlan(planId: String): Flow<PlanFinanciero?> =
         planDao.observe(planId).map { it?.toDomain() }
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun crearPlan(plan: PlanFinanciero) {
-        val dto = PlanFinancieroDto.fromDomain(plan)
-        firestore.collection(PLANES_COLLECTION)
-            .document(plan.id)
-            .set(dto.toMap())
-            .await()
         planDao.upsert(plan.toEntity())
+        try {
+            persistRemoto(plan)
+        } catch (e: Exception) {
+            planDao.delete(plan.id)
+            throw e
+        }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun actualizarPlan(plan: PlanFinanciero) {
+        val previo = planDao.get(plan.id)
+        planDao.upsert(plan.toEntity())
+        try {
+            persistRemoto(plan)
+        } catch (e: Exception) {
+            if (previo != null) planDao.upsert(previo) else planDao.delete(plan.id)
+            throw e
+        }
+    }
+
+    private suspend fun persistRemoto(plan: PlanFinanciero) {
         val dto = PlanFinancieroDto.fromDomain(plan)
         firestore.collection(PLANES_COLLECTION)
             .document(plan.id)
             .set(dto.toMap())
             .await()
-        planDao.upsert(plan.toEntity())
     }
 
     private companion object {
