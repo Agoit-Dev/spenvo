@@ -5,6 +5,7 @@
     <string name="movements_view_members">Miembros</string>
     <string name="movements_manage_categories">Categorías</string>
     <string name="movements_search_placeholder">Buscar movimientos…</string>
+    <string name="movements_filter_all">Todos</string>
     <string name="movements_filter_expense">Gastos</string>
     <string name="movements_filter_income">Ingresos</string>
     <string name="movements_empty">Todavía no hay movimientos.</string>
