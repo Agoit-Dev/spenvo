@@ -20,4 +20,7 @@ interface GastoDao {
 
     @Query("SELECT * FROM gastos WHERE planId = :planId AND fecha >= :desde AND fecha <= :hasta")
     fun observeByPlanAndRange(planId: String, desde: LocalDate, hasta: LocalDate): Flow<List<GastoEntity>>
+
+    @Query("DELETE FROM gastos WHERE id = :id")
+    suspend fun delete(id: String)
 }

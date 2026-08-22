@@ -4,6 +4,8 @@ import android.content.Context
 import com.agoitdev.spenvo.data.local.SpenvoDatabase
 import com.agoitdev.spenvo.data.local.dao.AccesoPlanDao
 import com.agoitdev.spenvo.data.local.dao.CategoriaDao
+import com.agoitdev.spenvo.data.local.dao.GastoDao
+import com.agoitdev.spenvo.data.local.dao.IngresoDao
 import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
 import com.agoitdev.spenvo.security.AndroidKeystorePassphraseProvider
 import com.agoitdev.spenvo.security.PassphraseProvider
@@ -43,6 +45,14 @@ object DatabaseModule {
     @Provides
     fun provideCategoriaDao(database: SpenvoDatabase): CategoriaDao =
         database.categoriaDao()
+
+    @Provides
+    fun provideGastoDao(database: SpenvoDatabase): GastoDao =
+        database.gastoDao()
+
+    @Provides
+    fun provideIngresoDao(database: SpenvoDatabase): IngresoDao =
+        database.ingresoDao()
 
     @Provides
     @Singleton
