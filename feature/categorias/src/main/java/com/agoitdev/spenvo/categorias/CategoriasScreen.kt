@@ -169,7 +169,10 @@ private fun FiltroTipo(
     onTipoChange: (TipoCategoria) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    ) {
         FilterChip(
             selected = tipoSeleccionado == TipoCategoria.GASTO,
             onClick = { onTipoChange(TipoCategoria.GASTO) },
