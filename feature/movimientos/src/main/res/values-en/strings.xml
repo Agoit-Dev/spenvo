@@ -5,6 +5,7 @@
     <string name="movements_view_members">Members</string>
     <string name="movements_manage_categories">Categories</string>
     <string name="movements_search_placeholder">Search transactions…</string>
+    <string name="movements_filter_all">All</string>
     <string name="movements_filter_expense">Expenses</string>
     <string name="movements_filter_income">Income</string>
     <string name="movements_empty">No transactions yet.</string>

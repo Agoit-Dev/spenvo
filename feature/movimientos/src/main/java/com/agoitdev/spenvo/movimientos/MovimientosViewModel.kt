@@ -13,6 +13,7 @@ import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoRequest
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasPorTipoUseCase
+import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -36,6 +37,7 @@ import kotlinx.coroutines.launch
 class MovimientosViewModel @Inject constructor(
     private val observarMovimientos: ObservarMovimientosUseCase,
     private val observarCategoriasPorTipo: ObservarCategoriasPorTipoUseCase,
+    private val observarCategorias: ObservarCategoriasUseCase,
     private val crearGasto: CrearGastoUseCase,
     private val crearIngreso: CrearIngresoUseCase,
     private val sincronizador: MovimientoSincronizacion,
@@ -67,6 +69,10 @@ class MovimientosViewModel @Inject constructor(
 
     fun categorias(planId: String, tipo: TipoCategoria): StateFlow<List<Categoria>> =
         observarCategoriasPorTipo(planId, tipo)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS), emptyList())
+
+    fun categoriasTodas(planId: String): StateFlow<List<Categoria>> =
+        observarCategorias(planId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS), emptyList())
 
     fun guardar(datos: MovimientoFormDatos) {

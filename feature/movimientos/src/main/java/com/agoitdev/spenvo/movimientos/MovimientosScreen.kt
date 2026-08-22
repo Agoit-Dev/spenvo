@@ -58,13 +58,13 @@ fun MovimientosScreen(
     viewModel: MovimientosViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
-    var tipoSeleccionado by rememberSaveable { mutableStateOf(TipoCategoria.GASTO) }
+    var tipoSeleccionado by rememberSaveable { mutableStateOf<TipoCategoria?>(null) }
     var busqueda by rememberSaveable { mutableStateOf("") }
     var formulario by remember { mutableStateOf<FormularioMovimiento>(FormularioMovimiento.Cerrado) }
 
     val movimientosFlow = remember(planId) { viewModel.movimientos(planId) }
     val movimientos by movimientosFlow.collectAsStateWithLifecycle()
-    val categoriasFlow = remember(planId, tipoSeleccionado) { viewModel.categorias(planId, tipoSeleccionado) }
+    val categoriasFlow = remember(planId) { viewModel.categoriasTodas(planId) }
     val categorias by categoriasFlow.collectAsStateWithLifecycle()
     val estadoForm by viewModel.estadoForm.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -98,7 +98,7 @@ fun MovimientosScreen(
     if (formulario is FormularioMovimiento.Nuevo) {
         MovimientoFormSheet(
             planId = planId,
-            tipoInicial = tipoSeleccionado,
+            tipoInicial = tipoSeleccionado ?: TipoCategoria.GASTO,
             cargando = estadoForm.guardando,
             viewModel = viewModel,
             acciones = MovimientoFormAcciones(
@@ -134,11 +134,12 @@ private fun EfectosMovimientos(
 
 private fun filtrarMovimientos(
     movimientos: List<Movimiento>,
-    tipoSeleccionado: TipoCategoria,
+    tipoSeleccionado: TipoCategoria?,
     busqueda: String,
     categoriasPorId: Map<String, Categoria>,
 ): List<Movimiento> = movimientos.filter { movimiento ->
     val coincideTipo = when (tipoSeleccionado) {
+        null -> true
         TipoCategoria.GASTO -> movimiento is Gasto
         TipoCategoria.INGRESO -> movimiento is Ingreso
     }
@@ -157,8 +158,8 @@ private data class MovimientosAcciones(
 private data class MovimientosFiltro(
     val busqueda: String,
     val onBusquedaChange: (String) -> Unit,
-    val tipoSeleccionado: TipoCategoria,
-    val onTipoChange: (TipoCategoria) -> Unit,
+    val tipoSeleccionado: TipoCategoria?,
+    val onTipoChange: (TipoCategoria?) -> Unit,
 )
 
 private data class MovimientosListaEstado(
@@ -196,7 +197,7 @@ private fun MovimientosScaffold(
                 leadingIcon = { Icon(imageVector = Icons.Filled.Search, contentDescription = null) },
                 placeholder = { Text(stringResource(R.string.movements_search_placeholder)) },
             )
-            FiltroTipoMovimiento(
+            FiltroTipoMovimientoLista(
                 tipoSeleccionado = filtro.tipoSeleccionado,
                 onTipoChange = filtro.onTipoChange,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -230,6 +231,31 @@ private fun MovimientosTopBar(onGestionarCategorias: () -> Unit, onVerMiembros: 
             }
         },
     )
+}
+
+@Composable
+private fun FiltroTipoMovimientoLista(
+    tipoSeleccionado: TipoCategoria?,
+    onTipoChange: (TipoCategoria?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+            selected = tipoSeleccionado == null,
+            onClick = { onTipoChange(null) },
+            label = { Text(stringResource(R.string.movements_filter_all)) },
+        )
+        FilterChip(
+            selected = tipoSeleccionado == TipoCategoria.GASTO,
+            onClick = { onTipoChange(TipoCategoria.GASTO) },
+            label = { Text(stringResource(R.string.movements_filter_expense)) },
+        )
+        FilterChip(
+            selected = tipoSeleccionado == TipoCategoria.INGRESO,
+            onClick = { onTipoChange(TipoCategoria.INGRESO) },
+            label = { Text(stringResource(R.string.movements_filter_income)) },
+        )
+    }
 }
 
 @Composable

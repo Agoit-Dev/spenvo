@@ -13,6 +13,7 @@ import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasPorTipoUseCase
+import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
 import java.time.LocalDate
@@ -20,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -60,11 +62,24 @@ class MovimientosViewModelTest {
     private fun crearViewModel() = MovimientosViewModel(
         observarMovimientos = ObservarMovimientosUseCase(movimientoRepo),
         observarCategoriasPorTipo = ObservarCategoriasPorTipoUseCase(categoriaRepo),
+        observarCategorias = ObservarCategoriasUseCase(categoriaRepo),
         crearGasto = CrearGastoUseCase(movimientoRepo, ValidarMontoUseCase()),
         crearIngreso = CrearIngresoUseCase(movimientoRepo, ValidarMontoUseCase()),
         sincronizador = sincronizador,
         authRepository = authRepository,
     )
+
+    @Test
+    fun `categoriasTodas devuelve categorias de ambos tipos`() = runTest {
+        val viewModel = crearViewModel()
+
+        val categorias = viewModel.categoriasTodas("p1")
+        val job = launch { categorias.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(setOf("cat-gasto", "cat-ingreso"), categorias.value.map { it.id }.toSet())
+        job.cancel()
+    }
 
     @Test
     fun `sincronizar dispara la sincronizacion del plan`() = runTest {
