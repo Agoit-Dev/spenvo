@@ -4,4 +4,17 @@
     <string name="movements_placeholder">Movimientos del plan %1$s (M5)</string>
     <string name="movements_view_members">Miembros</string>
     <string name="movements_manage_categories">Categorías</string>
+    <string name="movements_search_placeholder">Buscar movimientos…</string>
+    <string name="movements_filter_expense">Gastos</string>
+    <string name="movements_filter_income">Ingresos</string>
+    <string name="movements_empty">Todavía no hay movimientos.</string>
+    <string name="movements_add">Nuevo movimiento</string>
+    <string name="movements_amount">Monto</string>
+    <string name="movements_category">Categoría</string>
+    <string name="movements_description">Descripción (opcional)</string>
+    <string name="movements_save">Guardar</string>
+    <string name="movements_date_today">Hoy</string>
+    <string name="movements_date_yesterday">Ayer</string>
+    <string name="movements_invalid_amount">Ingresá un monto válido</string>
+    <string name="movements_select_category">Elegí una categoría</string>
 </resources>
