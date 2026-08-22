@@ -27,6 +27,7 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 :feature:cuenta         — account creation / email+password linking
 :feature:planes         — plans, shared access, invitations
 :feature:movimientos    — expenses + income (plan-scoped)
+:feature:categorias     — expense/income categories (CRUD, default seeding)
 ```
 
 ## How to run
@@ -63,9 +64,9 @@ Node 20+ (only for the `rules-tests/` subproject).
 
 ## Status
 
-Milestone **M3 (Plans, access, final rules, usable MVP)** complete: account
-creation (email/password linking the anonymous UID), plans with shared access and
-invitations, and the finalized Firestore rules validated against the Emulator
-(14 tests) and deployed to production (`spenvo-6d10a`). Pending manual
-verification of the Auth sign-in providers and App Check in the Firebase console.
-See `CHANGELOG.md`.
+Milestone **M4 (Categories)** complete: category domain and Firestore data
+layer, optimistic Room-first writes with rollback (categories and plans),
+idempotent default category seeding, live per-plan/category sync, and the
+`:feature:categorias` UI (list, create/edit, delete) reachable from
+`MovimientosScreen`. Pending from M3: manual verification of the Auth
+sign-in providers and App Check in the Firebase console. See `CHANGELOG.md`.
