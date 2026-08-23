@@ -11,6 +11,7 @@
     <string name="plans_invitation_accept">Aceptar</string>
     <string name="plans_invitation_plan">Plan</string>
     <string name="plans_invitation_role">Rol</string>
+    <string name="plans_balance_mensual">Balance del mes: %1$s</string>
     <string name="account_menu_description">Cuenta</string>
     <string name="account_guest_state">Invitado</string>
     <string name="account_create">Crear cuenta</string>

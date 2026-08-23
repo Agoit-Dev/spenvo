@@ -42,7 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agoitdev.spenvo.domain.model.AccesoPlan
+import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
+import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.Sesion
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +56,7 @@ fun PlanesScreen(
     modifier: Modifier = Modifier,
 ) {
     val planes by viewModel.planes.collectAsStateWithLifecycle()
+    val resumenesPorPlan by viewModel.resumenesPorPlan.collectAsStateWithLifecycle()
     val invitaciones by viewModel.invitacionesPendientes.collectAsStateWithLifecycle()
     val estadoCrear by viewModel.estadoCrear.collectAsStateWithLifecycle()
     val sesion by viewModel.sesion.collectAsStateWithLifecycle()
@@ -93,6 +96,7 @@ fun PlanesScreen(
     ) { innerPadding ->
         PlanesLista(
             planes = planes,
+            resumenesPorPlan = resumenesPorPlan,
             invitaciones = invitaciones,
             onAceptarInvitacion = viewModel::aceptarInvitacion,
             onAbrirPlan = onAbrirPlan,
@@ -132,9 +136,11 @@ private fun PlanesTopBar(
     )
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun PlanesLista(
     planes: List<PlanFinanciero>,
+    resumenesPorPlan: Map<String, ResumenMensualPlan>,
     invitaciones: List<AccesoPlan>,
     onAceptarInvitacion: (String) -> Unit,
     onAbrirPlan: (String) -> Unit,
@@ -170,6 +176,7 @@ private fun PlanesLista(
             items(planes, key = { it.id }) { plan ->
                 PlanCard(
                     plan = plan,
+                    resumen = resumenesPorPlan[plan.id],
                     onClick = { onAbrirPlan(plan.id) },
                 )
             }
@@ -178,7 +185,7 @@ private fun PlanesLista(
 }
 
 @Composable
-private fun PlanCard(plan: PlanFinanciero, onClick: () -> Unit) {
+internal fun PlanCard(plan: PlanFinanciero, resumen: ResumenMensualPlan?, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(text = plan.nombre, style = MaterialTheme.typography.titleMedium)
@@ -187,9 +194,29 @@ private fun PlanCard(plan: PlanFinanciero, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (resumen != null) {
+                Text(
+                    text = stringResource(
+                        R.string.plans_balance_mensual,
+                        formatearNetoDelMes(resumen.netoDelMes, plan.moneda),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
 }
+
+private fun formatearNetoDelMes(neto: Monto, moneda: String): String {
+    val negativo = neto.unidadesMenores < 0
+    val valorAbsoluto = kotlin.math.abs(neto.unidadesMenores)
+    val enteros = valorAbsoluto / UNIDADES_MENORES_POR_UNIDAD
+    val centimos = valorAbsoluto % UNIDADES_MENORES_POR_UNIDAD
+    val signo = if (negativo) "-" else "+"
+    return "$signo$enteros,${centimos.toString().padStart(2, '0')} $moneda"
+}
+
+private const val UNIDADES_MENORES_POR_UNIDAD = 100L
 
 @Composable
 private fun InvitacionCard(acceso: AccesoPlan, onAceptar: () -> Unit) {

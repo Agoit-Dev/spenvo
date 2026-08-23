@@ -2,9 +2,11 @@ package com.agoitdev.spenvo.planes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.agoitdev.spenvo.data.remote.sync.PlanSincronizacion
 import com.agoitdev.spenvo.domain.model.AccesoPlan
 import com.agoitdev.spenvo.domain.model.InvitacionEstado
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
+import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
@@ -12,7 +14,7 @@ import com.agoitdev.spenvo.domain.usecase.AceptarInvitacionUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearPlanRequest
 import com.agoitdev.spenvo.domain.usecase.CrearPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
-import com.agoitdev.spenvo.data.remote.sync.PlanSincronizador
+import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -32,12 +35,13 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class PlanesViewModel @Inject constructor(
+class PlanesViewModel @Suppress("LongParameterList") @Inject constructor(
     private val crearPlan: CrearPlanUseCase,
     private val observarPlanes: ObservarPlanesDelUsuarioUseCase,
     private val aceptarInvitacion: AceptarInvitacionUseCase,
-    private val sincronizador: PlanSincronizador,
+    private val sincronizador: PlanSincronizacion,
     private val accesosRepository: AccesoPlanRepository,
+    private val observarResumenMensualPlan: ObservarResumenMensualPlanUseCase,
     authRepository: AuthRepository,
 ) : ViewModel() {
 
@@ -48,6 +52,16 @@ class PlanesViewModel @Inject constructor(
         val uid = s.uid
         if (uid == null) flowOf(emptyList()) else observarPlanes(uid)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val resumenesPorPlan: StateFlow<Map<String, ResumenMensualPlan>> = planes.flatMapLatest { planesActuales ->
+        if (planesActuales.isEmpty()) {
+            flowOf(emptyMap())
+        } else {
+            combine(planesActuales.map { plan -> observarResumenMensualPlan(plan.id) }) { resumenes ->
+                resumenes.associateBy { it.planId }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val invitacionesPendientes: StateFlow<List<AccesoPlan>> = sesion.flatMapLatest { s ->
         val uid = s.uid

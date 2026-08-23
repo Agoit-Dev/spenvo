@@ -20,6 +20,8 @@ import com.agoitdev.spenvo.data.remote.repository.FirebaseCategoriaRepository
 import com.agoitdev.spenvo.data.remote.repository.FirebasePlanFinancieroRepository
 import com.agoitdev.spenvo.data.remote.sync.CategoriaSincronizacion
 import com.agoitdev.spenvo.data.remote.sync.CategoriaSincronizador
+import com.agoitdev.spenvo.data.remote.sync.PlanSincronizacion
+import com.agoitdev.spenvo.data.remote.sync.PlanSincronizador
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -54,6 +56,12 @@ abstract class PlanModule {
     abstract fun bindCategoriaSincronizacion(
         impl: CategoriaSincronizador,
     ): CategoriaSincronizacion
+
+    @Binds
+    @Singleton
+    abstract fun bindPlanSincronizacion(
+        impl: PlanSincronizador,
+    ): PlanSincronizacion
 }
 
 @Module
