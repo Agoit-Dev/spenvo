@@ -35,8 +35,8 @@ internal fun evaluarDocumentoRemoto(
 ): Boolean {
     val clave = documento.clave
     val decision = edicionesPendientes.evaluar(clave, documento.editedBy, documento.editedAt)
-    if (decision != DecisionSincronizacion.CONFLICTO) return true
-    val pendiente = edicionesPendientes.obtener(clave) ?: return true
+    val pendiente = if (decision == DecisionSincronizacion.CONFLICTO) edicionesPendientes.obtener(clave) else null
+    if (pendiente == null) return true
     conflictosPendientes.registrar(
         clave,
         ConflictoEdicion(
