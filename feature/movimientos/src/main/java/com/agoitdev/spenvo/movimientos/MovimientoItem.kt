@@ -42,10 +42,16 @@ import com.agoitdev.spenvo.domain.model.Movimiento
 import java.util.Locale
 
 @Composable
-internal fun MovimientoItem(movimiento: Movimiento, categoria: Categoria?, modifier: Modifier = Modifier) {
+internal fun MovimientoItem(
+    movimiento: Movimiento,
+    categoria: Categoria?,
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val esIngreso = movimiento is Ingreso
     val colorMonto = if (esIngreso) IngresoColor else MaterialTheme.colorScheme.error
     Surface(
+        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         tonalElevation = 1.dp,

@@ -10,10 +10,15 @@
     <string name="movements_filter_income">Ingresos</string>
     <string name="movements_empty">Todavía no hay movimientos.</string>
     <string name="movements_add">Nuevo movimiento</string>
+    <string name="movements_edit">Editar movimiento</string>
     <string name="movements_amount">Monto</string>
     <string name="movements_category">Categoría</string>
     <string name="movements_description">Descripción (opcional)</string>
     <string name="movements_save">Guardar</string>
+    <string name="movements_delete">Eliminar</string>
+    <string name="movements_delete_confirm_title">Eliminar movimiento</string>
+    <string name="movements_delete_confirm_message">Esta acción no se puede deshacer.</string>
+    <string name="movements_cancel">Cancelar</string>
     <string name="movements_date_today">Hoy</string>
     <string name="movements_date_yesterday">Ayer</string>
     <string name="movements_invalid_amount">Ingresá un monto válido</string>
