@@ -6,4 +6,11 @@
     <string name="account_registration_email">Correo</string>
     <string name="account_registration_password">Contraseña</string>
     <string name="account_registration_create">Crear cuenta</string>
+    <string name="account_profile_title">Mi cuenta</string>
+    <string name="account_profile_avatar_description">Foto de perfil</string>
+    <string name="account_profile_avatar_edit_description">Cambiar foto de perfil</string>
+    <string name="account_profile_sin_nombre">Sin nombre</string>
+    <string name="account_profile_info_title">Información de la cuenta</string>
+    <string name="account_profile_info_email">Correo: %1$s</string>
+    <string name="account_profile_logout">Cerrar sesión</string>
 </resources>

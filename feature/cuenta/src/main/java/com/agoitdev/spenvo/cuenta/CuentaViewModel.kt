@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -18,7 +19,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class CuentaViewModel @Inject constructor(
     private val vincularCredencial: VincularCredencialUseCase,
-    authRepository: AuthRepository,
+    private val authRepository: AuthRepository,
+    private val subirAvatarUseCase: SubirAvatarUseCase,
 ) : ViewModel() {
 
     val sesion: StateFlow<Sesion> = authRepository.observeSesion()
@@ -26,6 +28,9 @@ class CuentaViewModel @Inject constructor(
 
     private val _estado = MutableStateFlow(RegistroEstado())
     val estado: StateFlow<RegistroEstado> = _estado.asStateFlow()
+
+    private val _perfilEstado = MutableStateFlow(PerfilEstado())
+    val perfilEstado: StateFlow<PerfilEstado> = _perfilEstado.asStateFlow()
 
     fun registrar(nombre: String, email: String, password: String) {
         _estado.update { it.copy(cargando = true, error = null) }
@@ -41,10 +46,40 @@ class CuentaViewModel @Inject constructor(
     fun consumirError() {
         _estado.update { it.copy(error = null) }
     }
+
+    /** Uploads the linked user's avatar (Decision 8: bytes/contentType read by the caller). */
+    fun subirAvatar(bytes: ByteArray, contentType: String) {
+        val uid = sesion.value.uid ?: return
+        _perfilEstado.update { it.copy(subiendoAvatar = true, avatarError = null) }
+        viewModelScope.launch {
+            runCatching {
+                val url = subirAvatarUseCase(uid, bytes, contentType)
+                authRepository.actualizarPerfil(photoUrl = url)
+            }.onSuccess {
+                _perfilEstado.update { it.copy(subiendoAvatar = false) }
+            }.onFailure { error ->
+                _perfilEstado.update { it.copy(subiendoAvatar = false, avatarError = error.message) }
+            }
+        }
+    }
+
+    fun consumirAvatarError() {
+        _perfilEstado.update { it.copy(avatarError = null) }
+    }
+
+    /** [AuthRepository.cerrarSesion] already re-establishes an anonymous session (Decision 9). */
+    fun logout() {
+        viewModelScope.launch { authRepository.cerrarSesion() }
+    }
 }
 
 data class RegistroEstado(
     val cargando: Boolean = false,
     val completado: Boolean = false,
     val error: String? = null,
+)
+
+data class PerfilEstado(
+    val subiendoAvatar: Boolean = false,
+    val avatarError: String? = null,
 )

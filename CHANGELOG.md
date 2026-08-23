@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- M7 Slice A2 (Profile screen — first user-visible piece of the avatar
+  feature): `:feature:cuenta`'s `CuentaScreen` now branches on
+  `Sesion.esAnonima` — an anonymous session still sees the unchanged
+  registration form, while a linked account sees a new profile view with a
+  circular avatar (new `AvatarConBadge` in `:core:designsystem`, the first
+  real Coil usage in this codebase, with a small edit-icon badge overlay),
+  display name, email, an "Account info" card, and a Logout button. Tapping
+  the avatar badge opens `ActivityResultContracts.PickVisualMedia`; the
+  screen reads the picked image's bytes/content-type via `ContentResolver`
+  and calls the new `CuentaViewModel.subirAvatar(bytes, contentType)`, which
+  uploads through the existing `SubirAvatarUseCase` (M7 Slice A1) and persists
+  the resulting URL via `AuthRepository.actualizarPerfil(photoUrl = ...)`.
+  Logout calls `AuthRepository.cerrarSesion()`, which already re-establishes
+  an anonymous session (guest-first re-entry, decided in Slice A1).
+  `:feature:cuenta` gained its first unit/Compose test setup (JUnit,
+  coroutines-test, Robolectric, `ui-test-junit4`).
 - M7 Slice A1 (Storage foundation, backend-only — foundation for the upcoming
   Profile avatar feature, no user-visible UI yet): Firebase Storage is wired
   into the app for the first time, with a new `storage.rules` restricting
