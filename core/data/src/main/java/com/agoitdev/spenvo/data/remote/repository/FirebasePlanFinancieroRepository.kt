@@ -7,6 +7,8 @@ import com.agoitdev.spenvo.data.remote.dto.PlanFinancieroDto
 import com.agoitdev.spenvo.data.remote.await
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
+import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
+import com.agoitdev.spenvo.domain.sync.VersionPendiente
 import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,12 +18,15 @@ import kotlinx.coroutines.flow.map
 /**
  * Optimistic Room-first writes: Room updates immediately, then Firestore. A
  * permanent Firestore error rolls Room back to the previous snapshot (see
- * `data-consistency.md` write contract).
+ * `data-consistency.md` write contract). Update also registers an unconfirmed
+ * pending edit (Slice 4 conflict detection) at the point `previo` is read,
+ * for free.
  */
 @Singleton
 class FirebasePlanFinancieroRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val planDao: PlanFinancieroDao,
+    private val edicionesPendientes: EdicionesPendientes,
 ) : PlanFinancieroRepository {
 
     override fun observarPlanesDelUsuario(usuarioId: String): Flow<List<PlanFinanciero>> =
@@ -46,6 +51,13 @@ class FirebasePlanFinancieroRepository @Inject constructor(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun actualizarPlan(plan: PlanFinanciero) {
         val previo = planDao.get(plan.id)
+        edicionesPendientes.registrarSiCorresponde(
+            clave = EdicionesPendientes.clave(PLANES_COLLECTION, plan.id),
+            editorId = plan.editedBy,
+            base = previo?.editedAt,
+            miEditedAt = plan.editedAt,
+            miVersion = VersionPendiente.DePlan(plan),
+        )
         planDao.upsert(plan.toEntity())
         try {
             persistRemoto(plan)

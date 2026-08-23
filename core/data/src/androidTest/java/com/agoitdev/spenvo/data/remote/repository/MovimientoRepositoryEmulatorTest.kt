@@ -12,6 +12,7 @@ import com.agoitdev.spenvo.data.remote.await
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Monto
+import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
@@ -38,6 +39,7 @@ class MovimientoRepositoryEmulatorTest {
     private lateinit var ingresoDao: IngresoDao
     private lateinit var firestore: FirebaseFirestore
     private lateinit var repo: FirebaseMovimientoRepository
+    private lateinit var edicionesPendientes: EdicionesPendientes
 
     @Before
     fun setup() {
@@ -57,7 +59,8 @@ class MovimientoRepositoryEmulatorTest {
         db = Room.inMemoryDatabaseBuilder(context, SpenvoDatabase::class.java).build()
         gastoDao = db.gastoDao()
         ingresoDao = db.ingresoDao()
-        repo = FirebaseMovimientoRepository(firestore, gastoDao, ingresoDao)
+        edicionesPendientes = EdicionesPendientes()
+        repo = FirebaseMovimientoRepository(firestore, gastoDao, ingresoDao, edicionesPendientes)
     }
 
     @After
@@ -92,6 +95,26 @@ class MovimientoRepositoryEmulatorTest {
         val doc = firestore.collection("gastos").document("g1").get().await()
         assertEquals(5000L, (doc.data?.get("montoUnidadesMenores") as? Number)?.toLong())
         assertEquals(5000L, gastoDao.get("g1")?.montoUnidadesMenores)
+    }
+
+    @Test
+    fun actualizarGasto_registra_edicion_pendiente_para_deteccion_de_conflictos() = runBlocking {
+        gastoDao.upsert(gasto("g1").toEntity())
+
+        repo.actualizarGasto(gasto("g1", monto = 5000).copy(editedBy = "user-2"))
+
+        val pendiente = edicionesPendientes.obtener("gastos:g1")
+        assertEquals("user-2", pendiente?.editorId)
+    }
+
+    @Test
+    fun eliminarGasto_registra_edicion_pendiente_para_deteccion_de_conflictos() = runBlocking {
+        gastoDao.upsert(gasto("g1").toEntity())
+
+        repo.eliminarGasto(gasto("g1").copy(editedBy = "user-2", deletedAt = java.time.Instant.now()))
+
+        val pendiente = edicionesPendientes.obtener("gastos:g1")
+        assertEquals("user-2", pendiente?.editorId)
     }
 
     @Test

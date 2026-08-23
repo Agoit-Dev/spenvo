@@ -11,6 +11,8 @@ import com.agoitdev.spenvo.data.remote.dto.CategoriaDto
 import com.agoitdev.spenvo.data.remote.repository.FirebaseCategoriaRepository
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.TipoCategoria
+import com.agoitdev.spenvo.domain.sync.ConflictosPendientes
+import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
@@ -37,6 +39,8 @@ class CategoriaSyncEmulatorTest {
     private lateinit var dao: CategoriaDao
     private lateinit var firestore: FirebaseFirestore
     private lateinit var repo: FirebaseCategoriaRepository
+    private lateinit var edicionesPendientes: EdicionesPendientes
+    private lateinit var conflictosPendientes: ConflictosPendientes
 
     @Before
     fun setup() {
@@ -55,12 +59,31 @@ class CategoriaSyncEmulatorTest {
         firestore.useEmulator("10.0.2.2", 8081)
         db = Room.inMemoryDatabaseBuilder(context, SpenvoDatabase::class.java).build()
         dao = db.categoriaDao()
-        repo = FirebaseCategoriaRepository(firestore, dao)
+        edicionesPendientes = EdicionesPendientes()
+        conflictosPendientes = ConflictosPendientes()
+        repo = FirebaseCategoriaRepository(firestore, dao, edicionesPendientes)
     }
 
     @After
     fun teardown() {
         db.close()
+    }
+
+    @Test
+    fun actualizarCategoria_registra_edicion_pendiente_para_deteccion_de_conflictos() = runBlocking {
+        val categoria = Categoria(
+            id = "p1:gasto_comida",
+            planId = "p1",
+            nombre = "Comida",
+            icono = "comida",
+            tipo = TipoCategoria.GASTO,
+        )
+        repo.crearCategoria(categoria)
+
+        repo.actualizarCategoria(categoria.copy(nombre = "Comidas", editedBy = "user-2"))
+
+        val pendiente = edicionesPendientes.obtener("categorias:p1:gasto_comida")
+        assertEquals("user-2", pendiente?.editorId)
     }
 
     @Test
@@ -103,7 +126,7 @@ class CategoriaSyncEmulatorTest {
 
     @Test
     fun sincronizador_upserta_categorias_de_firestore() = runBlocking {
-        val sincronizador = CategoriaSincronizador(firestore, dao)
+        val sincronizador = CategoriaSincronizador(firestore, dao, edicionesPendientes, conflictosPendientes)
         val job = launch { sincronizador.sincronizar("p1").collect { } }
 
         val categoria = Categoria(
@@ -126,7 +149,7 @@ class CategoriaSyncEmulatorTest {
 
     @Test
     fun sincronizador_respeta_soft_delete() = runBlocking {
-        val sincronizador = CategoriaSincronizador(firestore, dao)
+        val sincronizador = CategoriaSincronizador(firestore, dao, edicionesPendientes, conflictosPendientes)
         val job = launch { sincronizador.sincronizar("p1").collect { } }
 
         val categoria = Categoria(

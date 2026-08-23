@@ -12,7 +12,10 @@ import com.agoitdev.spenvo.data.remote.dto.IngresoDto
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
+import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
+import com.agoitdev.spenvo.domain.sync.VersionPendiente
 import com.google.firebase.firestore.FirebaseFirestore
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -21,13 +24,16 @@ import kotlinx.coroutines.flow.map
 /**
  * Optimistic Room-first writes: Room updates immediately, then Firestore. A
  * permanent Firestore error rolls Room back to the previous snapshot (see
- * `data-consistency.md` write contract).
+ * `data-consistency.md` write contract). Update/delete also register an
+ * unconfirmed pending edit (Slice 4 conflict detection) at the point `previo`
+ * is read, for free.
  */
 @Singleton
 class FirebaseMovimientoRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val gastoDao: GastoDao,
     private val ingresoDao: IngresoDao,
+    private val edicionesPendientes: EdicionesPendientes,
 ) : MovimientoRepository {
 
     override fun observeGastos(planId: String): Flow<List<Gasto>> =
@@ -67,6 +73,7 @@ class FirebaseMovimientoRepository @Inject constructor(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun actualizarGasto(gasto: Gasto) {
         val previo = gastoDao.get(gasto.id)
+        registrarPendiente(edicionesPendientes, GASTOS_COLLECTION, gasto, previo?.editedAt)
         gastoDao.upsert(gasto.toEntity())
         try {
             persistRemotoGasto(firestore, gasto)
@@ -79,6 +86,7 @@ class FirebaseMovimientoRepository @Inject constructor(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun eliminarGasto(gasto: Gasto) {
         val previo = gastoDao.get(gasto.id)
+        registrarPendiente(edicionesPendientes, GASTOS_COLLECTION, gasto, previo?.editedAt)
         gastoDao.upsert(gasto.toEntity())
         try {
             persistRemotoGasto(firestore, gasto)
@@ -91,6 +99,7 @@ class FirebaseMovimientoRepository @Inject constructor(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun actualizarIngreso(ingreso: Ingreso) {
         val previo = ingresoDao.get(ingreso.id)
+        registrarPendiente(edicionesPendientes, INGRESOS_COLLECTION, ingreso, previo?.editedAt)
         ingresoDao.upsert(ingreso.toEntity())
         try {
             persistRemotoIngreso(firestore, ingreso)
@@ -103,6 +112,7 @@ class FirebaseMovimientoRepository @Inject constructor(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun eliminarIngreso(ingreso: Ingreso) {
         val previo = ingresoDao.get(ingreso.id)
+        registrarPendiente(edicionesPendientes, INGRESOS_COLLECTION, ingreso, previo?.editedAt)
         ingresoDao.upsert(ingreso.toEntity())
         try {
             persistRemotoIngreso(firestore, ingreso)
@@ -116,6 +126,36 @@ class FirebaseMovimientoRepository @Inject constructor(
 
 private const val GASTOS_COLLECTION = "gastos"
 private const val INGRESOS_COLLECTION = "ingresos"
+
+private fun registrarPendiente(
+    edicionesPendientes: EdicionesPendientes,
+    coleccion: String,
+    gasto: Gasto,
+    base: Instant?,
+) {
+    edicionesPendientes.registrarSiCorresponde(
+        clave = EdicionesPendientes.clave(coleccion, gasto.id),
+        editorId = gasto.editedBy,
+        base = base,
+        miEditedAt = gasto.editedAt,
+        miVersion = VersionPendiente.DeGasto(gasto),
+    )
+}
+
+private fun registrarPendiente(
+    edicionesPendientes: EdicionesPendientes,
+    coleccion: String,
+    ingreso: Ingreso,
+    base: Instant?,
+) {
+    edicionesPendientes.registrarSiCorresponde(
+        clave = EdicionesPendientes.clave(coleccion, ingreso.id),
+        editorId = ingreso.editedBy,
+        base = base,
+        miEditedAt = ingreso.editedAt,
+        miVersion = VersionPendiente.DeIngreso(ingreso),
+    )
+}
 
 private suspend fun persistRemotoGasto(firestore: FirebaseFirestore, gasto: Gasto) {
     firestore.collection(GASTOS_COLLECTION)

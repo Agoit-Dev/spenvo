@@ -5,6 +5,10 @@ import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
 import com.agoitdev.spenvo.data.local.mapper.toEntity
 import com.agoitdev.spenvo.data.remote.dto.AccesoPlanDto
 import com.agoitdev.spenvo.data.remote.dto.PlanFinancieroDto
+import com.agoitdev.spenvo.domain.sync.ConflictosPendientes
+import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
+import com.agoitdev.spenvo.domain.sync.TipoRegistro
+import com.agoitdev.spenvo.domain.sync.aSnapshotConflicto
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import javax.inject.Inject
@@ -19,13 +23,16 @@ import kotlinx.coroutines.launch
  * collected. Listens on the user's accesses and attaches a snapshot listener
  * per active plan document, so remote plan edits (not only access changes) are
  * reflected in Room. Listeners only live during collection (active scope), per
- * AGENTS.md rule 3.
+ * AGENTS.md rule 3. A plan document flagged as a genuine conflict (Slice 4) is
+ * held back from Room and registered in [conflictosPendientes] instead.
  */
 @Singleton
 class PlanSincronizador @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val planDao: PlanFinancieroDao,
     private val accesoDao: AccesoPlanDao,
+    private val edicionesPendientes: EdicionesPendientes,
+    private val conflictosPendientes: ConflictosPendientes,
 ) {
 
     fun sincronizar(usuarioId: String): Flow<Unit> = callbackFlow {
@@ -51,9 +58,23 @@ class PlanSincronizador @Inject constructor(
                             .document(planId)
                             .addSnapshotListener { doc, planError ->
                                 if (planError == null && doc != null && doc.data != null) {
-                                    val plan = PlanFinancieroDto.fromData(doc.data ?: emptyMap())
-                                    if (plan != null) {
-                                        launch { planDao.upsert(plan.toDomain().toEntity()) }
+                                    val planDto = PlanFinancieroDto.fromData(doc.data ?: emptyMap())
+                                    if (planDto != null) {
+                                        val plan = planDto.toDomain()
+                                        val aplicar = evaluarDocumentoRemoto(
+                                            edicionesPendientes,
+                                            conflictosPendientes,
+                                            DocumentoParaSincronizar(
+                                                PLANES_COLLECTION,
+                                                plan.id,
+                                                plan.editedBy,
+                                                plan.editedAt,
+                                                TipoRegistro.PLAN,
+                                            ),
+                                        ) { plan.aSnapshotConflicto() }
+                                        if (aplicar) {
+                                            launch { planDao.upsert(plan.toEntity()) }
+                                        }
                                     }
                                 }
                             }
