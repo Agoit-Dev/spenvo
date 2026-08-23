@@ -54,4 +54,8 @@ private class FakeAuthRepositoryVincular : AuthRepository {
         ultimoNombre = nombre
         sesion.value = Sesion(uid = sesion.value.uid, esAnonima = false)
     }
+
+    override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
+
+    override suspend fun cerrarSesion() = Unit
 }

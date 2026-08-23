@@ -5,6 +5,7 @@ data class Sesion(
     val esAnonima: Boolean,
     val email: String? = null,
     val nombre: String? = null,
+    val photoUrl: String? = null,
 ) {
     val estaAutenticada: Boolean get() = uid != null
 

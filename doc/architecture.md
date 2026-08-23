@@ -127,7 +127,8 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
   missing doc returns `null` (check `!= null`, not `.exists`). See
   `rules-tests/` for the working pattern.
 - **Account registration is email/password only** in M3; Google Sign-In is
-  deferred (see M7).
+  deferred a second time in M7 (out of scope per the `user-profile` spec; no
+  committed milestone yet).
 - **No ViewModel/Compose UI tests for `:feature:categorias`, `:feature:planes`,
   `:feature:movimientos`, `:feature:cuenta`** (M4): `CategoriasViewModelTest` is
   the first ViewModel test in the project (plain JUnit + hand-written fakes,

@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- M7 Slice A1 (Storage foundation, backend-only — foundation for the upcoming
+  Profile avatar feature, no user-visible UI yet): Firebase Storage is wired
+  into the app for the first time, with a new `storage.rules` restricting
+  `avatars/{uid}/avatar.jpg` to its owner (authenticated, path-scoped,
+  `image/*` content-type allowlist, 5MB size limit), covered by a new
+  `rules-tests/storage-rules.test.mjs` emulator suite (owner read/write, cross-uid
+  read/write denied, oversized/non-image denied, unauthenticated denied) alongside
+  the existing `firestore.rules` matrix. New `StorageRepository`/`SubirAvatarUseCase`
+  (`:core:domain`) and `FirebaseStorageRepository` (`:core:data`, bridging the
+  Task-based Storage SDK via `suspendCancellableCoroutine`, mirroring
+  `FirebaseAuthRepository`'s existing pattern) upload to a fixed
+  `avatars/{uid}/avatar.jpg` path (overwrite on re-upload) and return the
+  download URL. `AuthRepository` gains `actualizarPerfil(nombre, photoUrl)`
+  (persisted via `UserProfileChangeRequest`, mirroring `vincularEmail()`) and
+  `cerrarSesion()` (signs out, then immediately re-establishes an anonymous
+  session — guest-first re-entry). `Sesion` gains `photoUrl`, mapped from
+  `FirebaseUser.photoUrl`. Nothing in the UI calls these yet — that lands in a
+  later Profile screen slice.
 - Added branded adaptive and legacy launcher icons and an AndroidX SplashScreen-compatible launch screen.
 - M6 Slice A (Home dashboard summary): each plan card on `PlanesScreen` now shows
   a reactive current-month net balance (income minus expenses), computed by the
