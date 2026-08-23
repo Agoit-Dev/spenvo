@@ -75,6 +75,10 @@ private class FakeGastoRepository : MovimientoRepository {
     }
 
     override suspend fun addIngreso(ingreso: com.agoitdev.spenvo.domain.model.Ingreso) = Unit
+    override suspend fun actualizarGasto(gasto: Gasto) = Unit
+    override suspend fun eliminarGasto(gasto: Gasto) = Unit
+    override suspend fun actualizarIngreso(ingreso: com.agoitdev.spenvo.domain.model.Ingreso) = Unit
+    override suspend fun eliminarIngreso(ingreso: com.agoitdev.spenvo.domain.model.Ingreso) = Unit
 
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(emptyList())
 

@@ -80,6 +80,10 @@ private class FakeMovimientoRepository(
 ) : MovimientoRepository {
     override suspend fun addGasto(gasto: Gasto) = Unit
     override suspend fun addIngreso(ingreso: Ingreso) = Unit
+    override suspend fun actualizarGasto(gasto: Gasto) = Unit
+    override suspend fun eliminarGasto(gasto: Gasto) = Unit
+    override suspend fun actualizarIngreso(ingreso: Ingreso) = Unit
+    override suspend fun eliminarIngreso(ingreso: Ingreso) = Unit
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(gastos)
     override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(ingresos)
 }
