@@ -2,4 +2,10 @@
 <resources>
 
     <style name="Theme.Spenvo" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Spenvo.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/spenvo_splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/spenvo_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.Spenvo</item>
+    </style>
 </resources>
