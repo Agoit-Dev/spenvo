@@ -63,6 +63,19 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 ### Conflicts (honest LWW)
 - Every synced entity carries `editedBy` + `editedAt` (server-set) + `deletedAt`.
 - Real conflict (same field, concurrent edits) → visible in UI, user's decision.
+- Conflict detection (M5 Slice 4): each repository's optimistic write registers
+  an unconfirmed pending edit in `EdicionesPendientes` (`:core:domain`, keyed
+  `"$coleccion:$id"`) at the point it already reads `previo`. Each
+  sincronizador's snapshot listener consults it per document; a conflict is
+  flagged only when the incoming `editedAt` is newer than the pending edit's
+  known base AND `editedBy` differs AND a pending edit exists — a plain remote
+  update fires nothing. Flagged documents are held back from Room and queued
+  in `ConflictosPendientes` (`StateFlow<Map<String, ConflictoEdicion>>`) for
+  per-record UI resolution (Slice 5b), never an app-wide interrupt. **Accepted
+  debt**: both registries are in-memory only (process lifetime), by design —
+  not a homegrown outbox. If the process dies between the optimistic Room
+  write and the Firestore echo, the pending marker is lost and the remote
+  version silently wins on the next sync.
 
 ## Key recorded decisions
 
