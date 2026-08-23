@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -53,6 +55,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun SpenvoApp(modifier: Modifier = Modifier) {
     val backStack = rememberNavBackStack(PlanesRoute)
@@ -64,6 +67,10 @@ fun SpenvoApp(modifier: Modifier = Modifier) {
                 rememberSaveableStateHolderNavEntryDecorator(),
                 rememberViewModelStoreNavEntryDecorator(),
             ),
+            // Forward-compatible plumbing for future cross-route list/detail pairs (design
+            // Decision 3, M6 Slice B): a no-op today since no `entry<T>` carries pane metadata yet.
+            // The real, working list-detail split lives locally inside MovimientosScreen.
+            sceneStrategies = listOf(rememberListDetailSceneStrategy<NavKey>()),
             entryProvider = entryProvider {
                 entry<PlanesRoute> {
                     PlanesScreen(

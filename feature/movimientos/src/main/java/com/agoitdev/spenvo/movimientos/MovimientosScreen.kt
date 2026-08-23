@@ -3,29 +3,30 @@ package com.agoitdev.spenvo.movimientos
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,7 +34,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -73,7 +73,7 @@ fun MovimientosScreen(
         filtrarMovimientos(movimientos, tipoSeleccionado, busqueda, categoriasPorId)
     }
 
-    MovimientosScaffold(
+    MovimientosPantallas(
         modifier = modifier,
         acciones = MovimientosAcciones(
             onVerMiembros = onVerMiembros,
@@ -99,16 +99,49 @@ fun MovimientosScreen(
                 }
             },
         ),
-    )
-
-    MovimientoFormularioSheet(
-        planId = planId,
-        tipoPorDefecto = tipoSeleccionado ?: TipoCategoria.GASTO,
-        formulario = formulario,
+        formularioParametros = MovimientoFormularioParametros(
+            planId = planId,
+            tipoPorDefecto = tipoSeleccionado ?: TipoCategoria.GASTO,
+            formulario = formulario,
+            viewModel = viewModel,
+            cargando = estadoForm.guardando,
+            onCerrar = { formulario = FormularioMovimiento.Cerrado },
+        ),
         viewModel = viewModel,
-        cargando = estadoForm.guardando,
-        onCerrar = { formulario = FormularioMovimiento.Cerrado },
+        conflictoVisible = conflictoVisible,
+        movimientos = movimientos,
     )
+}
+
+/**
+ * Chooses the layout (M6 Slice B, design Decision 3) and hosts the layout-independent conflict
+ * dialog (design Decision 4). NOT the nav-graph SceneStrategy, which would replace the list with a
+ * full-screen push on compact instead of preserving it behind a sheet.
+ * `directive.maxHorizontalPartitions > 1` matches Material's Expanded width breakpoint (>= 840dp);
+ * compact/medium stay single-pane, unchanged from before M6.
+ */
+@Suppress("LongParameterList")
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+private fun MovimientosPantallas(
+    modifier: Modifier,
+    acciones: MovimientosAcciones,
+    filtro: MovimientosFiltro,
+    snackbarHostState: SnackbarHostState,
+    lista: MovimientosListaEstado,
+    formularioParametros: MovimientoFormularioParametros,
+    viewModel: MovimientosViewModel,
+    conflictoVisible: ConflictoEdicion?,
+    movimientos: List<Movimiento>,
+) {
+    val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
+    if (directive.maxHorizontalPartitions > 1) {
+        MovimientosPantallaExpandida(
+            modifier, directive, acciones, filtro, snackbarHostState, lista, formularioParametros,
+        )
+    } else {
+        MovimientosPantallaCompacta(modifier, acciones, filtro, snackbarHostState, lista, formularioParametros)
+    }
 
     ConflictoMovimientoDialogHost(
         conflicto = conflictoVisible,
@@ -117,6 +150,54 @@ fun MovimientosScreen(
         onUsarRemoto = { m -> viewModel.resolverConflicto(m, usarLocal = false) },
         onDismiss = { viewModel.mostrarConflicto(null) },
     )
+}
+
+/** Expanded/wide layout (M6 Slice B): list pane keeps today's whole scaffold; the form is promoted
+ * into the detail pane instead of a full-screen bottom sheet, so the list stays visible beside it. */
+@Suppress("LongParameterList")
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+internal fun MovimientosPantallaExpandida(
+    modifier: Modifier,
+    directive: PaneScaffoldDirective,
+    acciones: MovimientosAcciones,
+    filtro: MovimientosFiltro,
+    snackbarHostState: SnackbarHostState,
+    lista: MovimientosListaEstado,
+    formularioParametros: MovimientoFormularioParametros,
+) {
+    ListDetailPaneScaffold(
+        modifier = modifier,
+        directive = directive,
+        value = ThreePaneScaffoldValue(
+            primary = PaneAdaptedValue.Expanded,
+            secondary = PaneAdaptedValue.Expanded,
+            tertiary = PaneAdaptedValue.Hidden,
+        ),
+        listPane = {
+            MovimientosScaffold(
+                acciones = acciones, filtro = filtro, snackbarHostState = snackbarHostState, lista = lista,
+            )
+        },
+        detailPane = { MovimientoFormularioPanel(formularioParametros) },
+    )
+}
+
+/** Compact/narrow layout: exactly today's behavior — no list/detail pane split. */
+@Suppress("LongParameterList")
+@Composable
+internal fun MovimientosPantallaCompacta(
+    modifier: Modifier,
+    acciones: MovimientosAcciones,
+    filtro: MovimientosFiltro,
+    snackbarHostState: SnackbarHostState,
+    lista: MovimientosListaEstado,
+    formularioParametros: MovimientoFormularioParametros,
+) {
+    MovimientosScaffold(
+        modifier = modifier, acciones = acciones, filtro = filtro, snackbarHostState = snackbarHostState, lista = lista,
+    )
+    MovimientoFormularioSheet(formularioParametros)
 }
 
 private fun tieneConflicto(conflictos: Map<String, ConflictoEdicion>, movimiento: Movimiento): Boolean =
@@ -162,20 +243,20 @@ private fun filtrarMovimientos(
     coincideTipo && coincideBusqueda
 }
 
-private data class MovimientosAcciones(
+internal data class MovimientosAcciones(
     val onVerMiembros: () -> Unit,
     val onGestionarCategorias: () -> Unit,
     val onNuevoMovimiento: () -> Unit,
 )
 
-private data class MovimientosFiltro(
+internal data class MovimientosFiltro(
     val busqueda: String,
     val onBusquedaChange: (String) -> Unit,
     val tipoSeleccionado: TipoCategoria?,
     val onTipoChange: (TipoCategoria?) -> Unit,
 )
 
-private data class MovimientosListaEstado(
+internal data class MovimientosListaEstado(
     val movimientos: List<Movimiento>,
     val categoriasPorId: Map<String, Categoria>,
     val conflictos: Map<String, ConflictoEdicion>,
@@ -225,76 +306,6 @@ private fun MovimientosScaffold(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MovimientosTopBar(onGestionarCategorias: () -> Unit, onVerMiembros: () -> Unit) {
-    TopAppBar(
-        title = { Text(stringResource(R.string.movements_title)) },
-        actions = {
-            IconButton(onClick = onGestionarCategorias) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.List,
-                    contentDescription = stringResource(R.string.movements_manage_categories),
-                )
-            }
-            IconButton(onClick = onVerMiembros) {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = stringResource(R.string.movements_view_members),
-                )
-            }
-        },
-    )
-}
-
-@Composable
-private fun FiltroTipoMovimientoLista(
-    tipoSeleccionado: TipoCategoria?,
-    onTipoChange: (TipoCategoria?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-    ) {
-        FilterChip(
-            selected = tipoSeleccionado == null,
-            onClick = { onTipoChange(null) },
-            label = { Text(stringResource(R.string.movements_filter_all)) },
-        )
-        FilterChip(
-            selected = tipoSeleccionado == TipoCategoria.GASTO,
-            onClick = { onTipoChange(TipoCategoria.GASTO) },
-            label = { Text(stringResource(R.string.movements_filter_expense)) },
-        )
-        FilterChip(
-            selected = tipoSeleccionado == TipoCategoria.INGRESO,
-            onClick = { onTipoChange(TipoCategoria.INGRESO) },
-            label = { Text(stringResource(R.string.movements_filter_income)) },
-        )
-    }
-}
-
-@Composable
-internal fun FiltroTipoMovimiento(
-    tipoSeleccionado: TipoCategoria,
-    onTipoChange: (TipoCategoria) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(
-            selected = tipoSeleccionado == TipoCategoria.GASTO,
-            onClick = { onTipoChange(TipoCategoria.GASTO) },
-            label = { Text(stringResource(R.string.movements_filter_expense)) },
-        )
-        FilterChip(
-            selected = tipoSeleccionado == TipoCategoria.INGRESO,
-            onClick = { onTipoChange(TipoCategoria.INGRESO) },
-            label = { Text(stringResource(R.string.movements_filter_income)) },
-        )
     }
 }
 
