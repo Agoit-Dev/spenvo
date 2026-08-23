@@ -2,7 +2,9 @@ package com.agoitdev.spenvo.categorias
 
 import com.agoitdev.spenvo.data.remote.sync.CategoriaSincronizacion
 import com.agoitdev.spenvo.domain.model.Categoria
+import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.TipoCategoria
+import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.usecase.ActualizarCategoriaUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearCategoriaUseCase
@@ -31,6 +33,7 @@ class CategoriasViewModelTest {
 
     private val repo = FakeCategoriaRepository()
     private val sincronizador = FakeCategoriaSincronizacion()
+    private val authRepository = FakeAuthRepository()
 
     @Before
     fun setUp() {
@@ -42,12 +45,16 @@ class CategoriasViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun crearViewModel(repositorio: FakeCategoriaRepository = repo) = CategoriasViewModel(
+    private fun crearViewModel(
+        repositorio: FakeCategoriaRepository = repo,
+        auth: AuthRepository = authRepository,
+    ) = CategoriasViewModel(
         observarCategoriasPorTipo = ObservarCategoriasPorTipoUseCase(repositorio),
         crearCategoria = CrearCategoriaUseCase(repositorio),
         actualizarCategoria = ActualizarCategoriaUseCase(repositorio),
         eliminarCategoria = EliminarCategoriaUseCase(repositorio),
         sincronizador = sincronizador,
+        authRepository = auth,
     )
 
     @Test
@@ -123,6 +130,17 @@ class CategoriasViewModelTest {
     }
 
     @Test
+    fun `actualizar categoria estampa el uid de la sesion actual como editor`() = runTest {
+        val viewModel = crearViewModel(auth = FakeAuthRepository(uid = "user-42"))
+        val categoria = Categoria(id = "c1", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO)
+
+        viewModel.actualizar(categoria)
+        advanceUntilIdle()
+
+        assertEquals("user-42", repo.actualizadas.single().editedBy)
+    }
+
+    @Test
     fun `actualizar categoria con nombre vacio expone el error del caso de uso`() = runTest {
         val viewModel = crearViewModel()
         val categoria = Categoria(id = "c1", planId = "p1", nombre = "   ", tipo = TipoCategoria.GASTO)
@@ -144,6 +162,17 @@ class CategoriasViewModelTest {
 
         assertEquals(listOf("c1"), repo.eliminadas.map { it.id })
         assertTrue(viewModel.estadoForm.value.guardado)
+    }
+
+    @Test
+    fun `eliminar categoria estampa el uid de la sesion actual como editor`() = runTest {
+        val viewModel = crearViewModel(auth = FakeAuthRepository(uid = "user-42"))
+        val categoria = Categoria(id = "c1", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO)
+
+        viewModel.eliminar(categoria)
+        advanceUntilIdle()
+
+        assertEquals("user-42", repo.eliminadas.single().editedBy)
     }
 
     @Test
@@ -202,4 +231,12 @@ private class FakeCategoriaSincronizacion : CategoriaSincronizacion {
         planesSincronizados.add(planId)
         return flowOf(Unit)
     }
+}
+
+private class FakeAuthRepository(private val uid: String = "user-1") : AuthRepository {
+    override fun observeSesion(): Flow<Sesion> = flowOf(Sesion(uid = uid, esAnonima = false))
+
+    override suspend fun iniciarSesionAnonima() = Unit
+
+    override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
 }

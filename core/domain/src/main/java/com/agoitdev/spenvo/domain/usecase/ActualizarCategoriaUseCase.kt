@@ -2,13 +2,16 @@ package com.agoitdev.spenvo.domain.usecase
 
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
+import java.time.Instant
 
 class ActualizarCategoriaUseCase(
     private val repository: CategoriaRepository,
 ) {
-    suspend operator fun invoke(categoria: Categoria) {
+    suspend operator fun invoke(categoria: Categoria, editorId: String) {
         val nombre = categoria.nombre.trim()
         require(nombre.isNotEmpty()) { "El nombre no puede estar vacío" }
-        repository.actualizarCategoria(categoria.copy(nombre = nombre))
+        repository.actualizarCategoria(
+            categoria.copy(nombre = nombre, editedBy = editorId, editedAt = Instant.now()),
+        )
     }
 }

@@ -7,9 +7,10 @@ import java.time.Instant
 class EliminarCategoriaUseCase(
     private val repository: CategoriaRepository,
 ) {
-    suspend operator fun invoke(categoria: Categoria) {
+    suspend operator fun invoke(categoria: Categoria, editorId: String) {
+        val ahora = Instant.now()
         repository.eliminarCategoria(
-            categoria.copy(deletedAt = Instant.now()),
+            categoria.copy(editedBy = editorId, editedAt = ahora, deletedAt = ahora),
         )
     }
 }
