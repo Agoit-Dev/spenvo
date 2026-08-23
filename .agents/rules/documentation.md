@@ -17,8 +17,14 @@ Documentation lives in the repo and stays up to date in the same commit as the c
 - **Every phase, feature or milestone closes with a docs review**: before finishing,
   update `README.md` (status, modules, stack, commands) and the affected `doc/`
   files in the same commit as the code. Never leave docs stale after the work is done.
-- Every commit with data logic touches `doc/database/schema.mdd` if the schema changed.
+- **Every commit with data logic touches `doc/database/schema.mdd` if the schema changed.**
 - Every commit with an important decision touches `doc/architecture.md`.
+- **In a chained/stacked SDD change (multiple slices, each its own PR): every slice
+  that lands a user-visible change adds its own `CHANGELOG.md` entry in that
+  slice's commit — do not defer the changelog to the last slice of the chain.**
+  A commit-time gate (`/commit`, or equivalent manual check when committing by
+  hand) must actually run before each slice's commit; a task checklist that only
+  lists a changelog/README task on the final slice does not satisfy this rule.
 - `README.md` is the front door: stack, how to run, commands.
 - `AGENTS.md` is the operational guide; `.agents/` is the source of truth for rules/skills.
 - **All technical documentation (code, `doc/`) is written in English.** This includes
