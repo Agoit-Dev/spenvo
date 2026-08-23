@@ -39,5 +39,9 @@ private class FakeAuthRepository : AuthRepository {
     override suspend fun vincularEmail(email: String, password: String, nombre: String) {
         sesion.value = Sesion(uid = sesion.value.uid, esAnonima = false)
     }
+
+    override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
+
+    override suspend fun cerrarSesion() = Unit
 }
 

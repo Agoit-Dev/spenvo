@@ -9,5 +9,9 @@ interface AuthRepository {
     suspend fun iniciarSesionAnonima()
 
     suspend fun vincularEmail(email: String, password: String, nombre: String)
+
+    suspend fun actualizarPerfil(nombre: String? = null, photoUrl: String? = null)
+
+    suspend fun cerrarSesion()
 }
 

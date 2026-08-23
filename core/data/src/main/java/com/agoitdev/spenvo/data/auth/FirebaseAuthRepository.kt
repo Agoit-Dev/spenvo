@@ -1,5 +1,6 @@
 package com.agoitdev.spenvo.data.auth
 
+import android.net.Uri
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.google.firebase.auth.EmailAuthProvider
@@ -59,6 +60,25 @@ class FirebaseAuthRepository @Inject constructor(
             }
         }
     }
+
+    override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) {
+        val currentUser = auth.currentUser
+            ?: throw FirebaseAuthException("NO_CURRENT_USER", "No hay una sesión activa para actualizar")
+        if (nombre == null && photoUrl == null) return
+        suspendCancellableCoroutine { cont ->
+            val builder = UserProfileChangeRequest.Builder()
+            if (nombre != null) builder.setDisplayName(nombre)
+            if (photoUrl != null) builder.setPhotoUri(Uri.parse(photoUrl))
+            currentUser.updateProfile(builder.build())
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resumeWithException(it) }
+        }
+    }
+
+    override suspend fun cerrarSesion() {
+        auth.signOut()
+        iniciarSesionAnonima()
+    }
 }
 
 private fun FirebaseUser?.toSesion(): Sesion = this?.let {
@@ -67,6 +87,7 @@ private fun FirebaseUser?.toSesion(): Sesion = this?.let {
         esAnonima = it.isAnonymous,
         email = it.email,
         nombre = it.displayName,
+        photoUrl = it.photoUrl?.toString(),
     )
 } ?: Sesion.Anonima
 

@@ -14,6 +14,7 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 | Deny-by-default rules + roles | `firestore.rules` | ✅ finalized (owner/admin/editor/viewer) | M3 |
 | Rules tests (Emulator) | `rules-tests/` (`@firebase/rules-unit-testing`) | ✅ 14/14 green | M3 |
 | Server-side EditedBy/EditedAt | rules | 🔜 | M5 |
+| File-upload rules (Storage) | `storage.rules` | ✅ owner-scoped path (`avatars/{uid}/...`), `image/*` allowlist, 5MB limit, deny-by-default | M7 |
 
 ## Risk → control map
 
@@ -29,8 +30,9 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 
 ### M3 - Insecure Authentication/Authorization
 - Firebase Auth **anonymous** (guest-first) wired in M2; **email/password linking**
-  (links the anonymous UID, preserving local data) done in M3; Google linking in M7;
-  **optional MFA in M8**. ✅ M3 (email/password).
+  (links the anonymous UID, preserving local data) done in M3; Google linking
+  deferred a second time in M7 (out of scope per the `user-profile` spec; no
+  committed milestone yet); **optional MFA in M8**. ✅ M3 (email/password).
 - **Authorization**: server-side roles (`owner/admin/editor/viewer`) validated in
   the finalized rules, tested against the Emulator (14 tests). ✅ M3.
 - Session/persistence: `FirebaseAuth` handles automatic token refresh. ✅ M2.
@@ -76,7 +78,8 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 5. Logs without sensitive data. ✅ rule.
 
 ## Pending implementation (M0 debt)
-- Google Sign-In linking → **M7**.
+- Google Sign-In linking → deferred a second time in M7 (out of scope per the
+  `user-profile` spec; no committed milestone yet).
 - Server-side `editedBy/editedAt` → **M5**.
 - Rules and indexes deployed to production (`spenvo-6d10a`) — M3 done. Manual
   verification pending: Anonymous + Email/Password sign-in providers enabled and

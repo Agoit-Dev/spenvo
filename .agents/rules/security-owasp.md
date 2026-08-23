@@ -18,6 +18,9 @@ Meet the OWASP Mobile Top 10 2025 security baseline. See the full matrix in
    `read/write: if true`.
 9. **Do not log** sensitive data or credentials. Logs contain no amounts or emails.
 10. **Deep links / intents**: validate data URI; do not trust unverified extras.
+11. **Storage rules** (M7): deny-by-default, authenticated-only, per-user path scoping
+    (`avatars/{uid}/...` writable/readable only by that `uid`), `image/*` content-type
+    allowlist, 5MB file-size limit. Never allow `read/write: if true`.
 
 ## Continuous monitoring
 - New manifest permission → justify in changelog and review with `security-review`.
