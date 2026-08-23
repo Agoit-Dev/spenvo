@@ -11,8 +11,10 @@ import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
 import com.agoitdev.spenvo.domain.sync.TipoRegistro
 import com.agoitdev.spenvo.domain.sync.aSnapshotConflicto
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -38,7 +40,16 @@ class MovimientoSincronizador @Inject constructor(
 ) : MovimientoSincronizacion {
 
     override fun sincronizar(planId: String): Flow<Unit> = callbackFlow {
-        val gastosListener = firestore.collection(GASTOS_COLLECTION)
+        val gastosListener = registrarGastos(planId)
+        val ingresosListener = registrarIngresos(planId)
+        awaitClose {
+            gastosListener.remove()
+            ingresosListener.remove()
+        }
+    }
+
+    private fun ProducerScope<Unit>.registrarGastos(planId: String): ListenerRegistration =
+        firestore.collection(GASTOS_COLLECTION)
             .whereEqualTo("planId", planId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -67,7 +78,9 @@ class MovimientoSincronizador @Inject constructor(
                     launch { gastoDao.upsertAll(gastos) }
                 }
             }
-        val ingresosListener = firestore.collection(INGRESOS_COLLECTION)
+
+    private fun ProducerScope<Unit>.registrarIngresos(planId: String): ListenerRegistration =
+        firestore.collection(INGRESOS_COLLECTION)
             .whereEqualTo("planId", planId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -96,11 +109,6 @@ class MovimientoSincronizador @Inject constructor(
                     launch { ingresoDao.upsertAll(ingresos) }
                 }
             }
-        awaitClose {
-            gastosListener.remove()
-            ingresosListener.remove()
-        }
-    }
 
     private companion object {
         const val GASTOS_COLLECTION = "gastos"

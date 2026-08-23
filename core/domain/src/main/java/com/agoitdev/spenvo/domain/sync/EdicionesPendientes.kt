@@ -90,17 +90,15 @@ class EdicionesPendientes {
      */
     fun evaluar(clave: String, editedBy: String?, editedAt: Instant?): DecisionSincronizacion {
         val pendiente = pendientes[clave] ?: return DecisionSincronizacion.APLICAR
-        if (editedBy == pendiente.editorId && editedAt == pendiente.miEditedAt) {
-            pendientes.remove(clave)
-            return DecisionSincronizacion.PROPIA_CONFIRMADA
-        }
+        val esPropiaConfirmada = editedBy == pendiente.editorId && editedAt == pendiente.miEditedAt
+        if (esPropiaConfirmada) pendientes.remove(clave)
         val esDeOtroEditor = editedBy != pendiente.editorId
         val esMasReciente = editedAt != null &&
             (pendiente.base == null || editedAt.isAfter(pendiente.base))
-        return if (esDeOtroEditor && esMasReciente) {
-            DecisionSincronizacion.CONFLICTO
-        } else {
-            DecisionSincronizacion.APLICAR
+        return when {
+            esPropiaConfirmada -> DecisionSincronizacion.PROPIA_CONFIRMADA
+            esDeOtroEditor && esMasReciente -> DecisionSincronizacion.CONFLICTO
+            else -> DecisionSincronizacion.APLICAR
         }
     }
 
