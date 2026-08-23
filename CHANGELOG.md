@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an anonymous session (guest-first re-entry, decided in Slice A1).
   `:feature:cuenta` gained its first unit/Compose test setup (JUnit,
   coroutines-test, Robolectric, `ui-test-junit4`).
+- Sample plan seeding: the first time a user has zero plans, `SembrarPlanEjemploUseCase`
+  creates one demo plan ("Gastos del hogar", EUR) with realistic Spain-locale
+  sample expenses/income (Mercadona, gasolina, factura de la luz, nómina,
+  etc.) so a fresh install shows a populated demo instead of an empty state.
+  Idempotent — does nothing once the user has any plan, mirroring
+  `SembrarCategoriasPorDefectoUseCase`'s existing guard.
 - M7 Slice A1 (Storage foundation, backend-only — foundation for the upcoming
   Profile avatar feature, no user-visible UI yet): Firebase Storage is wired
   into the app for the first time, with a new `storage.rules` restricting

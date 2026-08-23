@@ -15,6 +15,7 @@ import com.agoitdev.spenvo.domain.usecase.CrearPlanRequest
 import com.agoitdev.spenvo.domain.usecase.CrearPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
+import com.agoitdev.spenvo.domain.usecase.SembrarPlanEjemploUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -42,6 +44,7 @@ class PlanesViewModel @Suppress("LongParameterList") @Inject constructor(
     private val sincronizador: PlanSincronizacion,
     private val accesosRepository: AccesoPlanRepository,
     private val observarResumenMensualPlan: ObservarResumenMensualPlanUseCase,
+    private val sembrarPlanEjemplo: SembrarPlanEjemploUseCase,
     authRepository: AuthRepository,
 ) : ViewModel() {
 
@@ -92,6 +95,10 @@ init {
             }
                 .catch { /* best-effort sync: un error de red/rules no debe tumbar la app */ }
                 .collect { }
+        }
+        viewModelScope.launch {
+            val uid = sesion.filter { it.uid != null }.first().uid ?: return@launch
+            runCatching { sembrarPlanEjemplo(uid) }
         }
     }
 

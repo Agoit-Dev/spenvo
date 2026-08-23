@@ -12,9 +12,12 @@ import com.agoitdev.spenvo.domain.usecase.EliminarCategoriaUseCase
 import com.agoitdev.spenvo.domain.usecase.InvitarMiembroUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasPorTipoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasUseCase
+import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
+import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SembrarCategoriasPorDefectoUseCase
+import com.agoitdev.spenvo.domain.usecase.SembrarPlanEjemploUseCase
 import com.agoitdev.spenvo.data.remote.repository.FirebaseAccesoPlanRepository
 import com.agoitdev.spenvo.data.remote.repository.FirebaseCategoriaRepository
 import com.agoitdev.spenvo.data.remote.repository.FirebasePlanFinancieroRepository
@@ -99,6 +102,14 @@ object PlanUseCaseModule {
     fun provideAceptarInvitacion(
         accesosRepository: AccesoPlanRepository,
     ): AceptarInvitacionUseCase = AceptarInvitacionUseCase(accesosRepository)
+
+    @Provides
+    fun provideSembrarPlanEjemplo(
+        observarPlanes: ObservarPlanesDelUsuarioUseCase,
+        crearPlan: CrearPlanUseCase,
+        crearGasto: CrearGastoUseCase,
+        crearIngreso: CrearIngresoUseCase,
+    ): SembrarPlanEjemploUseCase = SembrarPlanEjemploUseCase(observarPlanes, crearPlan, crearGasto, crearIngreso)
 }
 
 @Module
