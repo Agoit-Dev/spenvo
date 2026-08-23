@@ -19,6 +19,7 @@ import com.agoitdev.spenvo.domain.usecase.CrearPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.SembrarCategoriasPorDefectoUseCase
+import com.agoitdev.spenvo.domain.usecase.SembrarPlanEjemploUseCase
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -69,6 +70,26 @@ class PlanesViewModelTest {
         sincronizador = sincronizador,
         accesosRepository = accesoPlanRepo,
         observarResumenMensualPlan = ObservarResumenMensualPlanUseCase(movimientoRepo),
+        // Isolated fakes pre-seeded with a plan, so the guard always sees "already has a
+        // plan" and never touches the shared repos the tests actually assert on.
+        sembrarPlanEjemplo = SembrarPlanEjemploUseCase(
+            observarPlanes = ObservarPlanesDelUsuarioUseCase(
+                FakePlanFinancieroRepository(MutableStateFlow(listOf(plan("seed-guard")))),
+            ),
+            crearPlan = CrearPlanUseCase(
+                FakePlanFinancieroRepository(MutableStateFlow(emptyList())),
+                FakeAccesoPlanRepository(),
+                SembrarCategoriasPorDefectoUseCase(FakeCategoriaRepository()),
+            ),
+            crearGasto = com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase(
+                FakeMovimientoRepository(),
+                com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase(),
+            ),
+            crearIngreso = com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase(
+                FakeMovimientoRepository(),
+                com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase(),
+            ),
+        ),
         authRepository = authRepository,
     )
 
