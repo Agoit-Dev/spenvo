@@ -122,6 +122,15 @@ class FirebaseMovimientoRepository @Inject constructor(
         }
     }
 
+    override suspend fun aplicarGastoRemoto(id: String) {
+        val data = firestore.collection(GASTOS_COLLECTION).document(id).get().await().data ?: return
+        gastoDao.upsert(GastoDto.fromData(data)?.toDomain()?.toEntity() ?: return)
+    }
+
+    override suspend fun aplicarIngresoRemoto(id: String) {
+        val data = firestore.collection(INGRESOS_COLLECTION).document(id).get().await().data ?: return
+        ingresoDao.upsert(IngresoDto.fromData(data)?.toDomain()?.toEntity() ?: return)
+    }
 }
 
 private const val GASTOS_COLLECTION = "gastos"

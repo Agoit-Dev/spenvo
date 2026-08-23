@@ -44,6 +44,7 @@ import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Movimiento
 import com.agoitdev.spenvo.domain.model.TipoCategoria
+import com.agoitdev.spenvo.domain.sync.ConflictoEdicion
 import java.time.LocalDate
 
 @Composable
@@ -58,16 +59,14 @@ fun MovimientosScreen(
     var busqueda by rememberSaveable { mutableStateOf("") }
     var formulario by remember { mutableStateOf<FormularioMovimiento>(FormularioMovimiento.Cerrado) }
 
-    val movimientosFlow = remember(planId) { viewModel.movimientos(planId) }
-    val movimientos by movimientosFlow.collectAsStateWithLifecycle()
-    val categoriasFlow = remember(planId) { viewModel.categoriasTodas(planId) }
-    val categorias by categoriasFlow.collectAsStateWithLifecycle()
+    val movimientos by remember(planId) { viewModel.movimientos(planId) }.collectAsStateWithLifecycle()
+    val categorias by remember(planId) { viewModel.categoriasTodas(planId) }.collectAsStateWithLifecycle()
     val estadoForm by viewModel.estadoForm.collectAsStateWithLifecycle()
+    val conflictos by viewModel.conflictos.collectAsStateWithLifecycle()
+    val conflictoVisible by viewModel.conflictoVisible.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    EfectosMovimientos(planId, estadoForm, viewModel, snackbarHostState) {
-        formulario = FormularioMovimiento.Cerrado
-    }
+    EfectosMovimientos(planId, estadoForm, viewModel, snackbarHostState) { formulario = FormularioMovimiento.Cerrado }
 
     val categoriasPorId = remember(categorias) { categorias.associateBy { it.id } }
     val movimientosFiltrados = remember(movimientos, tipoSeleccionado, busqueda, categoriasPorId) {
@@ -91,7 +90,14 @@ fun MovimientosScreen(
         lista = MovimientosListaEstado(
             movimientos = movimientosFiltrados,
             categoriasPorId = categoriasPorId,
-            onMovimientoClick = { formulario = FormularioMovimiento.Editar(it) },
+            conflictos = conflictos,
+            onMovimientoClick = { movimiento ->
+                if (tieneConflicto(conflictos, movimiento)) {
+                    viewModel.mostrarConflicto(movimiento)
+                } else {
+                    formulario = FormularioMovimiento.Editar(movimiento)
+                }
+            },
         ),
     )
 
@@ -103,7 +109,18 @@ fun MovimientosScreen(
         cargando = estadoForm.guardando,
         onCerrar = { formulario = FormularioMovimiento.Cerrado },
     )
+
+    ConflictoMovimientoDialogHost(
+        conflicto = conflictoVisible,
+        movimientoLocal = movimientos.firstOrNull { it.id == conflictoVisible?.registroId },
+        onUsarLocal = { m -> viewModel.resolverConflicto(m, usarLocal = true) },
+        onUsarRemoto = { m -> viewModel.resolverConflicto(m, usarLocal = false) },
+        onDismiss = { viewModel.mostrarConflicto(null) },
+    )
 }
+
+private fun tieneConflicto(conflictos: Map<String, ConflictoEdicion>, movimiento: Movimiento): Boolean =
+    conflictos.values.any { it.registroId == movimiento.id }
 
 @Composable
 private fun EfectosMovimientos(
@@ -117,13 +134,13 @@ private fun EfectosMovimientos(
     LaunchedEffect(estadoForm.error) {
         estadoForm.error?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.consumirError()
+            viewModel.consumir(error = true)
         }
     }
     LaunchedEffect(estadoForm.guardado) {
         if (estadoForm.guardado) {
             onFormularioGuardado()
-            viewModel.consumirGuardado()
+            viewModel.consumir(guardado = true)
         }
     }
 }
@@ -161,6 +178,7 @@ private data class MovimientosFiltro(
 private data class MovimientosListaEstado(
     val movimientos: List<Movimiento>,
     val categoriasPorId: Map<String, Categoria>,
+    val conflictos: Map<String, ConflictoEdicion>,
     val onMovimientoClick: (Movimiento) -> Unit,
 )
 
@@ -202,6 +220,7 @@ private fun MovimientosScaffold(
             ListaMovimientos(
                 movimientos = lista.movimientos,
                 categoriasPorId = lista.categoriasPorId,
+                conflictos = lista.conflictos,
                 onMovimientoClick = lista.onMovimientoClick,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -283,6 +302,7 @@ internal fun FiltroTipoMovimiento(
 private fun ListaMovimientos(
     movimientos: List<Movimiento>,
     categoriasPorId: Map<String, Categoria>,
+    conflictos: Map<String, ConflictoEdicion>,
     onMovimientoClick: (Movimiento) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -309,6 +329,7 @@ private fun ListaMovimientos(
                     movimiento = movimiento,
                     categoria = categoriasPorId[movimiento.categoriaId],
                     onClick = { onMovimientoClick(movimiento) },
+                    tieneConflicto = tieneConflicto(conflictos, movimiento),
                 )
             }
         }

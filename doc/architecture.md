@@ -76,6 +76,21 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
   not a homegrown outbox. If the process dies between the optimistic Room
   write and the Firestore echo, the pending marker is lost and the remote
   version silently wins on the next sync.
+- Conflict resolution UI (M5 Slice 5b, movimientos only): a row-level badge
+  (`MovimientoItem`) marks any id present in `ConflictosPendientes.conflictos`;
+  the blocking `ConflictoDialog` (`:core:designsystem`, entity-agnostic —
+  no `:core:domain` or `res/` dependency) opens only when the user taps that
+  row again, never as an app-wide interrupt. `feature/movimientos` maps the
+  domain `ConflictoEdicion`/`SnapshotConflicto` to the dialog's plain-string UI
+  model and resolves `R.string.conflict_field_*` labels before calling in
+  (`ConflictoMovimientoHost.kt`). Resolution: "usar la mía"/"restaurar mi
+  edición" re-issue `actualizar()` with the local version (fresh
+  `editedBy`/`editedAt`); "usar la suya"/"mantener borrado" persist the
+  Firestore document straight into Room via
+  `MovimientoRepository.aplicar{Gasto,Ingreso}Remoto(id)`, bypassing the
+  edit-attribution use case since the remote write is already correctly
+  attributed and was only held back from the last sync. Every path ends by
+  calling `ConflictosPendientes.resolver(key)`.
 
 ## Key recorded decisions
 

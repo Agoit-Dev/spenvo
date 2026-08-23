@@ -23,4 +23,17 @@
     <string name="movements_date_yesterday">Yesterday</string>
     <string name="movements_invalid_amount">Enter a valid amount</string>
     <string name="movements_select_category">Pick a category</string>
+    <string name="conflict_badge_description">Editing conflict</string>
+    <string name="conflict_dialog_title">Conflict detected</string>
+    <string name="conflict_edited_by">edited by %1$s · %2$s</string>
+    <string name="conflict_deleted_label">Deleted</string>
+    <string name="conflict_field_monto">Amount</string>
+    <string name="conflict_field_fecha">Date</string>
+    <string name="conflict_field_categoria">Category</string>
+    <string name="conflict_field_descripcion">Description</string>
+    <string name="conflict_action_use_mine">Use mine</string>
+    <string name="conflict_action_use_theirs">Use theirs</string>
+    <string name="conflict_action_restore_mine">Restore my edit</string>
+    <string name="conflict_action_keep_deleted">Keep deleted</string>
+    <string name="conflict_action_cancel">Cancel</string>
 </resources>
