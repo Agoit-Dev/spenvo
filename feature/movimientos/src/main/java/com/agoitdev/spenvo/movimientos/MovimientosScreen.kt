@@ -46,11 +46,6 @@ import com.agoitdev.spenvo.domain.model.Movimiento
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import java.time.LocalDate
 
-private sealed interface FormularioMovimiento {
-    data object Cerrado : FormularioMovimiento
-    data object Nuevo : FormularioMovimiento
-}
-
 @Composable
 fun MovimientosScreen(
     planId: String,
@@ -93,21 +88,21 @@ fun MovimientosScreen(
             onTipoChange = { tipoSeleccionado = it },
         ),
         snackbarHostState = snackbarHostState,
-        lista = MovimientosListaEstado(movimientosFiltrados, categoriasPorId),
+        lista = MovimientosListaEstado(
+            movimientos = movimientosFiltrados,
+            categoriasPorId = categoriasPorId,
+            onMovimientoClick = { formulario = FormularioMovimiento.Editar(it) },
+        ),
     )
 
-    if (formulario is FormularioMovimiento.Nuevo) {
-        MovimientoFormSheet(
-            planId = planId,
-            tipoInicial = tipoSeleccionado ?: TipoCategoria.GASTO,
-            cargando = estadoForm.guardando,
-            viewModel = viewModel,
-            acciones = MovimientoFormAcciones(
-                onGuardar = { viewModel.guardar(it) },
-                onDismiss = { formulario = FormularioMovimiento.Cerrado },
-            ),
-        )
-    }
+    MovimientoFormularioSheet(
+        planId = planId,
+        tipoPorDefecto = tipoSeleccionado ?: TipoCategoria.GASTO,
+        formulario = formulario,
+        viewModel = viewModel,
+        cargando = estadoForm.guardando,
+        onCerrar = { formulario = FormularioMovimiento.Cerrado },
+    )
 }
 
 @Composable
@@ -166,6 +161,7 @@ private data class MovimientosFiltro(
 private data class MovimientosListaEstado(
     val movimientos: List<Movimiento>,
     val categoriasPorId: Map<String, Categoria>,
+    val onMovimientoClick: (Movimiento) -> Unit,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -206,6 +202,7 @@ private fun MovimientosScaffold(
             ListaMovimientos(
                 movimientos = lista.movimientos,
                 categoriasPorId = lista.categoriasPorId,
+                onMovimientoClick = lista.onMovimientoClick,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -286,6 +283,7 @@ internal fun FiltroTipoMovimiento(
 private fun ListaMovimientos(
     movimientos: List<Movimiento>,
     categoriasPorId: Map<String, Categoria>,
+    onMovimientoClick: (Movimiento) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (movimientos.isEmpty()) {
@@ -307,7 +305,11 @@ private fun ListaMovimientos(
                 Text(text = etiqueta, style = MaterialTheme.typography.labelLarge)
             }
             items(movimientosDelGrupo, key = { it.id }) { movimiento ->
-                MovimientoItem(movimiento = movimiento, categoria = categoriasPorId[movimiento.categoriaId])
+                MovimientoItem(
+                    movimiento = movimiento,
+                    categoria = categoriasPorId[movimiento.categoriaId],
+                    onClick = { onMovimientoClick(movimiento) },
+                )
             }
         }
     }

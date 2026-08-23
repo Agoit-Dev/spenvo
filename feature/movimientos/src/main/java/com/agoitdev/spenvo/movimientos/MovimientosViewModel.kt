@@ -4,14 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizacion
 import com.agoitdev.spenvo.domain.model.Categoria
+import com.agoitdev.spenvo.domain.model.Gasto
+import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.Movimiento
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
+import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoRequest
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoRequest
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
+import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
+import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasPorTipoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
@@ -40,6 +46,10 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
     private val observarCategorias: ObservarCategoriasUseCase,
     private val crearGasto: CrearGastoUseCase,
     private val crearIngreso: CrearIngresoUseCase,
+    private val actualizarGasto: ActualizarGastoUseCase,
+    private val eliminarGasto: EliminarGastoUseCase,
+    private val actualizarIngreso: ActualizarIngresoUseCase,
+    private val eliminarIngreso: EliminarIngresoUseCase,
     private val sincronizador: MovimientoSincronizacion,
     private val authRepository: AuthRepository,
 ) : ViewModel() {
@@ -108,6 +118,36 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
         }
     }
 
+    fun actualizar(movimiento: Movimiento) {
+        _estadoForm.update { it.copy(guardando = true, error = null) }
+        viewModelScope.launch {
+            val editorId = authRepository.observeSesion().first().uid.orEmpty()
+            runCatching {
+                when (movimiento) {
+                    is Gasto -> actualizarGasto(movimiento, editorId)
+                    is Ingreso -> actualizarIngreso(movimiento, editorId)
+                }
+            }
+                .onSuccess { _estadoForm.value = MovimientoFormEstado(guardado = true) }
+                .onFailure { e -> _estadoForm.value = MovimientoFormEstado(error = e.message) }
+        }
+    }
+
+    fun eliminar(movimiento: Movimiento) {
+        _estadoForm.update { it.copy(guardando = true, error = null) }
+        viewModelScope.launch {
+            val editorId = authRepository.observeSesion().first().uid.orEmpty()
+            runCatching {
+                when (movimiento) {
+                    is Gasto -> eliminarGasto(movimiento, editorId)
+                    is Ingreso -> eliminarIngreso(movimiento, editorId)
+                }
+            }
+                .onSuccess { _estadoForm.value = MovimientoFormEstado(guardado = true) }
+                .onFailure { e -> _estadoForm.value = MovimientoFormEstado(error = e.message) }
+        }
+    }
+
     fun consumirError() {
         _estadoForm.update { it.copy(error = null) }
     }
@@ -139,4 +179,5 @@ data class MovimientoFormDatos(
 internal data class MovimientoFormAcciones(
     val onGuardar: (MovimientoFormDatos) -> Unit,
     val onDismiss: () -> Unit,
+    val onEliminar: (() -> Unit)? = null,
 )

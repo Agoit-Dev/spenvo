@@ -10,8 +10,12 @@ import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
+import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
+import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
+import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
+import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasPorTipoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
@@ -65,6 +69,10 @@ class MovimientosViewModelTest {
         observarCategorias = ObservarCategoriasUseCase(categoriaRepo),
         crearGasto = CrearGastoUseCase(movimientoRepo, ValidarMontoUseCase()),
         crearIngreso = CrearIngresoUseCase(movimientoRepo, ValidarMontoUseCase()),
+        actualizarGasto = ActualizarGastoUseCase(movimientoRepo, ValidarMontoUseCase()),
+        eliminarGasto = EliminarGastoUseCase(movimientoRepo),
+        actualizarIngreso = ActualizarIngresoUseCase(movimientoRepo, ValidarMontoUseCase()),
+        eliminarIngreso = EliminarIngresoUseCase(movimientoRepo),
         sincronizador = sincronizador,
         authRepository = authRepository,
     )
@@ -167,6 +175,110 @@ class MovimientosViewModelTest {
     }
 
     @Test
+    fun `actualizar un gasto exitoso marca guardado y sella editedBy`() = runTest {
+        val viewModel = crearViewModel()
+        val gasto = Gasto(
+            id = "g1",
+            planId = "p1",
+            categoriaId = "cat-gasto",
+            monto = Monto(1500),
+            fecha = LocalDate.of(2026, 8, 22),
+            descripcion = "Supermercado",
+            creadoPor = "user-1",
+        )
+
+        viewModel.actualizar(gasto.copy(monto = Monto(2000)))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.estadoForm.value.guardado)
+        assertNull(viewModel.estadoForm.value.error)
+        assertEquals(1, movimientoRepo.gastosActualizados.size)
+        assertEquals("user-1", movimientoRepo.gastosActualizados.single().editedBy)
+    }
+
+    @Test
+    fun `actualizar un ingreso exitoso marca guardado y sella editedBy`() = runTest {
+        val viewModel = crearViewModel()
+        val ingreso = Ingreso(
+            id = "i1",
+            planId = "p1",
+            categoriaId = "cat-ingreso",
+            monto = Monto(200000),
+            fecha = LocalDate.of(2026, 8, 22),
+            creadoPor = "user-1",
+        )
+
+        viewModel.actualizar(ingreso.copy(monto = Monto(250000)))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.estadoForm.value.guardado)
+        assertEquals(1, movimientoRepo.ingresosActualizados.size)
+        assertEquals("user-1", movimientoRepo.ingresosActualizados.single().editedBy)
+    }
+
+    @Test
+    fun `actualizar un gasto con monto invalido expone el error del caso de uso`() = runTest {
+        val viewModel = crearViewModel()
+        val gasto = Gasto(
+            id = "g1",
+            planId = "p1",
+            categoriaId = "cat-gasto",
+            monto = Monto(1500),
+            fecha = LocalDate.of(2026, 8, 22),
+            creadoPor = "user-1",
+        )
+
+        viewModel.actualizar(gasto.copy(monto = Monto(0)))
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.estadoForm.value.error)
+        assertFalse(viewModel.estadoForm.value.guardado)
+        assertTrue(movimientoRepo.gastosActualizados.isEmpty())
+    }
+
+    @Test
+    fun `eliminar un gasto marca guardado y sella deletedAt y editedBy`() = runTest {
+        val viewModel = crearViewModel()
+        val gasto = Gasto(
+            id = "g1",
+            planId = "p1",
+            categoriaId = "cat-gasto",
+            monto = Monto(1500),
+            fecha = LocalDate.of(2026, 8, 22),
+            creadoPor = "user-1",
+        )
+
+        viewModel.eliminar(gasto)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.estadoForm.value.guardado)
+        assertNull(viewModel.estadoForm.value.error)
+        assertEquals(1, movimientoRepo.gastosEliminados.size)
+        assertNotNull(movimientoRepo.gastosEliminados.single().deletedAt)
+        assertEquals("user-1", movimientoRepo.gastosEliminados.single().editedBy)
+    }
+
+    @Test
+    fun `eliminar un ingreso marca guardado y sella deletedAt`() = runTest {
+        val viewModel = crearViewModel()
+        val ingreso = Ingreso(
+            id = "i1",
+            planId = "p1",
+            categoriaId = "cat-ingreso",
+            monto = Monto(200000),
+            fecha = LocalDate.of(2026, 8, 22),
+            creadoPor = "user-1",
+        )
+
+        viewModel.eliminar(ingreso)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.estadoForm.value.guardado)
+        assertEquals(1, movimientoRepo.ingresosEliminados.size)
+        assertNotNull(movimientoRepo.ingresosEliminados.single().deletedAt)
+    }
+
+    @Test
     fun `consumirError limpia el error y consumirGuardado limpia el flag`() = runTest {
         val viewModel = crearViewModel()
         viewModel.guardar(
@@ -206,6 +318,10 @@ class MovimientosViewModelTest {
 private class FakeMovimientoRepository : MovimientoRepository {
     val gastosCreados = mutableListOf<Gasto>()
     val ingresosCreados = mutableListOf<Ingreso>()
+    val gastosActualizados = mutableListOf<Gasto>()
+    val gastosEliminados = mutableListOf<Gasto>()
+    val ingresosActualizados = mutableListOf<Ingreso>()
+    val ingresosEliminados = mutableListOf<Ingreso>()
 
     override suspend fun addGasto(gasto: Gasto) {
         gastosCreados.add(gasto)
@@ -215,10 +331,21 @@ private class FakeMovimientoRepository : MovimientoRepository {
         ingresosCreados.add(ingreso)
     }
 
-    override suspend fun actualizarGasto(gasto: Gasto) = Unit
-    override suspend fun eliminarGasto(gasto: Gasto) = Unit
-    override suspend fun actualizarIngreso(ingreso: Ingreso) = Unit
-    override suspend fun eliminarIngreso(ingreso: Ingreso) = Unit
+    override suspend fun actualizarGasto(gasto: Gasto) {
+        gastosActualizados.add(gasto)
+    }
+
+    override suspend fun eliminarGasto(gasto: Gasto) {
+        gastosEliminados.add(gasto)
+    }
+
+    override suspend fun actualizarIngreso(ingreso: Ingreso) {
+        ingresosActualizados.add(ingreso)
+    }
+
+    override suspend fun eliminarIngreso(ingreso: Ingreso) {
+        ingresosEliminados.add(ingreso)
+    }
 
     override fun observeGastos(planId: String): Flow<List<Gasto>> =
         flowOf(gastosCreados.filter { it.planId == planId })
