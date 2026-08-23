@@ -10,8 +10,12 @@ import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.Movimiento
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.sync.ConflictoEdicion
+import com.agoitdev.spenvo.domain.sync.ConflictosPendientes
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
+import com.agoitdev.spenvo.domain.usecase.AplicarGastoRemotoUseCase
+import com.agoitdev.spenvo.domain.usecase.AplicarIngresoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoRequest
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoRequest
@@ -50,14 +54,25 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
     private val eliminarGasto: EliminarGastoUseCase,
     private val actualizarIngreso: ActualizarIngresoUseCase,
     private val eliminarIngreso: EliminarIngresoUseCase,
+    private val aplicarGastoRemoto: AplicarGastoRemotoUseCase,
+    private val aplicarIngresoRemoto: AplicarIngresoRemotoUseCase,
     private val sincronizador: MovimientoSincronizacion,
     private val authRepository: AuthRepository,
+    private val conflictosPendientes: ConflictosPendientes,
 ) : ViewModel() {
 
     private val planIdActivo = MutableStateFlow<String?>(null)
 
     private val _estadoForm = MutableStateFlow(MovimientoFormEstado())
     val estadoForm: StateFlow<MovimientoFormEstado> = _estadoForm.asStateFlow()
+
+    /** Row-level conflict badges (Slice 5b): keyed `"$coleccion:$id"`, see [ConflictosPendientes]. */
+    val conflictos: StateFlow<Map<String, ConflictoEdicion>> = conflictosPendientes.conflictos
+
+    private val _conflictoVisible = MutableStateFlow<ConflictoEdicion?>(null)
+
+    /** Non-null only after [abrirConflictoSiExiste] — the modal is deferred until the user reopens the record. */
+    val conflictoVisible: StateFlow<ConflictoEdicion?> = _conflictoVisible.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -118,7 +133,7 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
         }
     }
 
-    fun actualizar(movimiento: Movimiento) {
+    fun actualizar(movimiento: Movimiento, alTerminar: () -> Unit = {}) {
         _estadoForm.update { it.copy(guardando = true, error = null) }
         viewModelScope.launch {
             val editorId = authRepository.observeSesion().first().uid.orEmpty()
@@ -128,7 +143,10 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
                     is Ingreso -> actualizarIngreso(movimiento, editorId)
                 }
             }
-                .onSuccess { _estadoForm.value = MovimientoFormEstado(guardado = true) }
+                .onSuccess {
+                    _estadoForm.value = MovimientoFormEstado(guardado = true)
+                    alTerminar()
+                }
                 .onFailure { e -> _estadoForm.value = MovimientoFormEstado(error = e.message) }
         }
     }
@@ -148,12 +166,37 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
         }
     }
 
-    fun consumirError() {
-        _estadoForm.update { it.copy(error = null) }
+    /** Opens the conflict dialog for [movimiento] if one is pending, or closes it when null. Never an interrupt. */
+    fun mostrarConflicto(movimiento: Movimiento?) {
+        _conflictoVisible.value = movimiento?.let { conflictosPendientes.conflictoPorRegistro(it.id) }
     }
 
-    fun consumirGuardado() {
-        _estadoForm.update { it.copy(guardado = false) }
+    /**
+     * Resolves the conflict for [movimiento]. `usarLocal` re-issues it as a fresh edit ("usar la mía" /
+     * "restaurar mi edición"); otherwise the remote version wins verbatim ("usar la suya" / "mantener borrado").
+     */
+    fun resolverConflicto(movimiento: Movimiento, usarLocal: Boolean) {
+        if (usarLocal) {
+            actualizar(movimiento) {
+                conflictosPendientes.resolverPorRegistro(movimiento.id)
+                _conflictoVisible.value = null
+            }
+        } else {
+            viewModelScope.launch {
+                when (movimiento) {
+                    is Gasto -> aplicarGastoRemoto(movimiento.id)
+                    is Ingreso -> aplicarIngresoRemoto(movimiento.id)
+                }
+                conflictosPendientes.resolverPorRegistro(movimiento.id)
+                _conflictoVisible.value = null
+            }
+        }
+    }
+
+    /** Clears one-shot form flags after they've been consumed (snackbar shown, navigation triggered). */
+    fun consumir(error: Boolean = false, guardado: Boolean = false) {
+        if (error) _estadoForm.update { it.copy(error = null) }
+        if (guardado) _estadoForm.update { it.copy(guardado = false) }
     }
 
     private companion object {

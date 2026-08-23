@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added (M5 — Conflict resolution UI, Slice 5b)
+
+- Row-level conflict badge (`MovimientoItem`) for any Gasto/Ingreso currently
+  held back by `ConflictosPendientes` (Slice 4); tapping that row opens a
+  blocking resolution dialog instead of the normal edit sheet, never an
+  app-wide interrupt.
+- Generic `ConflictoDialog` (`:core:designsystem`, new `conflict` package):
+  entity-agnostic, two-column local/remote comparison with differing fields
+  emphasised and a "borrado" indicator, taking pre-resolved strings only (no
+  `:core:domain` or `res/` dependency — design Decision 5).
+  `feature/movimientos`'s `ConflictoMovimientoHost.kt` maps the domain
+  `ConflictoEdicion`/`SnapshotConflicto` to the dialog's UI model and resolves
+  the new `R.string.conflict_field_*`/`conflict_action_*` strings.
+- `MovimientosViewModel` gains `conflictos`, `conflictoVisible`,
+  `abrirConflictoSiExiste`, `cerrarConflicto`, `resolverConflictoUsarLocal`
+  (re-issues the local edit, used for both "usar la mía" and "restaurar mi
+  edición") and `resolverConflictoUsarRemoto` (persists the Firestore document
+  straight to Room via the new `MovimientoRepository.aplicarGastoRemoto`/
+  `aplicarIngresoRemoto`, bypassing the edit-attribution use case since the
+  remote write is already correctly attributed).
+- New test infrastructure: `:core:designsystem` gained its first Compose UI
+  test setup (Robolectric + `ui-test-junit4`, `testOptions.unitTests
+  .isIncludeAndroidResources`), the project's first JVM-runnable Compose
+  rendering tests.
+
 ## [0.5.0] - 2026-08-22
 
 ### Added (M4 — Categories)

@@ -46,6 +46,16 @@ class ConflictosPendientes {
     }
 
     fun conflictoPara(clave: String): ConflictoEdicion? = conflictos.value[clave]
+
+    /** Looks up a conflict by the entity's own id rather than the `"$coleccion:$id"` key (Slice 5b UI). */
+    fun conflictoPorRegistro(registroId: String): ConflictoEdicion? =
+        conflictos.value.values.firstOrNull { it.registroId == registroId }
+
+    /** Resolves whichever conflict is registered for [registroId], if any (Slice 5b UI). */
+    fun resolverPorRegistro(registroId: String) {
+        val clave = conflictos.value.entries.firstOrNull { it.value.registroId == registroId }?.key
+        if (clave != null) resolver(clave)
+    }
 }
 
 fun Movimiento.aSnapshotConflicto(): SnapshotConflicto = SnapshotConflicto(

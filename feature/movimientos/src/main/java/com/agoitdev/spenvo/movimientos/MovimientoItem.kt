@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,6 +48,7 @@ internal fun MovimientoItem(
     movimiento: Movimiento,
     categoria: Categoria?,
     onClick: () -> Unit = {},
+    tieneConflicto: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val esIngreso = movimiento is Ingreso
@@ -84,6 +87,13 @@ internal fun MovimientoItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (tieneConflicto) {
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = stringResource(R.string.conflict_badge_description),
+                    tint = MaterialTheme.colorScheme.error,
                 )
             }
             Spacer(Modifier.width(8.dp))

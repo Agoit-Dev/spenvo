@@ -6,6 +6,8 @@ import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizador
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
+import com.agoitdev.spenvo.domain.usecase.AplicarGastoRemotoUseCase
+import com.agoitdev.spenvo.domain.usecase.AplicarIngresoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
@@ -81,4 +83,14 @@ object MovimientoUseCaseModule {
     fun provideEliminarIngreso(
         movimientoRepository: MovimientoRepository,
     ): EliminarIngresoUseCase = EliminarIngresoUseCase(movimientoRepository)
+
+    @Provides
+    fun provideAplicarGastoRemoto(
+        movimientoRepository: MovimientoRepository,
+    ): AplicarGastoRemotoUseCase = AplicarGastoRemotoUseCase(movimientoRepository)
+
+    @Provides
+    fun provideAplicarIngresoRemoto(
+        movimientoRepository: MovimientoRepository,
+    ): AplicarIngresoRemotoUseCase = AplicarIngresoRemotoUseCase(movimientoRepository)
 }
