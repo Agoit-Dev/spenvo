@@ -21,12 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ConflictoEdicion`/`SnapshotConflicto` to the dialog's UI model and resolves
   the new `R.string.conflict_field_*`/`conflict_action_*` strings.
 - `MovimientosViewModel` gains `conflictos`, `conflictoVisible`,
-  `abrirConflictoSiExiste`, `cerrarConflicto`, `resolverConflictoUsarLocal`
-  (re-issues the local edit, used for both "usar la mía" and "restaurar mi
-  edición") and `resolverConflictoUsarRemoto` (persists the Firestore document
-  straight to Room via the new `MovimientoRepository.aplicarGastoRemoto`/
-  `aplicarIngresoRemoto`, bypassing the edit-attribution use case since the
-  remote write is already correctly attributed).
+  `mostrarConflicto(movimiento?)` (opens the dialog for a pending conflict, or
+  closes it when `null`) and `resolverConflicto(movimiento, usarLocal)`: when
+  `usarLocal` it re-issues the local edit ("usar la mía" / "restaurar mi
+  edición"); otherwise it persists the Firestore document straight to Room via
+  the new `MovimientoRepository.aplicarGastoRemoto`/`aplicarIngresoRemoto`
+  ("usar la suya" / "mantener borrado"), bypassing the edit-attribution use
+  case since the remote write is already correctly attributed.
 - New test infrastructure: `:core:designsystem` gained its first Compose UI
   test setup (Robolectric + `ui-test-junit4`, `testOptions.unitTests
   .isIncludeAndroidResources`), the project's first JVM-runnable Compose
