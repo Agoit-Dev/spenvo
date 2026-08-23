@@ -18,6 +18,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 
+interface PlanSincronizacion {
+    fun sincronizar(usuarioId: String): Flow<Unit>
+}
+
 /**
  * Syncs the user's plans and accesses from Firestore into Room while it is
  * collected. Listens on the user's accesses and attaches a snapshot listener
@@ -33,9 +37,9 @@ class PlanSincronizador @Inject constructor(
     private val accesoDao: AccesoPlanDao,
     private val edicionesPendientes: EdicionesPendientes,
     private val conflictosPendientes: ConflictosPendientes,
-) {
+) : PlanSincronizacion {
 
-    fun sincronizar(usuarioId: String): Flow<Unit> = callbackFlow {
+    override fun sincronizar(usuarioId: String): Flow<Unit> = callbackFlow {
         val planListeners = mutableMapOf<String, ListenerRegistration>()
         val accesoListener = firestore.collection(ACCESO_COLLECTION)
             .whereEqualTo("usuarioId", usuarioId)

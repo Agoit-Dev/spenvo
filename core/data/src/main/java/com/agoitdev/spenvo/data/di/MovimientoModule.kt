@@ -13,6 +13,7 @@ import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
+import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
 import dagger.Binds
 import dagger.Module
@@ -93,4 +94,14 @@ object MovimientoUseCaseModule {
     fun provideAplicarIngresoRemoto(
         movimientoRepository: MovimientoRepository,
     ): AplicarIngresoRemotoUseCase = AplicarIngresoRemotoUseCase(movimientoRepository)
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object MovimientoResumenUseCaseModule {
+
+    @Provides
+    fun provideObservarResumenMensualPlan(
+        movimientoRepository: MovimientoRepository,
+    ): ObservarResumenMensualPlanUseCase = ObservarResumenMensualPlanUseCase(movimientoRepository)
 }

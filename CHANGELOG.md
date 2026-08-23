@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added branded adaptive and legacy launcher icons and an AndroidX SplashScreen-compatible launch screen.
+- M6 Slice A (Home dashboard summary): each plan card on `PlanesScreen` now shows
+  a reactive current-month net balance (income minus expenses), computed by the
+  new `ObservarResumenMensualPlanUseCase` (`:core:domain`) and combined per-plan
+  in `PlanesViewModel.resumenesPorPlan`. Replaces the dead, unwired
+  `ListarMovimientosPorMesUseCase` (deleted along with its test). `:feature:planes`
+  gained its first unit/Compose test setup (JUnit, coroutines-test, Robolectric,
+  `ui-test-junit4`). Extracted a `PlanSincronizacion` interface for
+  `PlanSincronizador` (mirroring the existing `MovimientoSincronizacion`/
+  `CategoriaSincronizacion` pattern) so `PlanesViewModel` is unit-testable
+  without a real `FirebaseFirestore` instance — a small, behavior-preserving
+  addition beyond the original slice design, needed to write the required
+  `PlanesViewModelTest`.
 
 ## [0.6.0] - 2026-08-23
 

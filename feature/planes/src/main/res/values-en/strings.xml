@@ -11,6 +11,7 @@
     <string name="plans_invitation_accept">Accept</string>
     <string name="plans_invitation_plan">Plan</string>
     <string name="plans_invitation_role">Role</string>
+    <string name="plans_balance_mensual">This month\'s balance: %1$s</string>
     <string name="account_menu_description">Account</string>
     <string name="account_guest_state">Guest</string>
     <string name="account_create">Create account</string>
