@@ -102,6 +102,7 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 | Navigation 3 (not Nav2) | state-driven, native List-Detail with Adaptive | plan v3 |
 | App Check in M2 | only legitimate clients against the backend | plan v3 |
 | Guest-first anonymous auth | app opens directly; account created on demand (M3 links it) | plan v3 (user decision) |
+| AndroidX Core SplashScreen, no artificial delay | native cold-start branding without blocking the first frame; `installSplashScreen()` runs before `super.onCreate()` in `MainActivity`, `Theme.Spenvo.Starting` hands off to `Theme.Spenvo` the moment content draws — no timers, no extra Compose screen | PR #23 |
 | Email/password links the anonymous UID | `linkWithCredential` preserves local data, no merge | M3 |
 | Account + plans in separate features | `:feature:cuenta` + `:feature:planes`; movimientos stays plan-scoped | M3 (user decision) |
 | Auth/session repo in `:core:data` | keeps a single data layer for remote sources | M2 |
