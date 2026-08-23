@@ -5,33 +5,43 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-08-23
 
-### Added (M5 — Conflict resolution UI, Slice 5b)
+### Added (M5 — Movimientos completo: edit/delete, attribution, conflict resolution)
 
-- Row-level conflict badge (`MovimientoItem`) for any Gasto/Ingreso currently
-  held back by `ConflictosPendientes` (Slice 4); tapping that row opens a
-  blocking resolution dialog instead of the normal edit sheet, never an
-  app-wide interrupt.
-- Generic `ConflictoDialog` (`:core:designsystem`, new `conflict` package):
-  entity-agnostic, two-column local/remote comparison with differing fields
-  emphasised and a "borrado" indicator, taking pre-resolved strings only (no
-  `:core:domain` or `res/` dependency — design Decision 5).
-  `feature/movimientos`'s `ConflictoMovimientoHost.kt` maps the domain
-  `ConflictoEdicion`/`SnapshotConflicto` to the dialog's UI model and resolves
-  the new `R.string.conflict_field_*`/`conflict_action_*` strings.
-- `MovimientosViewModel` gains `conflictos`, `conflictoVisible`,
-  `mostrarConflicto(movimiento?)` (opens the dialog for a pending conflict, or
-  closes it when `null`) and `resolverConflicto(movimiento, usarLocal)`: when
-  `usarLocal` it re-issues the local edit ("usar la mía" / "restaurar mi
-  edición"); otherwise it persists the Firestore document straight to Room via
-  the new `MovimientoRepository.aplicarGastoRemoto`/`aplicarIngresoRemoto`
-  ("usar la suya" / "mantener borrado"), bypassing the edit-attribution use
-  case since the remote write is already correctly attributed.
-- New test infrastructure: `:core:designsystem` gained its first Compose UI
-  test setup (Robolectric + `ui-test-junit4`, `testOptions.unitTests
-  .isIncludeAndroidResources`), the project's first JVM-runnable Compose
-  rendering tests.
+- Gasto/Ingreso update and soft-delete: `Actualizar/Eliminar{Gasto,Ingreso}UseCase`,
+  new `MovimientoRepository` update/delete methods, `FirebaseMovimientoRepository`
+  get-before-upsert rollback on permanent Firestore failure (mirrors categories).
+  Bugfix: `GastoDao`/`IngresoDao`'s `observeByPlan`/`observeByPlanAndRange` now
+  exclude soft-deleted rows (`deletedAt IS NULL`), previously unfiltered.
+- `editedBy`/`editedAt` attribution stamped client-side (`Instant.now()`) on
+  every Gasto/Ingreso/Categoria/PlanFinanciero mutation, enforced server-side
+  by updated `firestore.rules` across all four entity families: a spoofed
+  `editedBy`, a mutated ownership/creation field, or any direct Firestore
+  `delete` are all denied. `rules-tests/rules.test.mjs` grew from 14 to 32
+  emulator tests covering the full allow/deny matrix.
+- Conflict detection: in-memory `EdicionesPendientes`/`ConflictosPendientes`
+  registries (`:core:domain/sync`) track unconfirmed local edits and flag a
+  genuine concurrent-edit conflict — an incoming snapshot with a newer
+  `editedAt` from a different editor while a local edit is still pending,
+  including delete-vs-edit — without special-casing delete. Wired into all
+  three sincronizadores (Movimiento/Categoria/Plan). Accepted debt (documented
+  in `doc/architecture.md`): the registries are in-memory/process-lifetime
+  only, not a persisted outbox; a process death between an optimistic write
+  and its Firestore echo loses the pending marker and the remote version
+  silently wins on the next sync.
+- Conflict resolution UI: a row-level badge on conflicted Gasto/Ingreso
+  entries; tapping one opens a blocking `ConflictoDialog` (`:core:designsystem`,
+  new `conflict` package, entity-agnostic with no `:core:domain`/`res/`
+  dependency) showing both versions side by side, differing fields
+  emphasised. Resolution: "usar la mía"/"restaurar mi edición" re-issues the
+  local edit; "usar la suya"/"mantener borrado" persists the remote document
+  straight into Room via the new `Aplicar{Gasto,Ingreso}RemotoUseCase`,
+  bypassing the edit-attribution use case since that write is already
+  correctly attributed. `:core:designsystem` gained its first Compose UI test
+  setup (Robolectric + `ui-test-junit4`).
+- Edit/delete entry points in `:feature:movimientos` (tap a row to edit, a
+  confirm-delete dialog), mirroring `:feature:categorias`' existing pattern.
 
 ## [0.5.0] - 2026-08-22
 
