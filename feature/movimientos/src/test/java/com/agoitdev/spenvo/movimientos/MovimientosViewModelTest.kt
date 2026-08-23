@@ -215,6 +215,11 @@ private class FakeMovimientoRepository : MovimientoRepository {
         ingresosCreados.add(ingreso)
     }
 
+    override suspend fun actualizarGasto(gasto: Gasto) = Unit
+    override suspend fun eliminarGasto(gasto: Gasto) = Unit
+    override suspend fun actualizarIngreso(ingreso: Ingreso) = Unit
+    override suspend fun eliminarIngreso(ingreso: Ingreso) = Unit
+
     override fun observeGastos(planId: String): Flow<List<Gasto>> =
         flowOf(gastosCreados.filter { it.planId == planId })
 

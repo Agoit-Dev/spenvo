@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class MovimientosViewModel @Inject constructor(
+class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
     private val observarMovimientos: ObservarMovimientosUseCase,
     private val observarCategoriasPorTipo: ObservarCategoriasPorTipoUseCase,
     private val observarCategorias: ObservarCategoriasUseCase,

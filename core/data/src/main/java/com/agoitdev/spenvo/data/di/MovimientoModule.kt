@@ -4,8 +4,12 @@ import com.agoitdev.spenvo.data.remote.repository.FirebaseMovimientoRepository
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizacion
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizador
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
+import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
+import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
+import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
+import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
 import dagger.Binds
@@ -55,4 +59,26 @@ object MovimientoUseCaseModule {
     fun provideObservarMovimientos(
         movimientoRepository: MovimientoRepository,
     ): ObservarMovimientosUseCase = ObservarMovimientosUseCase(movimientoRepository)
+
+    @Provides
+    fun provideActualizarGasto(
+        movimientoRepository: MovimientoRepository,
+        validarMonto: ValidarMontoUseCase,
+    ): ActualizarGastoUseCase = ActualizarGastoUseCase(movimientoRepository, validarMonto)
+
+    @Provides
+    fun provideEliminarGasto(
+        movimientoRepository: MovimientoRepository,
+    ): EliminarGastoUseCase = EliminarGastoUseCase(movimientoRepository)
+
+    @Provides
+    fun provideActualizarIngreso(
+        movimientoRepository: MovimientoRepository,
+        validarMonto: ValidarMontoUseCase,
+    ): ActualizarIngresoUseCase = ActualizarIngresoUseCase(movimientoRepository, validarMonto)
+
+    @Provides
+    fun provideEliminarIngreso(
+        movimientoRepository: MovimientoRepository,
+    ): EliminarIngresoUseCase = EliminarIngresoUseCase(movimientoRepository)
 }

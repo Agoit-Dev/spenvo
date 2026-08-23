@@ -15,11 +15,17 @@ interface GastoDao {
     @Upsert
     suspend fun upsertAll(gastos: List<GastoEntity>)
 
-    @Query("SELECT * FROM gastos WHERE planId = :planId")
+    @Query("SELECT * FROM gastos WHERE planId = :planId AND deletedAt IS NULL")
     fun observeByPlan(planId: String): Flow<List<GastoEntity>>
 
-    @Query("SELECT * FROM gastos WHERE planId = :planId AND fecha >= :desde AND fecha <= :hasta")
+    @Query(
+        "SELECT * FROM gastos WHERE planId = :planId AND fecha >= :desde AND fecha <= :hasta " +
+            "AND deletedAt IS NULL",
+    )
     fun observeByPlanAndRange(planId: String, desde: LocalDate, hasta: LocalDate): Flow<List<GastoEntity>>
+
+    @Query("SELECT * FROM gastos WHERE id = :id")
+    suspend fun get(id: String): GastoEntity?
 
     @Query("DELETE FROM gastos WHERE id = :id")
     suspend fun delete(id: String)

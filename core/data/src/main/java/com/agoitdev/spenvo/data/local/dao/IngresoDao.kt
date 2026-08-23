@@ -15,11 +15,17 @@ interface IngresoDao {
     @Upsert
     suspend fun upsertAll(ingresos: List<IngresoEntity>)
 
-    @Query("SELECT * FROM ingresos WHERE planId = :planId")
+    @Query("SELECT * FROM ingresos WHERE planId = :planId AND deletedAt IS NULL")
     fun observeByPlan(planId: String): Flow<List<IngresoEntity>>
 
-    @Query("SELECT * FROM ingresos WHERE planId = :planId AND fecha >= :desde AND fecha <= :hasta")
+    @Query(
+        "SELECT * FROM ingresos WHERE planId = :planId AND fecha >= :desde AND fecha <= :hasta " +
+            "AND deletedAt IS NULL",
+    )
     fun observeByPlanAndRange(planId: String, desde: LocalDate, hasta: LocalDate): Flow<List<IngresoEntity>>
+
+    @Query("SELECT * FROM ingresos WHERE id = :id")
+    suspend fun get(id: String): IngresoEntity?
 
     @Query("DELETE FROM ingresos WHERE id = :id")
     suspend fun delete(id: String)
