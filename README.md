@@ -45,7 +45,7 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 ```bash
 cd rules-tests
 npm install                       # install firebase-tools + rules-unit-testing
-npm test                          # run the rules matrix against the Emulator (14 tests)
+npm test                          # run the rules matrix against the Emulator (32 tests)
 ```
 
 The emulator uses `projectId: spenvo-dev` and listens on port 8081 (`firebase.json`).
@@ -64,9 +64,10 @@ Node 20+ (only for the `rules-tests/` subproject).
 
 ## Status
 
-Milestone **M4 (Categories)** complete: category domain and Firestore data
-layer, optimistic Room-first writes with rollback (categories and plans),
-idempotent default category seeding, live per-plan/category sync, and the
-`:feature:categorias` UI (list, create/edit, delete) reachable from
-`MovimientosScreen`. Pending from M3: manual verification of the Auth
-sign-in providers and App Check in the Firebase console. See `CHANGELOG.md`.
+Milestone **M5 (Movimientos completo)** closed: Gasto/Ingreso edit and
+soft-delete, `editedBy`/`editedAt` attribution enforced by Firestore rules
+across all four entity families (categories, plans, expenses, income), honest
+last-write-wins conflict detection with a blocking side-by-side resolution
+dialog, and the `:feature:movimientos` edit/delete UI. Pending from M3:
+manual verification of the Auth sign-in providers and App Check in the
+Firebase console. See `CHANGELOG.md`.
