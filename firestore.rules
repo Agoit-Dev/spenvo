@@ -1,8 +1,8 @@
 rules_version = '2';
 
-// VERSIÓN FINAL M3 — deny-by-default con roles server-side.
+// VERSIÓN FINAL M3+M5 — deny-by-default con roles server-side.
 // Desplegar solo tras pasar firestore-rules-audit + tests con Emulator.
-// editedBy/editedAt se implementan en M5 (conflictos LWW), no aquí.
+// M5: editedBy/editedAt quedan atribuidos y verificados server-side (LWW).
 //
 // NOTA (emulador v1.22): el get() con path concatenado (uid_planId) debe ir
 // DIRECTO en cada allow, pasando el Resource obtenido a la función (que no
@@ -27,6 +27,39 @@ function tieneRolMinimo(accesoDoc, minLevel) {
   return accesoDoc != null && roleLevel(accesoDoc.data.rol) >= minLevel;
 }
 
+// M5 — atribución de edición (LWW). editedAt es de reloj cliente, no
+// FieldValue.serverTimestamp() (ver diseño sdd/m5-movimientos-completo):
+// serverTimestamp resuelve a null en cache offline hasta el ack del server,
+// rompiendo la escritura optimista y el predicado de conflicto. Solo se
+// exige que sea un timestamp válido, no que coincida con request.time.
+// Válida para categorias/gastos/ingresos: comparten id + planId inmutables.
+function edicionAtribuida(prev, next) {
+  return next.editedBy == request.auth.uid
+      && next.editedAt is timestamp
+      && next.id == prev.id
+      && next.planId == prev.planId;
+}
+
+// planes_financieros no tiene planId propio (es el propio id del doc); en
+// cambio createdBy/createdAt son de creación y deben permanecer inmutables.
+function planEditado(prev, next) {
+  return next.editedBy == request.auth.uid
+      && next.editedAt is timestamp
+      && next.id == prev.id
+      && next.createdBy == prev.createdBy
+      && next.createdAt == prev.createdAt;
+}
+
+// El campo editedBy es opcional en creación (null en la creación inicial vía
+// Kotlin, o directamente ausente para clientes que no lo envían todavía).
+// Se usa 'in' para comprobar existencia: acceder a una clave ausente de un
+// Map en reglas de Firestore genera un error de evaluación, no null.
+function editedByValidoEnCreacion() {
+  return !('editedBy' in request.resource.data)
+      || request.resource.data.editedBy == null
+      || request.resource.data.editedBy == request.auth.uid;
+}
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -48,12 +81,13 @@ service cloud.firestore {
       );
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.id == planId;
-      // editor(1)+ actualiza. editedBy/editedAt en M5.
+        && request.resource.data.id == planId
+        && editedByValidoEnCreacion();
+      // editor(1)+ actualiza, atribuido a quien edita (M5).
       allow update: if isSignedIn() && tieneRolMinimo(
         get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + planId)),
         1
-      );
+      ) && planEditado(resource.data, request.resource.data);
       allow delete: if false; // soft-delete via update
     }
 
@@ -94,11 +128,11 @@ service cloud.firestore {
       allow create: if tieneRolMinimo(
         get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
         1
-      );
+      ) && editedByValidoEnCreacion();
       allow update: if tieneRolMinimo(
         get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
         1
-      );
+      ) && edicionAtribuida(resource.data, request.resource.data);
       allow delete: if false; // soft-delete via update
     }
 
@@ -111,11 +145,13 @@ service cloud.firestore {
       allow create: if tieneRolMinimo(
         get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
         1
-      );
+      ) && editedByValidoEnCreacion();
       allow update: if tieneRolMinimo(
         get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
         1
-      );
+      ) && edicionAtribuida(resource.data, request.resource.data)
+        && request.resource.data.creadoPor == resource.data.creadoPor
+        && request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if false; // soft-delete via update
     }
 
@@ -127,11 +163,13 @@ service cloud.firestore {
       allow create: if tieneRolMinimo(
         get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
         1
-      );
+      ) && editedByValidoEnCreacion();
       allow update: if tieneRolMinimo(
         get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + resource.data.planId)),
         1
-      );
+      ) && edicionAtribuida(resource.data, request.resource.data)
+        && request.resource.data.creadoPor == resource.data.creadoPor
+        && request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if false; // soft-delete via update
     }
   }

@@ -38,7 +38,9 @@ const UID_VIEWER = 'viewer-1';
 const UID_OUTSIDER = 'outsider-1';
 const PLAN_ID = 'plan-1';
 
-const planData = { id: PLAN_ID, nombre: 'Casa', moneda: 'ARS', createdBy: UID_OWNER };
+const planData = {
+  id: PLAN_ID, nombre: 'Casa', moneda: 'ARS', createdBy: UID_OWNER, createdAt: new Date('2024-01-01'),
+};
 
 // Setup: crea el plan y los accesos de cada rol (ACEPTADA) para tests de plan.
 async function setupPlanConMiembros() {
@@ -88,13 +90,50 @@ test('miembro viewer puede leer plan, outsider no', async () => {
   await assertFails(getDoc(doc(outsider.firestore(), 'planes_financieros', PLAN_ID)));
 });
 
-test('editor actualiza plan, viewer no', async () => {
+test('editor actualiza plan con editedBy propio, viewer no', async () => {
   await limpiarDatos();
   await setupPlanConMiembros();
   const editor = authed(UID_EDITOR);
-  await assertSucceeds(updateDoc(doc(editor.firestore(), 'planes_financieros', PLAN_ID), { nombre: 'Casa2' }));
+  await assertSucceeds(updateDoc(doc(editor.firestore(), 'planes_financieros', PLAN_ID), {
+    nombre: 'Casa2', editedBy: UID_EDITOR, editedAt: new Date(),
+  }));
   const viewer = authed(UID_VIEWER);
-  await assertFails(updateDoc(doc(viewer.firestore(), 'planes_financieros', PLAN_ID), { nombre: 'Casa3' }));
+  await assertFails(updateDoc(doc(viewer.firestore(), 'planes_financieros', PLAN_ID), {
+    nombre: 'Casa3', editedBy: UID_VIEWER, editedAt: new Date(),
+  }));
+});
+
+test('actualizar plan con editedBy ajeno es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'planes_financieros', PLAN_ID), {
+    nombre: 'Casa2', editedBy: UID_ADMIN, editedAt: new Date(),
+  }));
+});
+
+test('actualizar plan sin editedAt timestamp es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'planes_financieros', PLAN_ID), {
+    nombre: 'Casa2', editedBy: UID_EDITOR, editedAt: 'no-es-timestamp',
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'planes_financieros', PLAN_ID), {
+    nombre: 'Casa2', editedBy: UID_EDITOR,
+  }));
+});
+
+test('actualizar plan cambiando createdBy o createdAt es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'planes_financieros', PLAN_ID), {
+    editedBy: UID_EDITOR, editedAt: new Date(), createdBy: UID_ADMIN,
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'planes_financieros', PLAN_ID), {
+    editedBy: UID_EDITOR, editedAt: new Date(), createdAt: new Date('2099-01-01'),
+  }));
 });
 
 test('nadie puede borrar un plan', async () => {
@@ -179,6 +218,64 @@ test('miembro lee categoria, outsider no', async () => {
   await assertFails(getDoc(doc(outsider.firestore(), 'categorias', 'cat-1')));
 });
 
+async function crearCategoriaBase() {
+  const editor = authed(UID_EDITOR);
+  await setDoc(doc(editor.firestore(), 'categorias', 'cat-1'), {
+    id: 'cat-1', planId: PLAN_ID, nombre: 'Comida', tipo: 'gasto',
+  });
+}
+
+test('editor actualiza categoria con editedBy propio', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearCategoriaBase();
+  const editor = authed(UID_EDITOR);
+  await assertSucceeds(updateDoc(doc(editor.firestore(), 'categorias', 'cat-1'), {
+    nombre: 'Comida y bebida', editedBy: UID_EDITOR, editedAt: new Date(),
+  }));
+});
+
+test('actualizar categoria con editedBy ajeno es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearCategoriaBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'categorias', 'cat-1'), {
+    editedBy: UID_ADMIN, editedAt: new Date(),
+  }));
+});
+
+test('actualizar categoria sin editedAt timestamp es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearCategoriaBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'categorias', 'cat-1'), {
+    editedBy: UID_EDITOR, editedAt: 'no-es-timestamp',
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'categorias', 'cat-1'), {
+    editedBy: UID_EDITOR,
+  }));
+});
+
+test('actualizar categoria cambiando planId es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearCategoriaBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'categorias', 'cat-1'), {
+    editedBy: UID_EDITOR, editedAt: new Date(), planId: 'otro-plan',
+  }));
+});
+
+test('nadie puede borrar una categoria directamente', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearCategoriaBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(deleteDoc(doc(editor.firestore(), 'categorias', 'cat-1')));
+});
+
 // ---------------- gastos / ingresos ----------------
 test('editor crea gasto, viewer no', async () => {
   await limpiarDatos();
@@ -213,4 +310,134 @@ test('editor crea ingreso', async () => {
   await assertSucceeds(setDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
     id: 'ing-1', planId: PLAN_ID, categoriaId: 'cat-1', monto: 5000,
   }));
+});
+
+async function crearGastoBase() {
+  const editor = authed(UID_EDITOR);
+  await setDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    id: 'gasto-1', planId: PLAN_ID, categoriaId: 'cat-1', montoUnidadesMenores: 2500,
+    creadoPor: UID_EDITOR, createdAt: new Date('2024-01-01'),
+  });
+}
+
+async function crearIngresoBase() {
+  const editor = authed(UID_EDITOR);
+  await setDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    id: 'ing-1', planId: PLAN_ID, categoriaId: 'cat-1', montoUnidadesMenores: 5000,
+    creadoPor: UID_EDITOR, createdAt: new Date('2024-01-01'),
+  });
+}
+
+test('editor actualiza gasto con editedBy propio', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearGastoBase();
+  const editor = authed(UID_EDITOR);
+  await assertSucceeds(updateDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    montoUnidadesMenores: 3000, editedBy: UID_EDITOR, editedAt: new Date(),
+  }));
+});
+
+test('actualizar gasto con editedBy ajeno es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearGastoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    editedBy: UID_ADMIN, editedAt: new Date(),
+  }));
+});
+
+test('actualizar gasto sin editedAt timestamp es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearGastoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    editedBy: UID_EDITOR, editedAt: 'no-es-timestamp',
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    editedBy: UID_EDITOR,
+  }));
+});
+
+test('actualizar gasto cambiando creadoPor, createdAt o planId es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearGastoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    editedBy: UID_EDITOR, editedAt: new Date(), creadoPor: UID_ADMIN,
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    editedBy: UID_EDITOR, editedAt: new Date(), createdAt: new Date('2099-01-01'),
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'gastos', 'gasto-1'), {
+    editedBy: UID_EDITOR, editedAt: new Date(), planId: 'otro-plan',
+  }));
+});
+
+test('nadie puede borrar un gasto directamente', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearGastoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(deleteDoc(doc(editor.firestore(), 'gastos', 'gasto-1')));
+});
+
+test('editor actualiza ingreso con editedBy propio', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearIngresoBase();
+  const editor = authed(UID_EDITOR);
+  await assertSucceeds(updateDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    montoUnidadesMenores: 6000, editedBy: UID_EDITOR, editedAt: new Date(),
+  }));
+});
+
+test('actualizar ingreso con editedBy ajeno es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearIngresoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    editedBy: UID_ADMIN, editedAt: new Date(),
+  }));
+});
+
+test('actualizar ingreso sin editedAt timestamp es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearIngresoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    editedBy: UID_EDITOR, editedAt: 'no-es-timestamp',
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    editedBy: UID_EDITOR,
+  }));
+});
+
+test('actualizar ingreso cambiando creadoPor, createdAt o planId es denegado', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearIngresoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(updateDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    editedBy: UID_EDITOR, editedAt: new Date(), creadoPor: UID_ADMIN,
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    editedBy: UID_EDITOR, editedAt: new Date(), createdAt: new Date('2099-01-01'),
+  }));
+  await assertFails(updateDoc(doc(editor.firestore(), 'ingresos', 'ing-1'), {
+    editedBy: UID_EDITOR, editedAt: new Date(), planId: 'otro-plan',
+  }));
+});
+
+test('nadie puede borrar un ingreso directamente', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  await crearIngresoBase();
+  const editor = authed(UID_EDITOR);
+  await assertFails(deleteDoc(doc(editor.firestore(), 'ingresos', 'ing-1')));
 });
