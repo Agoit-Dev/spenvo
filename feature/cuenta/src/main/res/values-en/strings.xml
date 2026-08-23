@@ -6,4 +6,11 @@
     <string name="account_registration_email">Email</string>
     <string name="account_registration_password">Password</string>
     <string name="account_registration_create">Create account</string>
+    <string name="account_profile_title">My account</string>
+    <string name="account_profile_avatar_description">Profile photo</string>
+    <string name="account_profile_avatar_edit_description">Change profile photo</string>
+    <string name="account_profile_sin_nombre">No name</string>
+    <string name="account_profile_info_title">Account info</string>
+    <string name="account_profile_info_email">Email: %1$s</string>
+    <string name="account_profile_logout">Log out</string>
 </resources>
