@@ -22,6 +22,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without a real `FirebaseFirestore` instance — a small, behavior-preserving
   addition beyond the original slice design, needed to write the required
   `PlanesViewModelTest`.
+- M6 Slice B (Adaptive List-Detail in Movimientos): `MovimientosScreen` adopts
+  Adaptive List-Detail — the first real usage in this codebase. On expanded/wide
+  layouts (Material's Expanded width breakpoint, `maxHorizontalPartitions > 1`),
+  the transaction list stays the list pane and `MovimientoFormSheet` (edit/delete)
+  is promoted into an inline detail pane via `ListDetailPaneScaffold`
+  (`androidx.compose.material3.adaptive.layout`) instead of a full-screen bottom
+  sheet. Compact/medium layouts are byte-identical to before M6: the same
+  `MovimientosScaffold` + `MovimientoFormularioSheet` as a `ModalBottomSheet`.
+  `ConflictoMovimientoDialogHost` (M5 Slice 5b) stays a single top-level call,
+  layout-independent, per design Decision 4. `rememberListDetailSceneStrategy<NavKey>()`
+  is wired into `MainActivity`'s `NavDisplay` as forward-compatible, currently
+  inert plumbing for future cross-route panes (design Decision 3 — see
+  `doc/architecture.md`). `MovimientoFormSheet.kt` now exposes
+  `MovimientoFormEstadoYContenido` (the pure form state + content, no
+  `ModalBottomSheet` chrome) so both the compact sheet and the expanded pane
+  reuse the identical fields/logic. `:feature:movimientos` gained its first
+  Compose UI test setup (Robolectric + `ui-test-junit4`), asserting the compact
+  vs. expanded rendering split and that the conflict dialog fires identically in
+  both. This closes the M6 milestone (Slices A + B).
 
 ## [0.6.0] - 2026-08-23
 

@@ -15,9 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Gasto
-import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.Movimiento
 import com.agoitdev.spenvo.domain.model.TipoCategoria
@@ -78,6 +74,38 @@ internal fun MovimientoFormSheet(
     acciones: MovimientoFormAcciones,
     movimientoExistente: Movimiento? = null,
 ) {
+    ModalBottomSheet(
+        onDismissRequest = acciones.onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+    ) {
+        MovimientoFormEstadoYContenido(
+            planId = planId,
+            tipoInicial = tipoInicial,
+            cargando = cargando,
+            viewModel = viewModel,
+            acciones = acciones,
+            movimientoExistente = movimientoExistente,
+        )
+    }
+}
+
+/**
+ * The pure form state + content, without the [ModalBottomSheet] chrome (M6 Slice B, design Decision
+ * 3): reused as-is by [MovimientoFormSheet] (compact, wrapped in a bottom sheet) and directly by the
+ * expanded-layout detail pane (`MovimientoFormularioPanel`), so the fields/logic stay identical
+ * between both layouts and only the wrapping shell differs.
+ */
+@Suppress("LongParameterList")
+@Composable
+internal fun MovimientoFormEstadoYContenido(
+    planId: String,
+    tipoInicial: TipoCategoria,
+    cargando: Boolean,
+    viewModel: MovimientosViewModel,
+    acciones: MovimientoFormAcciones,
+    movimientoExistente: Movimiento? = null,
+) {
     var tipo by rememberSaveable { mutableStateOf(movimientoExistente?.let { tipoDeMovimiento(it) } ?: tipoInicial) }
     var categoriaId by rememberSaveable { mutableStateOf(movimientoExistente?.categoriaId.orEmpty()) }
     var montoTexto by rememberSaveable {
@@ -95,38 +123,32 @@ internal fun MovimientoFormSheet(
         }
     }
 
-    ModalBottomSheet(
-        onDismissRequest = acciones.onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
-    ) {
-        MovimientoFormContenido(
-            editando = movimientoExistente != null,
-            tipo = tipo,
-            onTipoChange = { tipo = it },
-            montoTexto = montoTexto,
-            onMontoChange = { montoTexto = it },
-            categoriasDisponibles = categoriasDisponibles,
-            categoriaId = categoriaId,
-            onCategoriaChange = { categoriaId = it },
-            descripcion = descripcion,
-            onDescripcionChange = { descripcion = it },
-            errorLocal = errorLocal,
-            cargando = cargando,
-            onGuardarClick = {
-                val entrada = MovimientoFormEntrada(
-                    planId = planId,
-                    tipo = tipo,
-                    categoriaId = categoriaId,
-                    montoTexto = montoTexto,
-                    descripcion = descripcion,
-                    fecha = movimientoExistente?.fecha ?: LocalDate.now(),
-                )
-                errorLocal = validarYGuardar(entrada, acciones.onGuardar)
-            },
-            onEliminar = acciones.onEliminar,
-        )
-    }
+    MovimientoFormContenido(
+        editando = movimientoExistente != null,
+        tipo = tipo,
+        onTipoChange = { tipo = it },
+        montoTexto = montoTexto,
+        onMontoChange = { montoTexto = it },
+        categoriasDisponibles = categoriasDisponibles,
+        categoriaId = categoriaId,
+        onCategoriaChange = { categoriaId = it },
+        descripcion = descripcion,
+        onDescripcionChange = { descripcion = it },
+        errorLocal = errorLocal,
+        cargando = cargando,
+        onGuardarClick = {
+            val entrada = MovimientoFormEntrada(
+                planId = planId,
+                tipo = tipo,
+                categoriaId = categoriaId,
+                montoTexto = montoTexto,
+                descripcion = descripcion,
+                fecha = movimientoExistente?.fecha ?: LocalDate.now(),
+            )
+            errorLocal = validarYGuardar(entrada, acciones.onGuardar)
+        },
+        onEliminar = acciones.onEliminar,
+    )
 }
 
 @Suppress("LongParameterList")
@@ -256,81 +278,3 @@ private fun SelectorCategoria(
     }
 }
 
-@Suppress("LongParameterList")
-@Composable
-internal fun MovimientoFormularioSheet(
-    planId: String,
-    tipoPorDefecto: TipoCategoria,
-    formulario: FormularioMovimiento,
-    viewModel: MovimientosViewModel,
-    cargando: Boolean,
-    onCerrar: () -> Unit,
-) {
-    if (formulario is FormularioMovimiento.Cerrado) return
-    val movimientoExistente = (formulario as? FormularioMovimiento.Editar)?.movimiento
-    var mostrarConfirmarEliminar by remember(formulario) { mutableStateOf(false) }
-
-    MovimientoFormSheet(
-        planId = planId,
-        tipoInicial = tipoPorDefecto,
-        cargando = cargando,
-        viewModel = viewModel,
-        movimientoExistente = movimientoExistente,
-        acciones = MovimientoFormAcciones(
-            onGuardar = { datos ->
-                if (movimientoExistente == null) {
-                    viewModel.guardar(datos)
-                } else {
-                    viewModel.actualizar(aplicarDatos(movimientoExistente, datos))
-                }
-            },
-            onDismiss = onCerrar,
-            onEliminar = movimientoExistente?.let { { mostrarConfirmarEliminar = true } },
-        ),
-    )
-
-    if (mostrarConfirmarEliminar && movimientoExistente != null) {
-        ConfirmarEliminarMovimientoDialog(
-            onConfirmar = {
-                mostrarConfirmarEliminar = false
-                viewModel.eliminar(movimientoExistente)
-            },
-            onCancelar = { mostrarConfirmarEliminar = false },
-        )
-    }
-}
-
-private fun aplicarDatos(movimiento: Movimiento, datos: MovimientoFormDatos): Movimiento = when (movimiento) {
-    is Gasto -> movimiento.copy(
-        categoriaId = datos.categoriaId,
-        monto = datos.monto,
-        fecha = datos.fecha,
-        descripcion = datos.descripcion,
-    )
-    is Ingreso -> movimiento.copy(
-        categoriaId = datos.categoriaId,
-        monto = datos.monto,
-        fecha = datos.fecha,
-        descripcion = datos.descripcion,
-    )
-}
-
-@Composable
-private fun ConfirmarEliminarMovimientoDialog(onConfirmar: () -> Unit, onCancelar: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        icon = { Icon(imageVector = Icons.Filled.Delete, contentDescription = null) },
-        title = { Text(stringResource(R.string.movements_delete_confirm_title)) },
-        text = { Text(stringResource(R.string.movements_delete_confirm_message)) },
-        confirmButton = {
-            TextButton(onClick = onConfirmar) {
-                Text(stringResource(R.string.movements_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) {
-                Text(stringResource(R.string.movements_cancel))
-            }
-        },
-    )
-}

@@ -64,10 +64,15 @@ Node 20+ (only for the `rules-tests/` subproject).
 
 ## Status
 
-Milestone **M5 (Movimientos completo)** closed: Gasto/Ingreso edit and
-soft-delete, `editedBy`/`editedAt` attribution enforced by Firestore rules
-across all four entity families (categories, plans, expenses, income), honest
-last-write-wins conflict detection with a blocking side-by-side resolution
-dialog, and the `:feature:movimientos` edit/delete UI. Pending from M3:
-manual verification of the Auth sign-in providers and App Check in the
-Firebase console. See `CHANGELOG.md`.
+Milestone **M6 (Home dashboard + Adaptive List-Detail)** closed: each plan card
+on `PlanesScreen` shows a reactive current-month net balance, and
+`MovimientosScreen` adopts Adaptive List-Detail — expanded/wide layouts show
+the transaction list beside an inline detail pane instead of a full-screen
+bottom sheet, while compact layouts are unchanged. Previous milestone: **M5
+(Movimientos completo)** — Gasto/Ingreso edit and soft-delete,
+`editedBy`/`editedAt` attribution enforced by Firestore rules across all four
+entity families (categories, plans, expenses, income), honest last-write-wins
+conflict detection with a blocking side-by-side resolution dialog, and the
+`:feature:movimientos` edit/delete UI. Pending from M3: manual verification of
+the Auth sign-in providers and App Check in the Firebase console. See
+`CHANGELOG.md`.
