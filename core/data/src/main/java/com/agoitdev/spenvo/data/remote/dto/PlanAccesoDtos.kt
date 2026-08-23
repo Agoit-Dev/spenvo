@@ -16,6 +16,8 @@ internal data class PlanFinancieroDto(
     val createdBy: String,
     val createdAt: Timestamp,
     val updatedAt: Timestamp,
+    val editedBy: String? = null,
+    val editedAt: Timestamp? = null,
     val deletedAt: Timestamp? = null,
 ) {
     fun toDomain(): PlanFinanciero = PlanFinanciero(
@@ -26,6 +28,8 @@ internal data class PlanFinancieroDto(
         createdBy = createdBy,
         createdAt = createdAt.toInstant(),
         updatedAt = updatedAt.toInstant(),
+        editedBy = editedBy,
+        editedAt = editedAt?.toInstant(),
         deletedAt = deletedAt?.toInstant(),
     )
 
@@ -37,6 +41,8 @@ internal data class PlanFinancieroDto(
         "createdBy" to createdBy,
         "createdAt" to createdAt,
         "updatedAt" to updatedAt,
+        "editedBy" to editedBy,
+        "editedAt" to editedAt,
         "deletedAt" to deletedAt,
     )
 
@@ -49,6 +55,8 @@ internal data class PlanFinancieroDto(
             createdBy = plan.createdBy,
             createdAt = plan.createdAt.toTimestamp(),
             updatedAt = plan.updatedAt.toTimestamp(),
+            editedBy = plan.editedBy,
+            editedAt = plan.editedAt?.let { it.toTimestamp() },
             deletedAt = plan.deletedAt?.let { it.toTimestamp() },
         )
 
@@ -62,6 +70,8 @@ internal data class PlanFinancieroDto(
                 createdBy = campos.createdBy,
                 createdAt = campos.createdAt,
                 updatedAt = campos.updatedAt,
+                editedBy = campos.editedBy,
+                editedAt = campos.editedAt,
                 deletedAt = campos.deletedAt,
             )
         }
@@ -76,6 +86,8 @@ private data class CamposPlan(
     val createdBy: String,
     val createdAt: Timestamp,
     val updatedAt: Timestamp,
+    val editedBy: String?,
+    val editedAt: Timestamp?,
     val deletedAt: Timestamp?,
 )
 
@@ -95,6 +107,8 @@ private fun extraerCamposPlan(data: Map<String, Any?>): CamposPlan? {
         createdBy = createdBy,
         createdAt = createdAt,
         updatedAt = updatedAt,
+        editedBy = data["editedBy"] as? String,
+        editedAt = data["editedAt"] as? Timestamp,
         deletedAt = data["deletedAt"] as? Timestamp,
     )
 }

@@ -149,7 +149,7 @@ class ActualizarCategoriaUseCaseTest {
         val useCase = ActualizarCategoriaUseCase(repo)
         val categoria = Categoria(id = "c1", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO)
 
-        useCase(categoria)
+        useCase(categoria, "user-1")
 
         assertTrue(repo.fueActualizada("c1"))
     }
@@ -159,7 +159,7 @@ class ActualizarCategoriaUseCaseTest {
         val useCase = ActualizarCategoriaUseCase(repo)
         val categoria = Categoria(id = "c1", planId = "p1", nombre = "  Comida  ", tipo = TipoCategoria.GASTO)
 
-        useCase(categoria)
+        useCase(categoria, "user-1")
 
         assertEquals("Comida", repo.actualizadas.single().nombre)
     }
@@ -169,7 +169,29 @@ class ActualizarCategoriaUseCaseTest {
         val useCase = ActualizarCategoriaUseCase(repo)
         val categoria = Categoria(id = "c1", planId = "p1", nombre = "", tipo = TipoCategoria.GASTO)
 
-        useCase(categoria)
+        useCase(categoria, "user-1")
+    }
+
+    @Test
+    fun `estampa editedBy y editedAt con el editor`() = runTest {
+        val useCase = ActualizarCategoriaUseCase(repo)
+        val categoria = Categoria(id = "c1", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO)
+
+        useCase(categoria, "user-1")
+
+        val actualizada = repo.actualizadas.single()
+        assertEquals("user-1", actualizada.editedBy)
+        assertTrue(actualizada.editedAt != null)
+    }
+
+    @Test
+    fun `estampa un editor distinto en cada llamada`() = runTest {
+        val useCase = ActualizarCategoriaUseCase(repo)
+        val categoria = Categoria(id = "c1", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO)
+
+        useCase(categoria, "user-2")
+
+        assertEquals("user-2", repo.actualizadas.single().editedBy)
     }
 }
 
@@ -182,12 +204,24 @@ class EliminarCategoriaUseCaseTest {
         val useCase = EliminarCategoriaUseCase(repo)
         val categoria = Categoria(id = "c1", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO)
 
-        useCase(categoria)
+        useCase(categoria, "user-1")
 
         val eliminada = repo.eliminadas.single()
         assertEquals("c1", eliminada.id)
         assertEquals(null, categoria.deletedAt)
         assertTrue(eliminada.deletedAt != null)
+    }
+
+    @Test
+    fun `estampa editedBy y editedAt junto con deletedAt`() = runTest {
+        val useCase = EliminarCategoriaUseCase(repo)
+        val categoria = Categoria(id = "c1", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO)
+
+        useCase(categoria, "user-1")
+
+        val eliminada = repo.eliminadas.single()
+        assertEquals("user-1", eliminada.editedBy)
+        assertTrue(eliminada.editedAt != null)
     }
 }
 

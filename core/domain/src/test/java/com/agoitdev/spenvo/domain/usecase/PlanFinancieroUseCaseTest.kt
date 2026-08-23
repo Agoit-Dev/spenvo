@@ -111,9 +111,22 @@ class ActualizarPlanUseCaseTest {
         val useCase = ActualizarPlanUseCase(repo)
         val plan = PlanFinanciero(id = "p1", nombre = "Nuevo", moneda = "USD", createdBy = "user-1")
 
-        useCase(plan)
+        useCase(plan, "user-1")
 
         assertEquals(true, repo.fueActualizado("p1"))
+    }
+
+    @Test
+    fun `estampa editedBy y editedAt con el editor`() = runTest {
+        val repo = FakePlanRepository()
+        val useCase = ActualizarPlanUseCase(repo)
+        val plan = PlanFinanciero(id = "p1", nombre = "Nuevo", moneda = "USD", createdBy = "user-1")
+
+        useCase(plan, "user-2")
+
+        val actualizado = repo.actualizados.single()
+        assertEquals("user-2", actualizado.editedBy)
+        assertTrue(actualizado.editedAt != null)
     }
 }
 
@@ -121,7 +134,7 @@ private class FakePlanRepository(
     private val planes: List<PlanFinanciero> = emptyList(),
 ) : PlanFinancieroRepository {
     val creados = mutableListOf<PlanFinanciero>()
-    private val actualizados = mutableListOf<PlanFinanciero>()
+    val actualizados = mutableListOf<PlanFinanciero>()
 
     override fun observarPlanesDelUsuario(usuarioId: String): Flow<List<PlanFinanciero>> =
         flowOf(planes.filter { it.createdBy == usuarioId })

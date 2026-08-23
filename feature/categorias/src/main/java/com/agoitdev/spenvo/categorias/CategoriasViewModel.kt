@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.data.remote.sync.CategoriaSincronizacion
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.TipoCategoria
+import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.usecase.ActualizarCategoriaUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearCategoriaRequest
 import com.agoitdev.spenvo.domain.usecase.CrearCategoriaUseCase
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -27,12 +29,13 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class CategoriasViewModel @Inject constructor(
+class CategoriasViewModel @Suppress("LongParameterList") @Inject constructor(
     private val observarCategoriasPorTipo: ObservarCategoriasPorTipoUseCase,
     private val crearCategoria: CrearCategoriaUseCase,
     private val actualizarCategoria: ActualizarCategoriaUseCase,
     private val eliminarCategoria: EliminarCategoriaUseCase,
     private val sincronizador: CategoriaSincronizacion,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val planIdActivo = MutableStateFlow<String?>(null)
@@ -72,7 +75,8 @@ class CategoriasViewModel @Inject constructor(
     fun actualizar(categoria: Categoria) {
         _estadoForm.update { it.copy(guardando = true, error = null) }
         viewModelScope.launch {
-            runCatching { actualizarCategoria(categoria) }
+            val editorId = authRepository.observeSesion().first().uid.orEmpty()
+            runCatching { actualizarCategoria(categoria, editorId) }
                 .onSuccess { _estadoForm.value = CategoriaFormEstado(guardado = true) }
                 .onFailure { e -> _estadoForm.value = CategoriaFormEstado(error = e.message) }
         }
@@ -81,7 +85,8 @@ class CategoriasViewModel @Inject constructor(
     fun eliminar(categoria: Categoria) {
         _estadoForm.update { it.copy(guardando = true, error = null) }
         viewModelScope.launch {
-            runCatching { eliminarCategoria(categoria) }
+            val editorId = authRepository.observeSesion().first().uid.orEmpty()
+            runCatching { eliminarCategoria(categoria, editorId) }
                 .onSuccess { _estadoForm.value = CategoriaFormEstado(guardado = true) }
                 .onFailure { e -> _estadoForm.value = CategoriaFormEstado(error = e.message) }
         }
