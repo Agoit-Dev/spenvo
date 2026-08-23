@@ -71,7 +71,7 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
 
     private val _conflictoVisible = MutableStateFlow<ConflictoEdicion?>(null)
 
-    /** Non-null only after [abrirConflictoSiExiste] — the modal is deferred until the user reopens the record. */
+    /** Non-null only after [mostrarConflicto] — the modal is deferred until the user reopens the record. */
     val conflictoVisible: StateFlow<ConflictoEdicion?> = _conflictoVisible.asStateFlow()
 
     init {

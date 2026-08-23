@@ -20,7 +20,7 @@ import java.time.format.FormatStyle
  * (design Decision 4) to the designsystem-local UI model, resolving every
  * string here so `:core:designsystem` stays free of `:core:domain` and
  * `res/` (design Decision 5). The dialog opens only when [conflicto] is
- * non-null, which the caller controls via `MovimientosViewModel.abrirConflictoSiExiste`.
+ * non-null, which the caller controls via `MovimientosViewModel.mostrarConflicto`.
  */
 @Composable
 internal fun ConflictoMovimientoDialogHost(
