@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Spenvo — family/team expense tracking app. Native Android, Kotlin, Jetpack Compose (Material 3),
 Navigation 3 (state-driven), multi-module Clean Architecture. Reimplements the legacy app
-`act02-app_gastos` with security and tests from the first commit. Currently at milestone **M4**
-(v0.5.0 — Categories), see `CHANGELOG.md` for the full milestone history and current state.
+`act02-app_gastos` with security and tests from the first commit. Milestone **M6** (v0.7.0 — Home
+dashboard + Adaptive List-Detail) is closed; **M7** (Profile) is in progress — see `CHANGELOG.md`
+for the full milestone history and current state.
 
 `AGENTS.md` and `.agents/` (rules, skills, commands) are the project's operational source of truth
 and take precedence over generic tooling (e.g. MobiAI skills, which never fire automatically here).
@@ -123,5 +124,6 @@ Strict TDD: a failing test precedes the implementation that makes it pass. A cha
 tests is expected to be rejected (documented exceptions only, noted in the milestone summary). Unit
 tests use JUnit4 + `kotlinx-coroutines-test`; ViewModel tests use plain JUnit with hand-written fakes
 (no MockK) — see `CategoriasViewModelTest` as the reference pattern; DAOs are tested against an
-in-memory Room database. Compose UI/instrumented tests do not exist yet for most feature modules as
-of M4 — don't assume coverage there.
+in-memory Room database. `:feature:planes` and `:feature:cuenta` have Compose UI test setups
+(Robolectric + `ui-test-junit4`) as of M6/M7; other feature modules don't yet — don't assume
+coverage there.
