@@ -114,8 +114,8 @@ fun MovimientosScreen(
 }
 
 /**
- * Chooses the layout (M6 Slice B, design Decision 3) and hosts the layout-independent conflict
- * dialog (design Decision 4). NOT the nav-graph SceneStrategy, which would replace the list with a
+ * Chooses the layout (M6 Slice B) and hosts the layout-independent conflict dialog. NOT the
+ * nav-graph SceneStrategy, which would replace the list with a
  * full-screen push on compact instead of preserving it behind a sheet.
  * `directive.maxHorizontalPartitions > 1` matches Material's Expanded width breakpoint (>= 840dp);
  * compact/medium stay single-pane, unchanged from before M6.

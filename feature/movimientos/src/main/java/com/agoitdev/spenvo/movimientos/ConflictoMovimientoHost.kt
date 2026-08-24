@@ -17,10 +17,10 @@ import java.time.format.FormatStyle
 
 /**
  * Hosts the Slice 5b conflict dialog: maps the entity-agnostic [ConflictoEdicion]
- * (design Decision 4) to the designsystem-local UI model, resolving every
- * string here so `:core:designsystem` stays free of `:core:domain` and
- * `res/` (design Decision 5). The dialog opens only when [conflicto] is
- * non-null, which the caller controls via `MovimientosViewModel.mostrarConflicto`.
+ * to the designsystem-local UI model, resolving every string here so
+ * `:core:designsystem` stays free of `:core:domain` and `res/`. The dialog
+ * opens only when [conflicto] is non-null, which the caller controls via
+ * `MovimientosViewModel.mostrarConflicto`.
  */
 @Composable
 internal fun ConflictoMovimientoDialogHost(

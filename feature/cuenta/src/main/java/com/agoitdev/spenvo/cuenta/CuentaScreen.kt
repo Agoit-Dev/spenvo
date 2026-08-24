@@ -111,7 +111,7 @@ private fun CuentaSideEffects(
     }
 }
 
-/** Reads the picked [Uri]'s bytes/content-type in the Composable (Decision 8), then delegates. */
+/** Reads the picked [Uri]'s bytes/content-type in the Composable, then delegates. */
 @Composable
 private fun rememberSeleccionarImagenLauncher(onImagenSeleccionada: (ByteArray, String) -> Unit): () -> Unit {
     val context = LocalContext.current

@@ -28,8 +28,8 @@ import com.agoitdev.spenvo.domain.model.TipoCategoria
 
 /**
  * Params bundle for the compact/expanded form hosts (M6 Slice B): both [MovimientoFormularioSheet]
- * (compact, `ModalBottomSheet`) and [MovimientoFormularioPanel] (expanded, inline detail pane, design
- * Decision 3) take the exact same inputs, only the wrapping shell differs.
+ * (compact, `ModalBottomSheet`) and [MovimientoFormularioPanel] (expanded, inline detail pane)
+ * take the exact same inputs, only the wrapping shell differs.
  */
 internal data class MovimientoFormularioParametros(
     val planId: String,
@@ -57,7 +57,7 @@ internal fun MovimientoFormularioSheet(parametros: MovimientoFormularioParametro
 }
 
 /**
- * Expanded layout (M6 Slice B, design Decision 3): the same form reused inline as the detail pane of
+ * Expanded layout (M6 Slice B): the same form reused inline as the detail pane of
  * the local `ListDetailPaneScaffold` split in `MovimientosScreen`, with no `ModalBottomSheet` chrome.
  * Shows a placeholder when no movimiento is open, since the detail pane must always render something.
  */
@@ -90,7 +90,7 @@ private fun MovimientoFormularioPanelVacio() {
 }
 
 /**
- * Shared state resolution for both form hosts (design Decision 3): resolves whether [formulario] is
+ * Shared state resolution for both form hosts: resolves whether [formulario] is
  * editing an existing movimiento, wires save/delete actions to the [viewModel], and owns the
  * delete-confirmation dialog — identical regardless of which shell (sheet or panel) renders [contenido].
  */

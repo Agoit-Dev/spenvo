@@ -24,8 +24,8 @@ internal data class DocumentoParaSincronizar(
  * Applies the Slice 4 conflict decision to one incoming remote document.
  * Returns `true` when the sincronizador should upsert it to Room; registers a
  * [ConflictoEdicion] in [conflictosPendientes] and returns `false` when it
- * must be held back instead (design Decision 7 — the user's own pending edit
- * keeps showing until they resolve it).
+ * must be held back instead — the user's own pending edit keeps showing
+ * until they resolve it.
  */
 internal fun evaluarDocumentoRemoto(
     edicionesPendientes: EdicionesPendientes,

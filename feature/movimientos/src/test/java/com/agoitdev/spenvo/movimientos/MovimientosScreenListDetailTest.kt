@@ -53,10 +53,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * M6 Slice B: verifies design Decision 3's exact shape — compact renders the form as a
+ * M6 Slice B: verifies the exact shape — compact renders the form as a
  * `ModalBottomSheet` with no separate detail pane; expanded renders the list pane and an inline
- * detail pane side by side, with no bottom sheet chrome; [ConflictoMovimientoDialogHost] (design
- * Decision 4) fires identically regardless of which layout hosts the form.
+ * detail pane side by side, with no bottom sheet chrome; [ConflictoMovimientoDialogHost] fires
+ * identically regardless of which layout hosts the form.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)

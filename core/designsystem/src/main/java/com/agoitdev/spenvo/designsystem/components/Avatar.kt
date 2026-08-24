@@ -29,7 +29,7 @@ private val TamanoBadge = 28.dp
 private val TamanoIconoBadge = 16.dp
 
 /**
- * Circular avatar with a small edit-icon badge overlay (M7 Slice A2, `user-profile` spec).
+ * Circular avatar with a small edit-icon badge overlay (M7 Slice A2).
  * Renders [photoUrl] via Coil when present, falling back to a placeholder icon otherwise.
  * The caller supplies both content descriptions pre-resolved from `stringResource(...)`,
  * mirroring [com.agoitdev.spenvo.designsystem.conflict.ConflictoDialog]'s caller-supplies-strings

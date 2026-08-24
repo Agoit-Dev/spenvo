@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 /**
  * One field shown side-by-side in the conflict dialog. Entity-agnostic: the
  * calling feature module resolves both the field label and the two values to
- * plain strings before constructing this (design Decision 5, Slice 5b).
+ * plain strings before constructing this (Slice 5b).
  */
 data class CampoConflictoUi(
     val etiqueta: String,
@@ -45,7 +45,7 @@ const val TAG_BORRADO_LOCAL = "conflicto_borrado_local"
 const val TAG_BORRADO_REMOTO = "conflicto_borrado_remoto"
 
 /**
- * Generic two-column conflict resolution dialog (design Decision 4/5). Renders
+ * Generic two-column conflict resolution dialog. Renders
  * the same ordered [campos] list for both sides, emphasising rows that
  * differ, and lets the caller decide what "accionPrimaria"/"accionSecundaria"
  * mean (edit-vs-edit: usar la mía/usar la suya; delete-vs-edit: restaurar mi

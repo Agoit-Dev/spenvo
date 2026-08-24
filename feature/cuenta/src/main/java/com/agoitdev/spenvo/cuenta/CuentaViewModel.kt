@@ -47,7 +47,7 @@ class CuentaViewModel @Inject constructor(
         _estado.update { it.copy(error = null) }
     }
 
-    /** Uploads the linked user's avatar (Decision 8: bytes/contentType read by the caller). */
+    /** Uploads the linked user's avatar; bytes/contentType are read by the caller. */
     fun subirAvatar(bytes: ByteArray, contentType: String) {
         val uid = sesion.value.uid ?: return
         _perfilEstado.update { it.copy(subiendoAvatar = true, avatarError = null) }
@@ -67,7 +67,7 @@ class CuentaViewModel @Inject constructor(
         _perfilEstado.update { it.copy(avatarError = null) }
     }
 
-    /** [AuthRepository.cerrarSesion] already re-establishes an anonymous session (Decision 9). */
+    /** [AuthRepository.cerrarSesion] already re-establishes an anonymous session. */
     fun logout() {
         viewModelScope.launch { authRepository.cerrarSesion() }
     }

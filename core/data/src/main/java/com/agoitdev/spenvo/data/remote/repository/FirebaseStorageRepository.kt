@@ -10,8 +10,8 @@ import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
- * Uploads to the fixed `avatars/{uid}/avatar.jpg` path (Design Decision 7 —
- * overwrite on re-upload, one avatar per user). Bridges the Task-based Storage
+ * Uploads to the fixed `avatars/{uid}/avatar.jpg` path (overwrite on
+ * re-upload, one avatar per user). Bridges the Task-based Storage
  * SDK to suspend functions manually, mirroring `FirebaseAuthRepository`'s
  * existing pattern (no `kotlinx-coroutines-play-services` dependency exists).
  */

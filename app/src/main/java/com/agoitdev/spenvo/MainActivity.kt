@@ -67,9 +67,9 @@ fun SpenvoApp(modifier: Modifier = Modifier) {
                 rememberSaveableStateHolderNavEntryDecorator(),
                 rememberViewModelStoreNavEntryDecorator(),
             ),
-            // Forward-compatible plumbing for future cross-route list/detail pairs (design
-            // Decision 3, M6 Slice B): a no-op today since no `entry<T>` carries pane metadata yet.
-            // The real, working list-detail split lives locally inside MovimientosScreen.
+            // Forward-compatible plumbing for future cross-route list/detail pairs (M6 Slice B):
+            // a no-op today since no `entry<T>` carries pane metadata yet. The real, working
+            // list-detail split lives locally inside MovimientosScreen.
             sceneStrategies = listOf(rememberListDetailSceneStrategy<NavKey>()),
             entryProvider = entryProvider {
                 entry<PlanesRoute> {
