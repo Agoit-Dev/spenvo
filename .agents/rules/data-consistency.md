@@ -27,7 +27,7 @@ Guarantee that offline read/write neither corrupts data nor misleads the user.
 
 ## Write contract (optimistic Room-first, M4)
 Applied by every synced-entity repository (`FirebaseCategoriaRepository`,
-`FirebasePlanFinancieroRepository`):
+`FirebasePlanFinancieroRepository`, `FirebaseMovimientoRepository`):
 1. **Room updates optimistically first** (`upsert`, or soft-delete via `deletedAt`),
    so the UI reflects the change immediately.
 2. **Firestore `set()` + `await()`**. With the native offline cache the write is
