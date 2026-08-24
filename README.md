@@ -53,6 +53,12 @@ The emulator uses `projectId: spenvo-dev` and listens on port 8081 (`firebase.js
 Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sdk.dir`;
 Node 20+ (only for the `rules-tests/` subproject).
 
+### Firebase setup
+
+The app needs a `google-services.json` (per module: `app/google-services.json`) from the
+Firebase console project — it's gitignored and not included in the repo. Without it, the
+build fails wiring `:app`'s Firebase (Auth, Firestore, Storage, App Check) dependencies.
+
 ## Documentation
 
 - `AGENTS.md` — operational guide (stack, gates, conventions).
@@ -64,15 +70,17 @@ Node 20+ (only for the `rules-tests/` subproject).
 
 ## Status
 
-Milestone **M6 (Home dashboard + Adaptive List-Detail)** closed: each plan card
-on `PlanesScreen` shows a reactive current-month net balance, and
-`MovimientosScreen` adopts Adaptive List-Detail — expanded/wide layouts show
-the transaction list beside an inline detail pane instead of a full-screen
-bottom sheet, while compact layouts are unchanged. Previous milestone: **M5
-(Movimientos completo)** — Gasto/Ingreso edit and soft-delete,
-`editedBy`/`editedAt` attribution enforced by Firestore rules across all four
-entity families (categories, plans, expenses, income), honest last-write-wins
-conflict detection with a blocking side-by-side resolution dialog, and the
-`:feature:movimientos` edit/delete UI. Pending from M3: manual verification of
-the Auth sign-in providers and App Check in the Firebase console. See
-`CHANGELOG.md`.
+Milestone **M6 (Home dashboard + Adaptive List-Detail)** closed. In progress on
+**M7 (Profile)**: Slice A1 wired Firebase Storage (avatar upload backend,
+`storage.rules`) and Slice A2 added the Profile screen — a linked account now
+sees an avatar (tap to upload/replace), display name, email, and Logout,
+while an anonymous session still sees the registration form. Also added:
+sample plan seeding — a fresh install with zero plans gets one demo plan
+with realistic Spain-locale expenses/income instead of an empty state.
+Previous milestone: **M5 (Movimientos completo)** — Gasto/Ingreso edit and
+soft-delete, `editedBy`/`editedAt` attribution enforced by Firestore rules
+across all four entity families (categories, plans, expenses, income),
+honest last-write-wins conflict detection with a blocking side-by-side
+resolution dialog, and the `:feature:movimientos` edit/delete UI. Pending
+from M3: manual verification of the Auth sign-in providers and App Check in
+the Firebase console. See `CHANGELOG.md`.
