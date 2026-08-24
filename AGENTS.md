@@ -36,6 +36,13 @@ reimplements it with Clean Architecture, security and tests from the first commi
 
 > Outside the baseline: **any** new dependency requires explicit user OK.
 
+All versions live in `gradle/libs.versions.toml` — never inline a version in a module
+`build.gradle.kts`. Gradle dependency locking is enforced repo-wide (`dependencyLocking` in root +
+`subprojects{}`); any `libs.versions.toml` change requires `./gradlew dependencies --write-locks`
+before the change is done. Kotlin/KSP compatibility is tight — KSP is pinned to match the Kotlin
+version (`2.2.10-2.0.2`), and libraries requiring a newer Kotlin (e.g. Coil ≥3.5.0 needs Kotlin 2.4)
+must be held back to a compatible version instead (Coil is pinned at 3.4.0 for this reason).
+
 ## Module structure
 
 ```
@@ -50,14 +57,70 @@ reimplements it with Clean Architecture, security and tests from the first commi
 :feature:categorias     — expense/income categories (CRUD, default seeding)
 ```
 
+Each `:feature:*` module depends only on `:core:domain`, `:core:designsystem`, `:core:data` — never
+on another feature module. `:app` is the only module allowed to depend on everything. `:core:domain`
+must never import `androidx.room` or `com.google.firebase` (that includes ViewModels living in
+domain-adjacent code). `:core:security` depends on nothing but the Android Keystore.
+
+DI follows a consistent per-feature-area Hilt module split: a `@Binds`-only abstract module for
+repository/sync interfaces, plus a separate `@Provides` object module for use cases (see
+`core/data/.../di/PlanModule.kt` for the pattern used across plans/categories).
+
+## Navigation 3
+
+Uses `androidx.navigation3` (NOT Navigation 2 — don't mix them). Key API shape (1.1.4):
+`NavDisplay(backStack, onBack, entryDecorators, entryProvider)`, with
+`rememberSaveableStateHolderNavEntryDecorator()` and `rememberViewModelStoreNavEntryDecorator()`
+always included so ViewModels are scoped to the NavEntry, not the Activity. There is no `scene<T>`
+API — adaptive list-detail layouts use a `SceneStrategy`
+(`rememberListDetailSceneStrategy<NavKey>()` from `adaptive-navigation3`).
+
 ## Data architecture (non-negotiable rules)
 
 1. The UI ALWAYS reads from Room via Flow. Firestore never feeds the UI directly.
-2. Writes go to Firestore (native offline cache). **NO homegrown outbox/WorkManager.**
+2. Writes go to Firestore (native offline cache). **NO homegrown outbox/WorkManager.** This was
+   explicitly evaluated and rejected — see `.agents/rules/devils-advocate.md` before reopening
+   that discussion.
 3. Snapshot listeners ONLY in active shared scopes (attach when opening a screen,
    detach when leaving). Never global listeners.
 4. On-demand sync + pull-to-refresh. No complex TTL.
 5. Conflict: LWW with `editedBy/editedAt` + conflict visible in UI.
+
+Writes are **optimistic Room-first**: Room updates immediately, then the write goes to Firestore
+(`set()` + `await()`). On a permanent failure (e.g. `PERMISSION_DENIED`) roll back Room — delete
+on create-fail, restore the prior snapshot on update/delete-fail. Deferred offline-buffered writes
+reconcile later via the snapshot listener, not via `await()`.
+
+Default-data seeding (e.g. category seeding) uses deterministic ids (`planId:clave`) and a single
+batched write to stay idempotent under concurrent triggers.
+
+## Security (OWASP-driven, not a patch)
+
+- `android:allowBackup="false"` in the manifest; R8 `optimization.enable = true` in release builds;
+  cleartext traffic disabled.
+- SQLCipher passphrase comes from Android Keystore (`:core:security`), generated on first use — never
+  hardcoded or derived from a static secret.
+- App Check (Play Integrity) gates all backend calls. Firestore rules are deny-by-default with
+  server-side role checks — never `allow ... if true`.
+- Never log amounts, emails, or credentials.
+
+## i18n
+
+`values/` (Spanish) is the default locale; `values-en/` holds English. Keys are English snake_case,
+values are the translated strings. Both `HardcodedText` and `MissingTranslation` are **blocking lint
+errors** — a new UI string must land in both `values/strings.xml` and `values-en/strings.xml` in the
+same change, and money/date formatting must go through `NumberFormat`/`DateUtils`/the project's
+`Money` type, never hand-concatenation.
+
+## Testing
+
+Strict TDD: a failing test precedes the implementation that makes it pass. A change without covering
+tests is expected to be rejected (documented exceptions only, noted in the milestone summary). Unit
+tests use JUnit4 + `kotlinx-coroutines-test`; ViewModel tests use plain JUnit with hand-written fakes
+(no MockK) — see `CategoriasViewModelTest` as the reference pattern; DAOs are tested against an
+in-memory Room database. `:feature:planes` and `:feature:cuenta` have Compose UI test setups
+(Robolectric + `ui-test-junit4`) as of M6/M7; other feature modules don't yet — don't assume
+coverage there.
 
 ## Gates (definition of done)
 
@@ -90,3 +153,10 @@ See `.agents/commands/` for custom commands. The most used:
 - `./gradlew testDebugUnitTest lintDebug detekt` — checks.
 - `./gradlew dependencies --write-locks` — regenerates lockfiles.
 - `mobiai status` — toolbox status.
+
+A single test class/method: use the standard Gradle `--tests` filter, e.g.
+`./gradlew :core:domain:testDebugUnitTest --tests "*.CategoriaUseCaseTest"`.
+
+`rules-tests/` is a separate Node subproject that validates Firestore security rules against the
+Firebase Emulator — not part of the Gradle build. Run it independently (`npm test` inside
+`rules-tests/`) when touching `firestore.rules` or `core/data/src/androidTest/firestore.emulator.rules`.
