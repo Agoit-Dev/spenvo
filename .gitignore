@@ -22,6 +22,19 @@ local.properties
 .engram/
 .mobiai/
 .atl
+.codegraph/
+
+# Claude Code (estado runtime efímero — no versionar; settings.json y comandos sí se versionan)
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
+.claude/routines/.state/
+.claude/checkpoints/
+.claude/mailbox/
+.claude/agent-registry.json
+.claude/agent-memory-local
+.claude/first-run
+.claude/assistant-daemon-state.json
 
 # --- CONFIGURACIÓN DE FIREBASE ---
 **/google-services.json
