@@ -11,8 +11,15 @@ Use Navigation 3 (state-driven) consistently; no string-based navigation or doub
 5. Mandatory decorators:
    - `rememberSaveableStateHolderNavEntryDecorator()` — saves per-entry state.
    - `rememberViewModelStoreNavEntryDecorator()` — NavEntry-scoped ViewModel.
-6. List-Detail with Adaptive: `ListDetailSceneStrategy` (`adaptive-navigation3`),
-   `listPane()/detailPane()` metadata; `rememberListDetailSceneStrategy<NavKey>()`.
+6. List-Detail with Adaptive: two patterns coexist (see `doc/architecture.md`, "M6 Slice B"
+   decision). Cross-route pairs use `ListDetailSceneStrategy` (`adaptive-navigation3`),
+   `listPane()/detailPane()` metadata and `rememberListDetailSceneStrategy<NavKey>()` — wired
+   into `:app`'s `NavDisplay` but currently inert (no route carries pane metadata yet). A
+   single-route split where the compact layout must stay pixel-identical (e.g.
+   `MovimientosScreen`) instead uses a local `ListDetailPaneScaffold` gated on
+   `calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2()).maxHorizontalPartitions`,
+   because `SceneStrategy`'s single-pane fallback would replace the list with a full-screen
+   push instead of preserving it.
 
 ## Rules
 - ViewModels are scoped to the NavEntry (not the Activity) with `viewModel()` inside the entry.

@@ -11,7 +11,7 @@ Safe local commit with automatic gate and docs verification.
 2. Validate docs/changelog:
    - `CHANGELOG.md` updated (if there is a visible change).
    - `README.md` checked: status, modules, stack and commands reflect the change.
-   - `doc/database/schema.mdd` up to date (if schema changed) + `doc/database/schemas/` versioned.
+   - `doc/database/schema.mdd` up to date (if schema changed) + `core/data/schemas/` versioned.
    - `AGENTS.md` / `.agents/` reflect new conventions.
    - lockfiles up to date (if `libs.versions.toml` changed).
 3. Review `git status` + `git diff`; make sure there are NO secrets or build files.

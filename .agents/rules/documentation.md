@@ -10,7 +10,7 @@ Documentation lives in the repo and stays up to date in the same commit as the c
    - `doc/database/schema.mdd` — versioned data schema (Mermaid + Room JSON).
    - `doc/security/owasp.md` — OWASP matrix → controls.
    - `doc/architecture.md` — architecture decisions.
-3. **`doc/database/schemas/`** — Room JSON exports (room.schemaLocation) versioned,
+3. **`core/data/schemas/`** — Room JSON exports (room.schemaLocation) versioned,
    one per DB version. Never regenerated without review.
 
 ## Rules

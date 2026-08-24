@@ -11,7 +11,8 @@ UI (feature) → domain → data → (Room/Firebase/DataStore)
 - `:core:domain` does NOT depend on Android or `:core:data`. Pure Kotlin only.
 - `:core:data` depends on `:core:domain` (implements its repositories).
 - `:core:designsystem` does NOT depend on features or data.
-- `:feature:movimientos` depends on `:core:domain` and `:core:designsystem`.
+- `:feature:movimientos` depends on `:core:domain`, `:core:designsystem` and `:core:data`
+  (auth repository binding, since M2).
 - `:app` is the only module allowed to depend on everything (root composition).
 
 ## Rules
