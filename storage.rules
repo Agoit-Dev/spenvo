@@ -1,10 +1,9 @@
 rules_version = '2';
 
-// M7 Slice A1 — Firebase Storage rules for avatar uploads.
-// Owner-only read+write, image/* content-type allowlist, 5MB size limit.
-// Design decisions (sdd/m7-profile-storage/design): #5 owner-only read (no
-// broader read yet — MiembroCard shows no avatars today), #6 5MB limit,
-// #7 fixed avatars/{uid}/avatar.jpg path (overwrite on re-upload).
+// M7 Slice A1 — Firebase Storage rules for avatar uploads (see CHANGELOG.md).
+// Owner-only read+write (no broader read yet — MiembroCard shows no avatars
+// today), image/* content-type allowlist, 5MB size limit, fixed
+// avatars/{uid}/avatar.jpg path (overwrite on re-upload).
 
 service firebase.storage {
   match /b/{bucket}/o {

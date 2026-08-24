@@ -33,7 +33,7 @@ tests before committing.
 
 Dependencies:
 - `:app` → `:core:domain`, `:core:data`, `:core:designsystem`,
-  `:feature:cuenta`, `:feature:planes`, `:feature:movimientos`.
+  `:feature:cuenta`, `:feature:planes`, `:feature:movimientos`, `:feature:categorias`.
 - `:feature:cuenta` → `:core:domain`, `:core:designsystem`, `:core:data`.
 - `:feature:planes` → `:core:domain`, `:core:designsystem`, `:core:data`
   (auth/session + plan repositories, sync).

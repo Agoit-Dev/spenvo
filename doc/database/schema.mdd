@@ -10,7 +10,7 @@ Two stores, one domain model:
   offline cache. Deny-by-default rules with server-side roles (draft in
   `firestore.rules`, final in M3).
 - **Room + SQLCipher** — encrypted local presentation cache. Provided by `:core:data`.
-  Room JSON exports are versioned in `doc/database/schemas/<package>.<DB>/`.
+  Room JSON exports are versioned in `core/data/schemas/<package>.<DB>/`.
 
 Golden rule: **the UI always reads from Room; writes go to Firestore**.
 Conflict: LWW with `editedBy`/`editedAt` (server-set) + visible conflict in the UI.

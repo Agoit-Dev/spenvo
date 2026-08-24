@@ -40,15 +40,15 @@ encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Chec
 ./gradlew dependencies --write-locks   # regenerate lockfiles
 ```
 
-### Firestore rules tests (Node)
+### Firestore/Storage rules tests (Node)
 
 ```bash
 cd rules-tests
 npm install                       # install firebase-tools + rules-unit-testing
-npm test                          # run the rules matrix against the Emulator (32 tests)
+npm test                          # run the rules matrix against the Emulator (39 tests: 32 Firestore + 7 Storage)
 ```
 
-The emulator uses `projectId: spenvo-dev` and listens on port 8081 (`firebase.json`).
+Uses `projectId: spenvo-dev` (`firebase.json`): Firestore Emulator on port 8081, Storage Emulator on port 9199.
 
 Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sdk.dir`;
 Node 20+ (only for the `rules-tests/` subproject).

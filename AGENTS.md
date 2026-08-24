@@ -41,9 +41,13 @@ reimplements it with Clean Architecture, security and tests from the first commi
 ```
 :app                    — entry point, root NavDisplay
 :core:domain            — models, use cases, repositories (no Android)
-:core:data              — Room+SQLCipher, DataStore, repo implementations
+:core:data              — Room+SQLCipher, DataStore, repo implementations, Firestore sync
+:core:security          — Keystore-backed SQLCipher passphrase
 :core:designsystem      — theme, shared UI components
-:feature:movimientos    — combined expenses + income
+:feature:cuenta         — account creation / email+password linking
+:feature:planes         — plans, shared access, invitations
+:feature:movimientos    — expenses + income (plan-scoped)
+:feature:categorias     — expense/income categories (CRUD, default seeding)
 ```
 
 ## Data architecture (non-negotiable rules)

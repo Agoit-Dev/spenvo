@@ -12,8 +12,8 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 | Account creation (email/password) | `:feature:cuenta` | ✅ links the anonymous UID (`linkWithCredential`) | M3 |
 | App Check (Play Integrity / debug) | `:app` | ✅ wired; enforcement on Firestore in M3 | M2/M3 |
 | Deny-by-default rules + roles | `firestore.rules` | ✅ finalized (owner/admin/editor/viewer) | M3 |
-| Rules tests (Emulator) | `rules-tests/` (`@firebase/rules-unit-testing`) | ✅ 14/14 green | M3 |
-| Server-side EditedBy/EditedAt | rules | 🔜 | M5 |
+| Rules tests (Emulator) | `rules-tests/` (`@firebase/rules-unit-testing`) | ✅ 39/39 green (32 Firestore + 7 Storage) | M3/M5/M7 |
+| Server-side EditedBy/EditedAt | rules | ✅ enforced across categories/plans/expenses/income | M5 |
 | File-upload rules (Storage) | `storage.rules` | ✅ owner-scoped path (`avatars/{uid}/...`), `image/*` allowlist, 5MB limit, deny-by-default | M7 |
 
 ## Risk → control map
@@ -80,7 +80,6 @@ Control status: ✅ active · 🔜 planned · ⚠️ pending verification.
 ## Pending implementation (M0 debt)
 - Google Sign-In linking → deferred a second time in M7 (out of scope per the
   `user-profile` spec; no committed milestone yet).
-- Server-side `editedBy/editedAt` → **M5**.
 - Rules and indexes deployed to production (`spenvo-6d10a`) — M3 done. Manual
   verification pending: Anonymous + Email/Password sign-in providers enabled and
   App Check enforcement active in the Firebase console.
