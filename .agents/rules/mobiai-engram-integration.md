@@ -21,6 +21,14 @@ Integrate Engram (persistent memory) and MobiAI (mobile toolbox) without conflic
    tests, `mobiai-mobile-verification` before declaring done, etc.
 3. If there is a conflict between a `.agents/` rule and a MobiAI suggestion, `.agents/`
    wins (and note the divergence for review).
+4. **Mechanical/tooling skills carry no architecture risk and may be reached for
+   proactively** when they clearly apply, without waiting for an explicit ask:
+   `mobiai-android-device` (adb/logcat/screenshots), `mobiai-analyze-crash`,
+   `mobiai-reproduce-bug`, `mobiai-crashlytics`, `mobiai-android-build`
+   (build/Gradle troubleshooting). They execute mechanics, not architecture.
+5. Everything else (planning, TDD workflow, architecture navigation, review,
+   verification) stays explicit-only per rule 1 — it can shape decisions, so it
+   needs a deliberate ask.
 
 ## Coexistence
 - `.engram/` and `.mobiai/` are gitignored; not versioned.
