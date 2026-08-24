@@ -4,6 +4,7 @@ rules_version = '2';
 // Owner-only read+write (no broader read yet — MiembroCard shows no avatars
 // today), image/* content-type allowlist, 5MB size limit, fixed
 // avatars/{uid}/avatar.jpg path (overwrite on re-upload).
+// Desplegar solo tras pasar firebase-rules-audit + tests con Emulator.
 
 service firebase.storage {
   match /b/{bucket}/o {

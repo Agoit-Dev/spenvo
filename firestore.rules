@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // VERSIÓN FINAL M3+M5 — deny-by-default con roles server-side.
-// Desplegar solo tras pasar firestore-rules-audit + tests con Emulator.
+// Desplegar solo tras pasar firebase-rules-audit + tests con Emulator.
 // M5: editedBy/editedAt quedan atribuidos y verificados server-side (LWW).
 //
 // NOTA (emulador v1.22): el get() con path concatenado (uid_planId) debe ir
