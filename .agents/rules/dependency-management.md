@@ -9,7 +9,10 @@ Strict dependency control: approved baseline, versioned locks, gated changes.
 2. **Approved baseline** (see AGENTS.md → Stack). Any dependency OUTSIDE the
    baseline requires explicit user OK (different from just changing a version).
 3. Changing the version of a baseline dependency:
-   - Regenerate locks: `./gradlew dependencies --write-locks` (or `:app:assembleDebug --write-locks`).
+   - Regenerate locks: `./gradlew dependencies --write-locks`. Do NOT use
+     `:app:assembleDebug --write-locks` — it only resolves what `:app` needs to
+     assemble, so it skips test/androidTest/lint/release configurations of
+     modules not on that path, leaving their lockfiles stale.
    - Run full gates (build + tests + lint + detekt).
    - Note the change in `CHANGELOG.md` and in the milestone summary.
 4. Version compatibility (Kotlin 2.2.10):

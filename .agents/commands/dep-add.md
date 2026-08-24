@@ -12,7 +12,7 @@ Add or update a dependency with strict control.
    - **Outside the baseline** → propose to the user, apply devils-advocate,
      and wait for **explicit OK**.
 3. Edit `gradle/libs.versions.toml` (never inline versions in build files).
-4. Regenerate locks: `./gradlew :app:assembleDebug --write-locks`.
+4. Regenerate locks: `./gradlew dependencies --write-locks`.
 5. Run gates: `./gradlew testDebugUnitTest lintDebug detekt`.
 6. Update `CHANGELOG.md` (dependencies) and `AGENTS.md` if the baseline changes.
 7. Report the result.
