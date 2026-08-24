@@ -40,7 +40,7 @@ Dependencies:
 - `:feature:movimientos` → `:core:domain`, `:core:designsystem`, `:core:data`.
 - `:feature:categorias` → `:core:domain`, `:core:designsystem`, `:core:data`
   (category repository, use cases, sync).
-- `:core:data` → `:core:domain`, `:core:security`, Firebase (Auth, Firestore, App Check).
+- `:core:data` → `:core:domain`, `:core:security`, Firebase (Auth, Firestore, Storage, App Check).
 - `:core:security` → Android Keystore only.
 - `:core:domain` has no Android dependencies.
 - `:core:designsystem` has no feature or data dependencies.
@@ -130,9 +130,12 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 - **Account registration is email/password only** in M3; Google Sign-In is
   deferred a second time in M7 (out of scope per the `user-profile` spec; no
   committed milestone yet).
-- **No ViewModel/Compose UI tests for `:feature:categorias`, `:feature:planes`,
-  `:feature:movimientos`, `:feature:cuenta`** (M4): `CategoriasViewModelTest` is
-  the first ViewModel test in the project (plain JUnit + hand-written fakes,
-  same convention as `:core:domain`); no Compose screen/instrumented tests yet.
+- **No Compose UI test for `:feature:categorias`**: `CategoriasViewModelTest` (M4)
+  was the first ViewModel test in the project (plain JUnit + hand-written fakes,
+  same convention as `:core:domain`), but the module still has no
+  screen-level Compose test. `:feature:cuenta` (`CuentaScreenTest`),
+  `:feature:planes` (`PlanesScreenTest`) and `:feature:movimientos`
+  (`MovimientosScreenListDetailTest`) all gained one since (M6/M7,
+  Robolectric + `ui-test-junit4`).
 - **No color per category** (M4): matches the legacy `act02-app_gastos`
   reference, which only has name/type/icon; a future milestone could add it.
