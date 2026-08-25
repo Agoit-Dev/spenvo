@@ -1,86 +1,242 @@
 # Spenvo
 
-Family/team expense tracking app. Native Android, Kotlin, Jetpack Compose
-(Material 3), Navigation 3, multi-module with Clean Architecture. Financial data
-encrypted with SQLCipher; sync with Firebase (Auth, Firestore, Storage, App Check).
+Spenvo is a privacy-focused native Android app for tracking personal, family,
+and shared expenses. Users organize expenses and income into financial plans,
+collaborate through invitations, continue working offline, and resolve
+synchronization conflicts explicitly.
 
-## Stack
+The project is built with Kotlin and Jetpack Compose using a multi-module Clean
+Architecture. Financial data is encrypted locally with SQLCipher and synchronized
+through Firebase.
 
-- **Build**: AGP 9.3.1 (built-in Kotlin 2.2.10) · Gradle 9.5 · JDK 21 (daemon toolchain)
-- **UI**: Compose BOM 2026.02.01 · Material 3 · Adaptive (List-Detail)
-- **Navigation**: Navigation 3 (1.1.4) state-driven
-- **DI**: Hilt 2.60.1 + KSP2 (2.2.10-2.0.2)
-- **Data**: Room 2.8.4 + SQLCipher 4.18.0 · DataStore 1.2.1 · Coroutines/Flow 1.11.0
-- **Security**: SQLCipher passphrase in the Android Keystore (AES-256/GCM, `:core:security`)
-- **Backend** (M2+): Firebase Auth (anonymous guest-first) · Firestore · Storage · App Check (BOM 34.17.0)
-- **Images**: Coil 3.4.0
-- **Quality**: detekt 1.23.8 · blocking lint (HardcodedText, MissingTranslation)
+> **Active development:** Spenvo is not yet distributed as a production release.
+
+## Screenshots
+
+_Screenshots coming soon — see the [changelog](CHANGELOG.md) for current feature status._
+
+<!--
+Add 3–4 representative screenshots when the final assets and repository paths
+are decided. Suggested set:
+
+- Plans dashboard
+- Movements list and edit flow
+- Profile
+- Compact and expanded adaptive layouts
+-->
+
+## Features
+
+- Personal and shared financial plans.
+- Expense and income tracking scoped to each plan.
+- Custom expense and income categories, including deterministic default seeding.
+- Guest-first access with optional email and password account linking.
+- Shared-plan invitations and role-based access.
+- Offline-capable local storage and Firebase synchronization.
+- Optimistic local updates with rollback on permanent remote failures.
+- Visible last-write-wins conflict resolution for concurrent edits.
+- Profile management with avatar upload.
+- Adaptive layouts for compact and expanded screens.
+- Spanish default UI with English translations.
+
+## Project status
+
+Spenvo is under active development.
+
+- **Latest completed milestone:** M6 — Home dashboard and adaptive list-detail UI.
+- **Current milestone:** M7 — Profile.
+- **Pending manual setup:** verification of Auth sign-in providers and App Check
+  in the Firebase console.
+
+See the [changelog](CHANGELOG.md) for completed work and implementation details.
+
+## Architecture
+
+Spenvo follows unidirectional data flow and Clean Architecture:
+
+```text
+Compose UI
+    ↓ events       ↑ UiState / Flow
+ViewModel
+    ↓
+Use cases
+    ↓
+Repository interfaces
+    ↓
+Repository implementations
+    ├── Room + SQLCipher ──→ observable local state ──→ UI
+    └── Firebase ──────────→ remote synchronization
+```
+
+Key data rules:
+
+- The UI always observes Room through `Flow`; Firestore never feeds the UI
+  directly.
+- Writes update Room optimistically and are then sent to Firestore.
+- Permanent remote failures roll back the corresponding local mutation.
+- Firestore's native offline cache handles deferred remote writes; the project
+  does not maintain a custom outbox.
+- Snapshot listeners are attached only while a shared scope is active.
+- Concurrent edits use last-write-wins metadata and expose conflicts in the UI.
+- Navigation is state-driven with Navigation 3; the application owns its typed
+  back stack.
+
+For the complete architectural decisions, see
+[Architecture](doc/architecture.md).
+
+## Technology
+
+- **Build:** AGP 9.3.1, built-in Kotlin 2.2.10, Gradle 9.5, JDK 21 daemon
+  toolchain.
+- **UI:** Jetpack Compose, Material 3, and Material 3 Adaptive list-detail
+  layouts.
+- **Navigation:** Navigation 3 with a state-driven typed back stack.
+- **Dependency injection:** Hilt with KSP2.
+- **Persistence:** Room, SQLCipher, and DataStore.
+- **Backend:** Firebase Auth, Firestore, Storage, and App Check.
+- **Asynchronous state:** Kotlin Coroutines and Flow.
+- **Images:** Coil 3.
+- **Quality:** JUnit, Compose UI tests, blocking Android lint, and detekt.
+
+Exact dependency versions are centralized in
+[`gradle/libs.versions.toml`](gradle/libs.versions.toml); module build files do
+not declare versions inline.
 
 ## Modules
 
-```
-:app                    — entry point, root NavDisplay, DI
-:core:domain            — pure domain (no Android)
-:core:data              — Room+SQLCipher, DataStore, repos, Firestore sync
+```text
+:app                    — application entry point, root NavDisplay, DI
+:core:domain            — domain models, use cases, repository contracts
+:core:data              — Room, DataStore, repositories, Firebase sync
 :core:security          — Keystore-backed SQLCipher passphrase
-:core:designsystem      — theme and UI components
-:feature:cuenta         — account creation / email+password linking
-:feature:planes         — plans, shared access, invitations
-:feature:movimientos    — expenses + income (plan-scoped)
-:feature:categorias     — expense/income categories (CRUD, default seeding)
+:core:designsystem      — theme and shared UI components
+:feature:cuenta         — registration, account linking, and profile
+:feature:planes         — plans, shared access, and invitations
+:feature:movimientos    — plan-scoped expenses and income
+:feature:categorias     — expense and income category management
 ```
 
-## How to run
+Feature modules depend on core modules, never on other feature modules. The
+`:app` module is the only module allowed to integrate all features.
+
+## Quick start
+
+### Prerequisites
+
+- JDK 21.
+- Android Studio with Android SDK 37 installed.
+- A project-local `local.properties` containing `sdk.dir`.
+- A Firebase Android configuration file at `app/google-services.json`.
+- Node.js 20 or newer only when running the Firebase rules tests.
+
+### Firebase configuration
+
+Download `google-services.json` for the Android app from the appropriate
+Firebase console project and place it at:
+
+```text
+app/google-services.json
+```
+
+The file is gitignored and must never be committed. The Android build cannot
+wire Firebase Auth, Firestore, Storage, and App Check without it.
+
+### Build the debug app
+
+macOS or Linux:
 
 ```bash
-./gradlew :app:assembleDebug      # build
-./gradlew testDebugUnitTest       # unit tests
-./gradlew connectedDebugAndroidTest  # instrumented tests (device/emulator)
-./gradlew lintDebug detekt        # quality
-./gradlew dependencies --write-locks   # regenerate lockfiles
+./gradlew :app:assembleDebug
 ```
 
-### Firestore/Storage rules tests (Node)
+Windows PowerShell:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+## Verification
+
+Run the main local quality gates:
+
+macOS or Linux:
+
+```bash
+./gradlew testDebugUnitTest lintDebug detekt
+```
+
+Windows PowerShell:
+
+```powershell
+.\gradlew.bat testDebugUnitTest lintDebug detekt
+```
+
+Run instrumented tests with a device or emulator available:
+
+```bash
+./gradlew connectedDebugAndroidTest
+```
+
+Lint treats hardcoded UI text and missing translations as blocking errors.
+
+### Firebase rules tests
+
+The separate Node.js test project validates the Firestore and Storage security
+rules against Firebase Emulator Suite:
 
 ```bash
 cd rules-tests
-npm install                       # install firebase-tools + rules-unit-testing
-npm test                          # run the rules matrix against the Emulator (39 tests: 32 Firestore + 7 Storage)
+npm install
+npm test
 ```
 
-Uses `projectId: spenvo-dev` (`firebase.json`): Firestore Emulator on port 8081, Storage Emulator on port 9199.
+The emulator configuration uses project ID `spenvo-dev`, Firestore port `8081`,
+and Storage port `9199`. These tests are independent from the Gradle build.
 
-Requirements: JDK 21, Android SDK (compileSdk 37), a `local.properties` with `sdk.dir`;
-Node 20+ (only for the `rules-tests/` subproject).
+### Dependency locks
 
-### Firebase setup
+Dependency locking is enforced across the project. After an approved change to
+`gradle/libs.versions.toml`, regenerate the lockfiles with:
 
-The app needs a `google-services.json` (per module: `app/google-services.json`) from the
-Firebase console project — it's gitignored and not included in the repo. Without it, the
-build fails wiring `:app`'s Firebase (Auth, Firestore, Storage, App Check) dependencies.
+```bash
+./gradlew dependencies --write-locks
+```
 
 ## Documentation
 
-- `AGENTS.md` — operational guide (stack, gates, conventions).
-- `doc/architecture.md` — architecture decisions.
-- `doc/database/schema.mdd` — versioned data schema.
-- `doc/security/owasp.md` — OWASP 2025 security matrix.
-- `CHANGELOG.md` — changes per milestone.
-- `.agents/` — agent rules, skills and commands.
+- [Development guide](AGENTS.md) — stack, conventions, architectural boundaries,
+  and definition of done.
+- [Architecture](doc/architecture.md) — architectural decisions and rationale.
+- [Database schema](doc/database/schema.mdd) — versioned data model.
+- [Security](doc/security/owasp.md) — OWASP security matrix.
+- [Changelog](CHANGELOG.md) — milestone history and notable changes.
+- [Agent resources](.agents/) — project-specific rules, skills, and commands.
 
-## Status
+## Development conventions
 
-Milestone **M6 (Home dashboard + Adaptive List-Detail)** closed. In progress on
-**M7 (Profile)**: Slice A1 wired Firebase Storage (avatar upload backend,
-`storage.rules`) and Slice A2 added the Profile screen — a linked account now
-sees an avatar (tap to upload/replace), display name, email, and Logout,
-while an anonymous session still sees the registration form. Also added:
-sample plan seeding — a fresh install with zero plans gets one demo plan
-with realistic Spain-locale expenses/income instead of an empty state.
-Previous milestone: **M5 (Movimientos completo)** — Gasto/Ingreso edit and
-soft-delete, `editedBy`/`editedAt` attribution enforced by Firestore rules
-across all four entity families (categories, plans, expenses, income),
-honest last-write-wins conflict detection with a blocking side-by-side
-resolution dialog, and the `:feature:movimientos` edit/delete UI. Pending
-from M3: manual verification of the Auth sign-in providers and App Check in
-the Firebase console. See `CHANGELOG.md`.
+- Code and technical documentation are written in English.
+- Spanish is the default UI locale; English translations live in `values-en/`.
+- New behavior is developed test-first.
+- New dependencies require explicit approval.
+- Versions belong in the version catalog, never inline in a module build file.
+- Changes are ready only after build, tests, lint, and detekt pass.
+- Security-rule changes additionally require the Node.js emulator test suite.
+
+See [AGENTS.md](AGENTS.md) for the complete contribution and verification rules.
+
+## Security
+
+Spenvo applies defense-in-depth to financial data:
+
+- Room data is encrypted with SQLCipher.
+- The database passphrase is generated and protected by Android Keystore.
+- Cleartext traffic and Android backups are disabled.
+- Firebase App Check gates backend access.
+- Firestore and Storage rules are deny-by-default and role- or owner-scoped.
+- Amounts, email addresses, and credentials must never be logged.
+
+See the [OWASP security matrix](doc/security/owasp.md) for the detailed controls.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
