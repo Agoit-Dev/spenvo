@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Center the adaptive launcher icon artwork in both the standard and round
+  launcher masks.
+
 ### Added
 
 - M7 Slice A2 (Profile screen — first user-visible piece of the avatar
