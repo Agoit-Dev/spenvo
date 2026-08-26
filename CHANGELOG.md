@@ -20,12 +20,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   actual category if the user saved without touching the selector. Switching type while creating a
   new movimiento now correctly clears the previous type's category selection too, closing a related
   path where a stale category could otherwise be saved under the wrong type.
+- Movimientos edit modal in the expanded (tablet) list-detail layout: switching from editing one
+  movimiento to viewing another used to carry over the previous movimiento's edit mode and
+  unsaved field values, since the form's local state wasn't tied to which movimiento it was
+  showing. The form is now keyed per movimiento id, so switching always starts fresh. Also fixed
+  Cancelar silently restoring a movimiento's stored category even when that category had since
+  been deleted — it was blindly reverting to the original id instead of re-checking whether that
+  id still exists in the loaded list.
 
 ### Changed
 
 - Movimientos edit modal now opens read-only for an existing movimiento, with an explicit "Editar"
   action to enable fields; Cancelar reverts unsaved changes and returns to the read-only view
-  instead of dismissing the sheet; Eliminar is now only reachable after Editar.
+  instead of dismissing the sheet; Eliminar is now only reachable after Editar. The category
+  selector now visibly dims while read-only, matching the amount/description fields and type
+  chips.
 
 ### Added
 
