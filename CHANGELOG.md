@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   actual category if the user saved without touching the selector. Switching type while creating a
   new movimiento now correctly clears the previous type's category selection too, closing a related
   path where a stale category could otherwise be saved under the wrong type.
+
+### Changed
+
 - Movimientos edit modal now opens read-only for an existing movimiento, with an explicit "Editar"
   action to enable fields; Cancelar reverts unsaved changes and returns to the read-only view
   instead of dismissing the sheet; Eliminar is now only reachable after Editar.
