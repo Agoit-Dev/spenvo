@@ -32,6 +32,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -124,6 +125,79 @@ class MovimientoFormSheetTest {
 
         assertEquals("cat-transporte", guardado?.categoriaId)
     }
+
+    @Test
+    fun `cambiar de tipo al crear limpia la categoria del tipo anterior`() {
+        var guardado: MovimientoFormDatos? = null
+        val viewModel = crearViewModel()
+
+        composeTestRule.setContent {
+            MovimientoFormEstadoYContenido(
+                planId = "p1",
+                tipoInicial = TipoCategoria.GASTO,
+                cargando = false,
+                viewModel = viewModel,
+                movimientoExistente = null,
+                acciones = MovimientoFormAcciones(
+                    onGuardar = { guardado = it },
+                    onDismiss = {},
+                    onEliminar = null,
+                ),
+            )
+        }
+
+        categoriaRepo.categorias.value = listOf(
+            Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
+        )
+        composeTestRule.waitForIdle()
+        // categoriaId is now auto-selected to "cat-comida" (GASTO).
+
+        composeTestRule.onNodeWithText("Ingresos").performClick()
+        composeTestRule.waitForIdle()
+        // Switching tipo must clear the GASTO category -- there is no INGRESO category yet, so
+        // Guardar must be blocked, not silently succeed with a GASTO category id under an Ingreso.
+        composeTestRule.onNodeWithText("Guardar").performClick()
+
+        assertEquals(null, guardado)
+    }
+
+    @Test
+    fun `movimiento nuevo selecciona la primera categoria cuando la lista llega`() {
+        var guardado: MovimientoFormDatos? = null
+        val viewModel = crearViewModel()
+
+        composeTestRule.setContent {
+            MovimientoFormEstadoYContenido(
+                planId = "p1",
+                tipoInicial = TipoCategoria.GASTO,
+                cargando = false,
+                viewModel = viewModel,
+                movimientoExistente = Gasto(
+                    id = "temp",
+                    planId = "p1",
+                    categoriaId = "temp",
+                    monto = Monto(1000),
+                    fecha = LocalDate.now(),
+                    creadoPor = "user-1",
+                ),
+                acciones = MovimientoFormAcciones(
+                    onGuardar = { guardado = it },
+                    onDismiss = {},
+                    onEliminar = {},
+                ),
+            )
+        }
+
+        categoriaRepo.categorias.value = listOf(
+            Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
+            Categoria(id = "cat-transporte", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO),
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Guardar").performClick()
+
+        assertEquals("cat-comida", guardado?.categoriaId)
+    }
 }
 
 private class FakeMovimientoRepositorioForm : MovimientoRepository {
@@ -142,7 +216,8 @@ private class FakeMovimientoRepositorioForm : MovimientoRepository {
 private class FakeCategoriaRepositorioForm : CategoriaRepository {
     val categorias = MutableStateFlow<List<Categoria>>(emptyList())
     override fun observarCategorias(planId: String): Flow<List<Categoria>> = categorias
-    override fun observarCategoriasPorTipo(planId: String, tipo: TipoCategoria): Flow<List<Categoria>> = categorias
+    override fun observarCategoriasPorTipo(planId: String, tipo: TipoCategoria): Flow<List<Categoria>> =
+        categorias.transform { cats -> emit(cats.filter { it.tipo == tipo }) }
     override suspend fun crearCategoria(categoria: Categoria) = Unit
     override suspend fun crearCategorias(categorias: List<Categoria>) = Unit
     override suspend fun actualizarCategoria(categoria: Categoria) = Unit

@@ -126,7 +126,10 @@ internal fun MovimientoFormEstadoYContenido(
     MovimientoFormContenido(
         editando = movimientoExistente != null,
         tipo = tipo,
-        onTipoChange = { tipo = it },
+        onTipoChange = { nuevoTipo ->
+            if (nuevoTipo != tipo) categoriaId = ""
+            tipo = nuevoTipo
+        },
         montoTexto = montoTexto,
         onMontoChange = { montoTexto = it },
         categoriasDisponibles = categoriasDisponibles,
