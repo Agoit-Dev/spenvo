@@ -12,6 +12,7 @@
     <string name="movements_detail_placeholder">Select a transaction to see its detail.</string>
     <string name="movements_add">New transaction</string>
     <string name="movements_edit">Edit transaction</string>
+    <string name="movements_edit_action">Edit</string>
     <string name="movements_amount">Amount</string>
     <string name="movements_category">Category</string>
     <string name="movements_description">Description (optional)</string>

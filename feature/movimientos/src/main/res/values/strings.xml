@@ -12,6 +12,7 @@
     <string name="movements_detail_placeholder">Seleccioná un movimiento para ver el detalle.</string>
     <string name="movements_add">Nuevo movimiento</string>
     <string name="movements_edit">Editar movimiento</string>
+    <string name="movements_edit_action">Editar</string>
     <string name="movements_amount">Monto</string>
     <string name="movements_category">Categoría</string>
     <string name="movements_description">Descripción (opcional)</string>
