@@ -17,8 +17,6 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -47,6 +45,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.agoitdev.spenvo.designsystem.components.ConfirmarEliminarDialog
+import com.agoitdev.spenvo.designsystem.components.ConfirmarEliminarTextos
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 
@@ -154,6 +154,12 @@ private fun CategoriaFormularioSheet(
 
     if (mostrarConfirmarEliminar && categoriaExistente != null) {
         ConfirmarEliminarDialog(
+            textos = ConfirmarEliminarTextos(
+                titulo = stringResource(R.string.categories_delete_confirm_title),
+                mensaje = stringResource(R.string.categories_delete_confirm_message),
+                confirmar = stringResource(R.string.categories_delete),
+                cancelar = stringResource(R.string.categories_cancel),
+            ),
             onConfirmar = {
                 mostrarConfirmarEliminar = false
                 viewModel.eliminar(categoriaExistente)
@@ -341,26 +347,6 @@ private fun SelectorIcono(
             }
         }
     }
-}
-
-@Composable
-private fun ConfirmarEliminarDialog(onConfirmar: () -> Unit, onCancelar: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        icon = { Icon(imageVector = Icons.Filled.Delete, contentDescription = null) },
-        title = { Text(stringResource(R.string.categories_delete_confirm_title)) },
-        text = { Text(stringResource(R.string.categories_delete_confirm_message)) },
-        confirmButton = {
-            TextButton(onClick = onConfirmar) {
-                Text(stringResource(R.string.categories_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) {
-                Text(stringResource(R.string.categories_cancel))
-            }
-        },
-    )
 }
 
 private const val GRID_COLUMNS = 3

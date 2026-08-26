@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -295,13 +296,44 @@ class MovimientoFormSheetTest {
         composeTestRule.onNodeWithText("Cancelar").assertDoesNotExist()
         composeTestRule.onNodeWithText("Eliminar").assertDoesNotExist()
     }
+
+    @Test
+    fun `eliminar abre el dialogo de confirmacion compartido y elimina al confirmar`() {
+        val viewModel = crearViewModel()
+        val parametros = MovimientoFormularioParametros(
+            planId = "p1",
+            tipoPorDefecto = TipoCategoria.GASTO,
+            formulario = FormularioMovimiento.Editar(gasto),
+            viewModel = viewModel,
+            cargando = false,
+            onCerrar = {},
+        )
+
+        composeTestRule.setContent { MovimientoFormularioSheet(parametros) }
+
+        composeTestRule.onNodeWithText("Editar").performClick()
+        composeTestRule.onNodeWithText("Eliminar").performClick()
+
+        composeTestRule.onNodeWithText("Eliminar movimiento").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Esta acción no se puede deshacer.").assertIsDisplayed()
+
+        composeTestRule.onAllNodesWithText("Eliminar")[1].performClick()
+
+        composeTestRule.onNodeWithText("Eliminar movimiento").assertDoesNotExist()
+        // EliminarGastoUseCase stamps editedBy/editedAt/deletedAt before calling the repository,
+        // so the recorded gasto isn't structurally equal to the original fixture -- only its
+        // identity and the fact that a delete actually reached the repository are asserted here.
+        assertEquals(listOf(gasto.id), movimientoRepo.eliminados.map { it.id })
+        assertEquals(1, movimientoRepo.eliminados.size)
+    }
 }
 
 private class FakeMovimientoRepositorioForm : MovimientoRepository {
+    val eliminados = mutableListOf<Gasto>()
     override suspend fun addGasto(gasto: Gasto) = Unit
     override suspend fun addIngreso(ingreso: Ingreso) = Unit
     override suspend fun actualizarGasto(gasto: Gasto) = Unit
-    override suspend fun eliminarGasto(gasto: Gasto) = Unit
+    override suspend fun eliminarGasto(gasto: Gasto) { eliminados.add(gasto) }
     override suspend fun actualizarIngreso(ingreso: Ingreso) = Unit
     override suspend fun eliminarIngreso(ingreso: Ingreso) = Unit
     override suspend fun aplicarGastoRemoto(id: String) = Unit

@@ -5,13 +5,8 @@ package com.agoitdev.spenvo.movimientos
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.agoitdev.spenvo.designsystem.components.ConfirmarEliminarDialog
+import com.agoitdev.spenvo.designsystem.components.ConfirmarEliminarTextos
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Movimiento
@@ -119,7 +116,13 @@ private fun MovimientoFormularioEstado(
     )
 
     if (mostrarConfirmarEliminar && movimientoExistente != null) {
-        ConfirmarEliminarMovimientoDialog(
+        ConfirmarEliminarDialog(
+            textos = ConfirmarEliminarTextos(
+                titulo = stringResource(R.string.movements_delete_confirm_title),
+                mensaje = stringResource(R.string.movements_delete_confirm_message),
+                confirmar = stringResource(R.string.movements_delete),
+                cancelar = stringResource(R.string.movements_cancel),
+            ),
             onConfirmar = {
                 mostrarConfirmarEliminar = false
                 viewModel.eliminar(movimientoExistente)
@@ -141,25 +144,5 @@ private fun aplicarDatos(movimiento: Movimiento, datos: MovimientoFormDatos): Mo
         monto = datos.monto,
         fecha = datos.fecha,
         descripcion = datos.descripcion,
-    )
-}
-
-@Composable
-private fun ConfirmarEliminarMovimientoDialog(onConfirmar: () -> Unit, onCancelar: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        icon = { Icon(imageVector = Icons.Filled.Delete, contentDescription = null) },
-        title = { Text(stringResource(R.string.movements_delete_confirm_title)) },
-        text = { Text(stringResource(R.string.movements_delete_confirm_message)) },
-        confirmButton = {
-            TextButton(onClick = onConfirmar) {
-                Text(stringResource(R.string.movements_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) {
-                Text(stringResource(R.string.movements_cancel))
-            }
-        },
     )
 }
