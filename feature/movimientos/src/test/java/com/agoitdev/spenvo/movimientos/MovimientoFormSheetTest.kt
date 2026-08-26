@@ -3,6 +3,7 @@ package com.agoitdev.spenvo.movimientos
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizacion
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Gasto
@@ -154,6 +155,7 @@ class MovimientoFormSheetTest {
 
         composeTestRule.onNodeWithText("Ingresos").performClick()
         composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Monto").performTextInput("10")
         // Switching tipo must clear the GASTO category -- there is no INGRESO category yet, so
         // Guardar must be blocked, not silently succeed with a GASTO category id under an Ingreso.
         composeTestRule.onNodeWithText("Guardar").performClick()
@@ -162,7 +164,7 @@ class MovimientoFormSheetTest {
     }
 
     @Test
-    fun `movimiento nuevo selecciona la primera categoria cuando la lista llega`() {
+    fun `categoria guardada que ya no existe en la lista cae en la primera`() {
         var guardado: MovimientoFormDatos? = null
         val viewModel = crearViewModel()
 
@@ -194,6 +196,38 @@ class MovimientoFormSheetTest {
         )
         composeTestRule.waitForIdle()
 
+        composeTestRule.onNodeWithText("Guardar").performClick()
+
+        assertEquals("cat-comida", guardado?.categoriaId)
+    }
+
+    @Test
+    fun `movimiento nuevo selecciona la primera categoria cuando la lista llega`() {
+        var guardado: MovimientoFormDatos? = null
+        val viewModel = crearViewModel()
+
+        composeTestRule.setContent {
+            MovimientoFormEstadoYContenido(
+                planId = "p1",
+                tipoInicial = TipoCategoria.GASTO,
+                cargando = false,
+                viewModel = viewModel,
+                movimientoExistente = null,
+                acciones = MovimientoFormAcciones(
+                    onGuardar = { guardado = it },
+                    onDismiss = {},
+                    onEliminar = null,
+                ),
+            )
+        }
+
+        categoriaRepo.categorias.value = listOf(
+            Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
+            Categoria(id = "cat-transporte", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO),
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Monto").performTextInput("10")
         composeTestRule.onNodeWithText("Guardar").performClick()
 
         assertEquals("cat-comida", guardado?.categoriaId)
