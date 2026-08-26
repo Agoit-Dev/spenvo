@@ -75,17 +75,20 @@ internal fun FiltroTipoMovimiento(
     tipoSeleccionado: TipoCategoria,
     onTipoChange: (TipoCategoria) -> Unit,
     modifier: Modifier = Modifier,
+    habilitado: Boolean = true,
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(
             selected = tipoSeleccionado == TipoCategoria.GASTO,
             onClick = { onTipoChange(TipoCategoria.GASTO) },
             label = { Text(stringResource(R.string.movements_filter_expense)) },
+            enabled = habilitado,
         )
         FilterChip(
             selected = tipoSeleccionado == TipoCategoria.INGRESO,
             onClick = { onTipoChange(TipoCategoria.INGRESO) },
             label = { Text(stringResource(R.string.movements_filter_income)) },
+            enabled = habilitado,
         )
     }
 }

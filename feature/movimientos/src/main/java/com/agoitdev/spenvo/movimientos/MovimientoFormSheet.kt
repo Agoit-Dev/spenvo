@@ -185,7 +185,7 @@ private fun MovimientoFormContenido(
             text = stringResource(if (editando) R.string.movements_edit else R.string.movements_add),
             style = MaterialTheme.typography.titleMedium,
         )
-        FiltroTipoMovimiento(tipoSeleccionado = tipo, onTipoChange = onTipoChange)
+        FiltroTipoMovimiento(tipoSeleccionado = tipo, onTipoChange = onTipoChange, habilitado = !editando)
         OutlinedTextField(
             value = montoTexto,
             onValueChange = onMontoChange,

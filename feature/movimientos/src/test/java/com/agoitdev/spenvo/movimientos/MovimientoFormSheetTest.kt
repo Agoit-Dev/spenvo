@@ -1,5 +1,8 @@
 package com.agoitdev.spenvo.movimientos
 
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -219,6 +222,22 @@ class MovimientoFormSheetTest {
         composeTestRule.onNodeWithText("Guardar").performClick()
 
         assertEquals("cat-comida", guardado?.categoriaId)
+    }
+
+    @Test
+    fun `chips de tipo estan deshabilitados al editar un movimiento existente`() {
+        montarFormulario(movimientoExistente = gasto, onEliminar = {})
+
+        composeTestRule.onNodeWithText("Gastos").assertIsDisplayed().assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Ingresos").assertIsDisplayed().assertIsNotEnabled()
+    }
+
+    @Test
+    fun `chips de tipo estan habilitados al crear un movimiento nuevo`() {
+        montarFormulario()
+
+        composeTestRule.onNodeWithText("Gastos").assertIsDisplayed().assertIsEnabled()
+        composeTestRule.onNodeWithText("Ingresos").assertIsDisplayed().assertIsEnabled()
     }
 }
 
