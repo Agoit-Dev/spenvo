@@ -118,8 +118,8 @@ internal fun MovimientoFormEstadoYContenido(
     val categoriasDisponibles by categoriasFlow.collectAsStateWithLifecycle()
 
     LaunchedEffect(categoriasDisponibles) {
-        if (categoriaId.isBlank() || categoriasDisponibles.none { it.id == categoriaId }) {
-            categoriaId = categoriasDisponibles.firstOrNull()?.id.orEmpty()
+        if (categoriasDisponibles.isNotEmpty() && categoriasDisponibles.none { it.id == categoriaId }) {
+            categoriaId = categoriasDisponibles.first().id
         }
     }
 
