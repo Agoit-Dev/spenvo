@@ -9,6 +9,7 @@ import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Monto
+import com.agoitdev.spenvo.domain.model.Movimiento
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.repository.AuthRepository
@@ -33,7 +34,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -68,6 +69,11 @@ class MovimientoFormSheetTest {
         creadoPor = "user-1",
     )
 
+    private val categoriasGasto = listOf(
+        Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
+        Categoria(id = "cat-transporte", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO),
+    )
+
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -95,31 +101,39 @@ class MovimientoFormSheetTest {
         conflictosPendientes = ConflictosPendientes(),
     )
 
-    @Test
-    fun `categoria guardada se mantiene aunque la lista de categorias llegue vacia primero`() {
-        var guardado: MovimientoFormDatos? = null
+    private fun montarFormulario(
+        movimientoExistente: Movimiento? = null,
+        onEliminar: (() -> Unit)? = null,
+        onGuardar: (MovimientoFormDatos) -> Unit = {},
+    ) {
         val viewModel = crearViewModel()
-
         composeTestRule.setContent {
             MovimientoFormEstadoYContenido(
                 planId = "p1",
                 tipoInicial = TipoCategoria.GASTO,
                 cargando = false,
                 viewModel = viewModel,
-                movimientoExistente = gasto,
+                movimientoExistente = movimientoExistente,
                 acciones = MovimientoFormAcciones(
-                    onGuardar = { guardado = it },
+                    onGuardar = onGuardar,
                     onDismiss = {},
-                    onEliminar = {},
+                    onEliminar = onEliminar,
                 ),
             )
         }
+    }
+
+    @Test
+    fun `categoria guardada se mantiene aunque la lista de categorias llegue vacia primero`() {
+        var guardado: MovimientoFormDatos? = null
+        montarFormulario(
+            movimientoExistente = gasto,
+            onEliminar = {},
+            onGuardar = { guardado = it },
+        )
 
         // Real data arrives after the initial empty StateFlow value -- the exact race the bug depends on.
-        categoriaRepo.categorias.value = listOf(
-            Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
-            Categoria(id = "cat-transporte", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO),
-        )
+        categoriaRepo.categorias.value = categoriasGasto
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Guardar").performClick()
@@ -130,22 +144,7 @@ class MovimientoFormSheetTest {
     @Test
     fun `cambiar de tipo al crear limpia la categoria del tipo anterior`() {
         var guardado: MovimientoFormDatos? = null
-        val viewModel = crearViewModel()
-
-        composeTestRule.setContent {
-            MovimientoFormEstadoYContenido(
-                planId = "p1",
-                tipoInicial = TipoCategoria.GASTO,
-                cargando = false,
-                viewModel = viewModel,
-                movimientoExistente = null,
-                acciones = MovimientoFormAcciones(
-                    onGuardar = { guardado = it },
-                    onDismiss = {},
-                    onEliminar = null,
-                ),
-            )
-        }
+        montarFormulario(onGuardar = { guardado = it })
 
         categoriaRepo.categorias.value = listOf(
             Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
@@ -163,37 +162,25 @@ class MovimientoFormSheetTest {
         assertEquals(null, guardado)
     }
 
+    // Checks that an existing movimiento's stored category id, when it's no longer present in the
+    // loaded category list, falls back to the first available category instead of staying invalid.
     @Test
     fun `categoria guardada que ya no existe en la lista cae en la primera`() {
         var guardado: MovimientoFormDatos? = null
-        val viewModel = crearViewModel()
-
-        composeTestRule.setContent {
-            MovimientoFormEstadoYContenido(
+        montarFormulario(
+            movimientoExistente = Gasto(
+                id = "cat-borrada",
                 planId = "p1",
-                tipoInicial = TipoCategoria.GASTO,
-                cargando = false,
-                viewModel = viewModel,
-                movimientoExistente = Gasto(
-                    id = "temp",
-                    planId = "p1",
-                    categoriaId = "temp",
-                    monto = Monto(1000),
-                    fecha = LocalDate.now(),
-                    creadoPor = "user-1",
-                ),
-                acciones = MovimientoFormAcciones(
-                    onGuardar = { guardado = it },
-                    onDismiss = {},
-                    onEliminar = {},
-                ),
-            )
-        }
-
-        categoriaRepo.categorias.value = listOf(
-            Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
-            Categoria(id = "cat-transporte", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO),
+                categoriaId = "cat-borrada",
+                monto = Monto(1000),
+                fecha = LocalDate.of(2026, 8, 22),
+                creadoPor = "user-1",
+            ),
+            onEliminar = {},
+            onGuardar = { guardado = it },
         )
+
+        categoriaRepo.categorias.value = categoriasGasto
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Guardar").performClick()
@@ -201,32 +188,33 @@ class MovimientoFormSheetTest {
         assertEquals("cat-comida", guardado?.categoriaId)
     }
 
+    // Complementary to the previous test: here categoriaId starts blank (a genuinely new
+    // movimiento), not pointing at a since-deleted category.
     @Test
     fun `movimiento nuevo selecciona la primera categoria cuando la lista llega`() {
         var guardado: MovimientoFormDatos? = null
-        val viewModel = crearViewModel()
+        montarFormulario(onGuardar = { guardado = it })
 
-        composeTestRule.setContent {
-            MovimientoFormEstadoYContenido(
-                planId = "p1",
-                tipoInicial = TipoCategoria.GASTO,
-                cargando = false,
-                viewModel = viewModel,
-                movimientoExistente = null,
-                acciones = MovimientoFormAcciones(
-                    onGuardar = { guardado = it },
-                    onDismiss = {},
-                    onEliminar = null,
-                ),
-            )
-        }
+        categoriaRepo.categorias.value = categoriasGasto
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Monto").performTextInput("10")
+        composeTestRule.onNodeWithText("Guardar").performClick()
+
+        assertEquals("cat-comida", guardado?.categoriaId)
+    }
+
+    @Test
+    fun `re-tocar el chip ya seleccionado no borra la categoria elegida`() {
+        var guardado: MovimientoFormDatos? = null
+        montarFormulario(onGuardar = { guardado = it })
 
         categoriaRepo.categorias.value = listOf(
             Categoria(id = "cat-comida", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
-            Categoria(id = "cat-transporte", planId = "p1", nombre = "Transporte", tipo = TipoCategoria.GASTO),
         )
         composeTestRule.waitForIdle()
 
+        composeTestRule.onNodeWithText("Gastos").performClick() // already selected -- must be a no-op
         composeTestRule.onNodeWithText("Monto").performTextInput("10")
         composeTestRule.onNodeWithText("Guardar").performClick()
 
@@ -251,7 +239,7 @@ private class FakeCategoriaRepositorioForm : CategoriaRepository {
     val categorias = MutableStateFlow<List<Categoria>>(emptyList())
     override fun observarCategorias(planId: String): Flow<List<Categoria>> = categorias
     override fun observarCategoriasPorTipo(planId: String, tipo: TipoCategoria): Flow<List<Categoria>> =
-        categorias.transform { cats -> emit(cats.filter { it.tipo == tipo }) }
+        categorias.map { cats -> cats.filter { it.tipo == tipo } }
     override suspend fun crearCategoria(categoria: Categoria) = Unit
     override suspend fun crearCategorias(categorias: List<Categoria>) = Unit
     override suspend fun actualizarCategoria(categoria: Categoria) = Unit
