@@ -3,6 +3,8 @@ package com.agoitdev.spenvo.movimientos
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -228,8 +230,10 @@ class MovimientoFormSheetTest {
     fun `chips de tipo estan deshabilitados al editar un movimiento existente`() {
         montarFormulario(movimientoExistente = gasto, onEliminar = {})
 
-        composeTestRule.onNodeWithText("Gastos").assertIsDisplayed().assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Ingresos").assertIsDisplayed().assertIsNotEnabled()
+        // Disabled AND still showing the real type as selected -- selected/enabled are independent
+        // semantics, so both must be asserted to actually pin "which type is this" while locked.
+        composeTestRule.onNodeWithText("Gastos").assertIsDisplayed().assertIsNotEnabled().assertIsSelected()
+        composeTestRule.onNodeWithText("Ingresos").assertIsDisplayed().assertIsNotEnabled().assertIsNotSelected()
     }
 
     @Test
