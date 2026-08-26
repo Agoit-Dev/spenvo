@@ -113,6 +113,7 @@ internal fun MovimientoFormEstadoYContenido(
     }
     var descripcion by rememberSaveable { mutableStateOf(movimientoExistente?.descripcion.orEmpty()) }
     var errorLocal by remember { mutableStateOf<Int?>(null) }
+    var modoEdicion by rememberSaveable { mutableStateOf(movimientoExistente == null) }
 
     val categoriasFlow = remember(planId, tipo) { viewModel.categorias(planId, tipo) }
     val categoriasDisponibles by categoriasFlow.collectAsStateWithLifecycle()
@@ -125,6 +126,7 @@ internal fun MovimientoFormEstadoYContenido(
 
     MovimientoFormContenido(
         editando = movimientoExistente != null,
+        modoEdicion = modoEdicion,
         tipo = tipo,
         onTipoChange = { nuevoTipo ->
             if (nuevoTipo != tipo) categoriaId = ""
@@ -139,6 +141,14 @@ internal fun MovimientoFormEstadoYContenido(
         onDescripcionChange = { descripcion = it },
         errorLocal = errorLocal,
         cargando = cargando,
+        onEditarClick = { modoEdicion = true },
+        onCancelarClick = {
+            categoriaId = movimientoExistente?.categoriaId.orEmpty()
+            montoTexto = movimientoExistente?.monto?.let { montoInicialTexto(it) }.orEmpty()
+            descripcion = movimientoExistente?.descripcion.orEmpty()
+            errorLocal = null
+            modoEdicion = false
+        },
         onGuardarClick = {
             val entrada = MovimientoFormEntrada(
                 planId = planId,
@@ -158,6 +168,7 @@ internal fun MovimientoFormEstadoYContenido(
 @Composable
 private fun MovimientoFormContenido(
     editando: Boolean,
+    modoEdicion: Boolean,
     tipo: TipoCategoria,
     onTipoChange: (TipoCategoria) -> Unit,
     montoTexto: String,
@@ -169,6 +180,8 @@ private fun MovimientoFormContenido(
     onDescripcionChange: (String) -> Unit,
     errorLocal: Int?,
     cargando: Boolean,
+    onEditarClick: () -> Unit,
+    onCancelarClick: () -> Unit,
     onGuardarClick: () -> Unit,
     onEliminar: (() -> Unit)?,
 ) {
@@ -191,30 +204,71 @@ private fun MovimientoFormContenido(
             onValueChange = onMontoChange,
             label = { Text(stringResource(R.string.movements_amount)) },
             singleLine = true,
+            enabled = modoEdicion,
             modifier = Modifier.fillMaxWidth(),
         )
         SelectorCategoria(
             categorias = categoriasDisponibles,
             categoriaSeleccionada = categoriaId,
             onCategoriaChange = onCategoriaChange,
+            habilitado = modoEdicion,
         )
         OutlinedTextField(
             value = descripcion,
             onValueChange = onDescripcionChange,
             label = { Text(stringResource(R.string.movements_description)) },
             singleLine = true,
+            enabled = modoEdicion,
             modifier = Modifier.fillMaxWidth(),
         )
         errorLocal?.let {
             Text(text = stringResource(it), color = MaterialTheme.colorScheme.error)
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = if (onEliminar != null) Arrangement.SpaceBetween else Arrangement.End,
-        ) {
-            if (onEliminar != null) {
-                TextButton(onClick = onEliminar, enabled = !cargando) {
-                    Text(stringResource(R.string.movements_delete))
+        MovimientoFormAccionesRow(
+            editando = editando,
+            modoEdicion = modoEdicion,
+            cargando = cargando,
+            onEditarClick = onEditarClick,
+            onCancelarClick = onCancelarClick,
+            onGuardarClick = onGuardarClick,
+            onEliminar = onEliminar,
+        )
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun MovimientoFormAccionesRow(
+    editando: Boolean,
+    modoEdicion: Boolean,
+    cargando: Boolean,
+    onEditarClick: () -> Unit,
+    onCancelarClick: () -> Unit,
+    onGuardarClick: () -> Unit,
+    onEliminar: (() -> Unit)?,
+) {
+    if (editando && !modoEdicion) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onEditarClick) {
+                Text(stringResource(R.string.movements_edit_action))
+            }
+        }
+        return
+    }
+    val eliminarClick = onEliminar.takeIf { editando }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (eliminarClick != null) Arrangement.SpaceBetween else Arrangement.End,
+    ) {
+        if (eliminarClick != null) {
+            TextButton(onClick = eliminarClick, enabled = !cargando) {
+                Text(stringResource(R.string.movements_delete))
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (editando) {
+                TextButton(onClick = onCancelarClick, enabled = !cargando) {
+                    Text(stringResource(R.string.movements_cancel))
                 }
             }
             TextButton(enabled = !cargando, onClick = onGuardarClick) {
@@ -254,6 +308,7 @@ private fun SelectorCategoria(
     categorias: List<Categoria>,
     categoriaSeleccionada: String,
     onCategoriaChange: (String) -> Unit,
+    habilitado: Boolean,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -261,6 +316,7 @@ private fun SelectorCategoria(
             val seleccionada = categoria.id == categoriaSeleccionada
             Surface(
                 onClick = { onCategoriaChange(categoria.id) },
+                enabled = habilitado,
                 shape = CircleShape,
                 color = if (seleccionada) {
                     MaterialTheme.colorScheme.primaryContainer

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizacion
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Gasto
@@ -141,6 +142,8 @@ class MovimientoFormSheetTest {
         categoriaRepo.categorias.value = categoriasGasto
         composeTestRule.waitForIdle()
 
+        // Existing movimiento opens read-only -- enter edit mode before Guardar is available.
+        composeTestRule.onNodeWithText("Editar").performClick()
         composeTestRule.onNodeWithText("Guardar").performClick()
 
         assertEquals("cat-transporte", guardado?.categoriaId)
@@ -188,6 +191,8 @@ class MovimientoFormSheetTest {
         categoriaRepo.categorias.value = categoriasGasto
         composeTestRule.waitForIdle()
 
+        // Existing movimiento opens read-only -- enter edit mode before Guardar is available.
+        composeTestRule.onNodeWithText("Editar").performClick()
         composeTestRule.onNodeWithText("Guardar").performClick()
 
         assertEquals("cat-comida", guardado?.categoriaId)
@@ -242,6 +247,53 @@ class MovimientoFormSheetTest {
 
         composeTestRule.onNodeWithText("Gastos").assertIsDisplayed().assertIsEnabled()
         composeTestRule.onNodeWithText("Ingresos").assertIsDisplayed().assertIsEnabled()
+    }
+
+    @Test
+    fun `editar movimiento existente abre en modo vista con campos deshabilitados`() {
+        montarFormulario(movimientoExistente = gasto, onEliminar = {})
+
+        composeTestRule.onNodeWithText("Monto").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Editar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Guardar").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Cancelar").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Eliminar").assertDoesNotExist()
+    }
+
+    @Test
+    fun `pulsar editar habilita campos y muestra guardar cancelar y eliminar`() {
+        montarFormulario(movimientoExistente = gasto, onEliminar = {})
+
+        composeTestRule.onNodeWithText("Editar").performClick()
+
+        composeTestRule.onNodeWithText("Monto").assertIsEnabled()
+        composeTestRule.onNodeWithText("Guardar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cancelar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Eliminar").assertIsDisplayed()
+    }
+
+    @Test
+    fun `cancelar revierte los cambios y vuelve a modo vista sin cerrar el sheet`() {
+        montarFormulario(movimientoExistente = gasto, onEliminar = {})
+
+        composeTestRule.onNodeWithText("Editar").performClick()
+        composeTestRule.onNodeWithText("Monto").performTextReplacement("999")
+        composeTestRule.onNodeWithText("Cancelar").performClick()
+
+        composeTestRule.onNodeWithText("15").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Editar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Guardar").assertDoesNotExist()
+    }
+
+    @Test
+    fun `crear movimiento nuevo no muestra el boton editar`() {
+        montarFormulario()
+
+        composeTestRule.onNodeWithText("Editar").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Monto").assertIsEnabled()
+        composeTestRule.onNodeWithText("Guardar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cancelar").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Eliminar").assertDoesNotExist()
     }
 }
 
