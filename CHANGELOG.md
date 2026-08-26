@@ -11,9 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Center the adaptive launcher icon artwork in both the standard and round
   launcher masks.
+- Movimientos edit modal: the type (Gasto/Ingreso) could be changed on an existing movimiento via
+  the type chips, even though `Gasto`/`Ingreso` are separate domain types with their own storage —
+  the chips are now locked (shown, disabled, still showing the real type as selected) whenever
+  editing an existing movimiento. The category selector also no longer resets to the plan's first
+  category on open: the reset guard was firing while the categories `StateFlow` was still at its
+  transient empty initial value, before the real list loaded, silently losing the movimiento's
+  actual category if the user saved without touching the selector. Switching type while creating a
+  new movimiento now correctly clears the previous type's category selection too, closing a related
+  path where a stale category could otherwise be saved under the wrong type.
+- Movimientos edit modal now opens read-only for an existing movimiento, with an explicit "Editar"
+  action to enable fields; Cancelar reverts unsaved changes and returns to the read-only view
+  instead of dismissing the sheet; Eliminar is now only reachable after Editar.
 
 ### Added
 
+- `:core:designsystem` gains a shared `ConfirmarEliminarDialog`, de-duplicating two nearly
+  identical private delete-confirmation `AlertDialog`s that `:feature:categorias` and
+  `:feature:movimientos` each had implemented on their own (behavior unchanged — same dialog, same
+  strings per feature, just one shared component instead of two copies). `:feature:categorias` also
+  gained Compose UI test infrastructure (Robolectric + `ui-test-junit4`, mirroring the other
+  feature modules) and its first screen-level Compose test.
 - M7 Slice A2 (Profile screen — first user-visible piece of the avatar
   feature): `:feature:cuenta`'s `CuentaScreen` now branches on
   `Sesion.esAnonima` — an anonymous session still sees the unchanged
