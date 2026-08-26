@@ -29,8 +29,10 @@ is shared between "create" and "edit" flows and has three problems:
    movimiento silently changes category.
 3. **No view-before-edit protection.** Today `editando: Boolean` in `MovimientoFormContenido`
    only changes the sheet title and whether the Eliminar button exists — it does not gate field
-   editability. The sheet opens fully editable and deletable immediately, with no confirmation
-   step and no way to back out short of dismissing the whole sheet.
+   editability. The sheet opens fully editable immediately, with no way to back out short of
+   dismissing the whole sheet. (Deletion itself already goes through a confirmation dialog —
+   `ConfirmarEliminarMovimientoDialog` in `MovimientoFormularioHost.kt:147-165` — this point is
+   about field editability, not delete safety.)
 
 ## Interaction model
 
@@ -53,7 +55,8 @@ than kick the user out of a screen they may have opened just to look something u
 Pressing **Guardar** behaves as it does today: on success the sheet closes automatically
 (`EfectosMovimientos` in `MovimientosScreen.kt:69`, unaffected by this change).
 
-Pressing **Eliminar** opens a confirmation dialog instead of deleting immediately (see below).
+Pressing **Eliminar** opens the confirmation dialog (already exists, see below) instead of
+deleting immediately — unchanged from today, just now only reachable after Editar.
 
 ### Type chip visual treatment
 
@@ -84,18 +87,50 @@ the first category once the list loads, and an existing movimiento whose stored 
 longer exists falls back safely — while never touching `categoriaId` during the empty-list
 loading window.
 
-### Delete confirmation
+### Delete confirmation — de-duplicate, not add
 
-`ConfirmarEliminarDialog` already exists, privately, in
-`feature/categorias/src/main/java/com/agoitdev/spenvo/categorias/CategoriasScreen.kt:346` (an
-`AlertDialog` with `onConfirmar`/`onCancelar`, currently hardcoded to categoría strings). Promote
-it to `:core:designsystem`, parameterized by title/message, so both `:feature:categorias` and
-`:feature:movimientos` use the same component instead of duplicating the same `AlertDialog`.
-`:feature:categorias`'s `CategoriaFormularioSheet` is updated to consume the shared version.
+Both modules already have their own confirmation dialog, not just one:
+`ConfirmarEliminarDialog` (private, `CategoriasScreen.kt:346`) and
+`ConfirmarEliminarMovimientoDialog` (private, `MovimientoFormularioHost.kt:147-165`) — near-
+identical `AlertDialog`s, each hardcoded to its own module's strings. This is duplication to
+remove, not a missing feature to add.
 
-Eliminar in the movimientos modal opens this dialog; confirming calls the existing
-`viewModel.eliminar(movimiento)` unchanged; cancelling just closes the dialog, staying in edit
-mode with no other field changes lost.
+`:core:designsystem` already has a precedent for a shared cross-feature `AlertDialog`:
+`ConflictoDialog.kt` (`core/designsystem/.../conflict/ConflictoDialog.kt`) — public, and
+critically, it takes its strings **pre-resolved by the caller** as a plain data class
+(`ConflictoDialogTextos`) rather than calling `stringResource` internally, since
+`:core:designsystem` has no `res/values/strings.xml` of its own in this project. The new shared
+dialog follows the same shape:
+
+```kotlin
+data class ConfirmarEliminarTextos(
+    val titulo: String,
+    val mensaje: String,
+    val confirmar: String,
+    val cancelar: String,
+)
+
+@Composable
+fun ConfirmarEliminarDialog(
+    textos: ConfirmarEliminarTextos,
+    onConfirmar: () -> Unit,
+    onCancelar: () -> Unit,
+)
+```
+
+Each feature module keeps resolving its own existing `stringResource(...)` calls (categorías'
+`categories_delete_confirm_*`/`categories_cancel`, movimientos' `movements_delete_confirm_*`/
+`movements_cancel` — both already exist in both languages, no new string keys needed for this
+part) and passes them into `ConfirmarEliminarTextos` when calling the shared dialog. No string
+keys are centralized or renamed.
+
+`CategoriasScreen.kt`'s `CategoriaFormularioSheet` and `MovimientoFormularioHost.kt`'s
+`MovimientoFormularioEstado` both switch to the shared dialog, and their private
+`ConfirmarEliminarDialog`/`ConfirmarEliminarMovimientoDialog` composables are deleted.
+
+Eliminar in the movimientos modal keeps opening this dialog after Editar is pressed (behavior
+unchanged, just now only reachable from edit mode); confirming still calls the existing
+`viewModel.eliminar(movimiento)`; cancelling still just closes the dialog.
 
 ## Modules touched
 
@@ -120,8 +155,11 @@ mode with no other field changes lost.
 - Compose/ViewModel test reproducing the category-loading race: a `StateFlow` that emits an empty
   list first and the real list (containing the movimiento's stored `categoriaId`) afterward must
   leave `categoriaId` unchanged.
-- `:feature:categorias` regression test confirming the promoted `ConfirmarEliminarDialog` still
-  renders and behaves as before from `CategoriasScreen`.
+- `:feature:categorias` has no Compose test setup at all today (only `junit` +
+  `kotlinx-coroutines-test`, confirmed against `build.gradle.kts`) — this change adds Robolectric
+  + `ui-test-junit4` there (mirroring `:feature:movimientos`/`:feature:planes`/`:feature:cuenta`)
+  and writes that module's first Compose test, confirming `CategoriaFormularioSheet` still opens
+  the shared `ConfirmarEliminarDialog` and deletes correctly after the swap.
 
 ## Out of scope (explicitly)
 
