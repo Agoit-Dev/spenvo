@@ -141,6 +141,6 @@ redesign, apply the same pattern instead of re-deriving it. Also reuse the `sele
 independent-flags trick for any other case of "show the current value on a chip/toggle without
 letting it be changed."
 
-This is not part of this change's scope — noted here, and separately saved to MobiAI Brain
-(`android`/`ui_patterns`), so it surfaces automatically via `mobiai brain review` when those
-screens are next touched.
+This is not part of this change's scope — noted here, and pending a separate save to MobiAI Brain
+(`android`/`ui_patterns`) once this spec is approved, so it surfaces automatically via
+`mobiai brain review` when those screens are next touched.
