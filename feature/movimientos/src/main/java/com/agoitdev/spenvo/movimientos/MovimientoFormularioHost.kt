@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,14 +43,16 @@ internal data class MovimientoFormularioParametros(
 internal fun MovimientoFormularioSheet(parametros: MovimientoFormularioParametros) {
     if (parametros.formulario is FormularioMovimiento.Cerrado) return
     MovimientoFormularioEstado(parametros) { movimientoExistente, acciones ->
-        MovimientoFormSheet(
-            planId = parametros.planId,
-            tipoInicial = parametros.tipoPorDefecto,
-            cargando = parametros.cargando,
-            viewModel = parametros.viewModel,
-            movimientoExistente = movimientoExistente,
-            acciones = acciones,
-        )
+        key(movimientoExistente?.id) {
+            MovimientoFormSheet(
+                planId = parametros.planId,
+                tipoInicial = parametros.tipoPorDefecto,
+                cargando = parametros.cargando,
+                viewModel = parametros.viewModel,
+                movimientoExistente = movimientoExistente,
+                acciones = acciones,
+            )
+        }
     }
 }
 
@@ -65,14 +68,16 @@ internal fun MovimientoFormularioPanel(parametros: MovimientoFormularioParametro
         return
     }
     MovimientoFormularioEstado(parametros) { movimientoExistente, acciones ->
-        MovimientoFormEstadoYContenido(
-            planId = parametros.planId,
-            tipoInicial = parametros.tipoPorDefecto,
-            cargando = parametros.cargando,
-            viewModel = parametros.viewModel,
-            movimientoExistente = movimientoExistente,
-            acciones = acciones,
-        )
+        key(movimientoExistente?.id) {
+            MovimientoFormEstadoYContenido(
+                planId = parametros.planId,
+                tipoInicial = parametros.tipoPorDefecto,
+                cargando = parametros.cargando,
+                viewModel = parametros.viewModel,
+                movimientoExistente = movimientoExistente,
+                acciones = acciones,
+            )
+        }
     }
 }
 

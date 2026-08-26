@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -143,7 +144,9 @@ internal fun MovimientoFormEstadoYContenido(
         cargando = cargando,
         onEditarClick = { modoEdicion = true },
         onCancelarClick = {
-            categoriaId = movimientoExistente?.categoriaId.orEmpty()
+            categoriaId = movimientoExistente?.categoriaId
+                ?.takeIf { id -> categoriasDisponibles.any { it.id == id } }
+                ?: categoriasDisponibles.firstOrNull()?.id.orEmpty()
             montoTexto = movimientoExistente?.monto?.let { montoInicialTexto(it) }.orEmpty()
             descripcion = movimientoExistente?.descripcion.orEmpty()
             errorLocal = null
@@ -323,6 +326,7 @@ private fun SelectorCategoria(
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant
                 },
+                contentColor = LocalContentColor.current.copy(alpha = if (habilitado) 1f else 0.38f),
                 modifier = Modifier.size(48.dp),
             ) {
                 Column(

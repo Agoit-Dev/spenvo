@@ -1,5 +1,8 @@
 package com.agoitdev.spenvo.movimientos
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -73,6 +76,15 @@ class MovimientoFormSheetTest {
         categoriaId = "cat-transporte",
         monto = Monto(1500),
         fecha = LocalDate.of(2026, 8, 22),
+        creadoPor = "user-1",
+    )
+
+    private val gasto2 = Gasto(
+        id = "g2",
+        planId = "p1",
+        categoriaId = "cat-comida",
+        monto = Monto(2500),
+        fecha = LocalDate.of(2026, 8, 23),
         creadoPor = "user-1",
     )
 
@@ -268,9 +280,12 @@ class MovimientoFormSheetTest {
         composeTestRule.onNodeWithText("Editar").performClick()
 
         composeTestRule.onNodeWithText("Monto").assertIsEnabled()
+        composeTestRule.onNodeWithText("Descripción (opcional)").assertIsEnabled()
         composeTestRule.onNodeWithText("Guardar").assertIsDisplayed()
         composeTestRule.onNodeWithText("Cancelar").assertIsDisplayed()
         composeTestRule.onNodeWithText("Eliminar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Gastos").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Ingresos").assertIsNotEnabled()
     }
 
     @Test
@@ -325,6 +340,76 @@ class MovimientoFormSheetTest {
         // identity and the fact that a delete actually reached the repository are asserted here.
         assertEquals(listOf(gasto.id), movimientoRepo.eliminados.map { it.id })
         assertEquals(1, movimientoRepo.eliminados.size)
+    }
+
+    // Regression for the expanded/tablet layout: MovimientoFormularioPanel keeps its form
+    // composable mounted in the same slot as the user taps between movimientos, and
+    // MovimientosScreen sets FormularioMovimiento.Editar(movimiento) directly without ever
+    // passing through Cerrado in between -- so the form state must be keyed to the movimiento's
+    // identity or it carries over stale modoEdicion/tipo/categoriaId/montoTexto/descripcion.
+    @Test
+    fun `cambiar de movimiento en el panel expandido reinicia el modo vista`() {
+        val viewModel = crearViewModel()
+        categoriaRepo.categorias.value = categoriasGasto
+
+        var formulario: FormularioMovimiento by mutableStateOf(FormularioMovimiento.Editar(gasto))
+
+        composeTestRule.setContent {
+            MovimientoFormularioPanel(
+                MovimientoFormularioParametros(
+                    planId = "p1",
+                    tipoPorDefecto = TipoCategoria.GASTO,
+                    formulario = formulario,
+                    viewModel = viewModel,
+                    cargando = false,
+                    onCerrar = {},
+                ),
+            )
+        }
+
+        // Enter edit mode on movimiento A (gasto).
+        composeTestRule.onNodeWithText("Editar").performClick()
+        composeTestRule.onNodeWithText("Guardar").assertIsDisplayed()
+
+        // Switch to a different movimiento (B) in the same detail-pane slot.
+        formulario = FormularioMovimiento.Editar(gasto2)
+        composeTestRule.waitForIdle()
+
+        // B must open fresh in view mode, not inherit A's edit mode.
+        composeTestRule.onNodeWithText("Editar").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Guardar").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Monto").assertIsNotEnabled()
+    }
+
+    // Regression: Cancelar must reapply the same "fallback to first available category" logic
+    // as the on-open LaunchedEffect, not blindly restore movimientoExistente.categoriaId -- that
+    // stored id can point at a category that no longer exists, and the LaunchedEffect's key
+    // (categoriasDisponibles) won't re-run to fix it a second time.
+    @Test
+    fun `cancelar sin cambios no reinstala una categoria eliminada`() {
+        var guardado: MovimientoFormDatos? = null
+        montarFormulario(
+            movimientoExistente = Gasto(
+                id = "cat-borrada",
+                planId = "p1",
+                categoriaId = "cat-borrada",
+                monto = Monto(1000),
+                fecha = LocalDate.of(2026, 8, 22),
+                creadoPor = "user-1",
+            ),
+            onEliminar = {},
+            onGuardar = { guardado = it },
+        )
+
+        categoriaRepo.categorias.value = categoriasGasto
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Editar").performClick()
+        composeTestRule.onNodeWithText("Cancelar").performClick()
+        composeTestRule.onNodeWithText("Editar").performClick()
+        composeTestRule.onNodeWithText("Guardar").performClick()
+
+        assertEquals("cat-comida", guardado?.categoriaId)
     }
 }
 
