@@ -73,10 +73,11 @@ class HomeScreenTest {
 
     private lateinit var movimientosViewModel: MovimientosViewModel
     private lateinit var localeOriginal: Locale
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(testDispatcher)
         // Money rendering is locale-driven (NumberFormat), so the locale has to be pinned for the
         // formatting assertions below to mean anything.
         localeOriginal = Locale.getDefault()
@@ -129,6 +130,16 @@ class HomeScreenTest {
 
         composeTestRule.onNodeWithText("Casa").assertIsDisplayed()
         composeTestRule.onNodeWithText("Balance acumulado").assertIsDisplayed()
+    }
+
+    // AGENTS.md rule 3: snapshot listeners attach when opening a screen. Home is the plan's
+    // landing tab, so it must attach the listener itself instead of waiting for Movimientos to be
+    // opened.
+    @Test
+    fun `abrir Home sincroniza el plan activo`() {
+        montarHome()
+
+        assertEquals(listOf("p1"), sincronizador.planesSincronizados)
     }
 
     @Test
@@ -197,7 +208,14 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Guardar").performClick()
 
         composeTestRule.onNodeWithText("No tienes permiso para guardar").assertIsDisplayed()
-        assertEquals("No tienes permiso para guardar", movimientosViewModel.estadoForm.value.error)
+
+        // consumir(error = true) only runs after showSnackbar()'s internal delay resolves the
+        // snackbar's dismissal; waitUntil polls while pumping Compose's clock, which is what
+        // actually lets that delay elapse (a one-shot waitForIdle()/advanceUntilIdle() on our own
+        // Dispatchers.Main override does not -- the effect runs on Compose's own test scheduler).
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            movimientosViewModel.estadoForm.value.error == null
+        }
     }
 }
 
