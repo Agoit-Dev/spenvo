@@ -70,14 +70,25 @@ Same shape for `invitacionesPendientes` (`invitacionesRaw: StateFlow<List<Acceso
 
 A new combined flag:
 ```kotlin
-val cargando: StateFlow<Boolean> = combine(planesRaw, invitacionesRaw) { planes, invitaciones ->
+val cargandoLista: StateFlow<Boolean> = combine(planesRaw, invitacionesRaw) { planes, invitaciones ->
     planes == null || invitaciones == null
 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialValue = true)
 ```
 `true` until both `planesRaw` and `invitacionesRaw` have received their first real emission
-(covering both the session-establishment window and the Room-query window), then permanently
-`false` for that ViewModel instance's lifetime (neither raw flow can go back to `null` once it has
-emitted once, `flatMapLatest` restarts only on a genuinely new `sesion` value).
+(covering both the session-establishment window and the Room-query window).
+
+**Correction (found in code-quality review, 2026-08-27):** this is *not* permanently `false` once
+resolved. `AuthRepository.cerrarSesion()` signs out and immediately re-establishes a new anonymous
+session (`doc/architecture.md`'s guest-first re-entry decision), which produces a transient
+`Sesion(uid = null)` — `sesion.flatMapLatest` switches back to the `null` branch, and
+`cargandoLista` correctly returns to `true` for that window too. This is the right behavior (show
+the spinner while the new session establishes, rather than briefly showing the previous account's
+stale plans) — the original text describing it as one-way was simply wrong, not a bug to fix.
+
+Naming note (also from code-quality review): this is deliberately `cargandoLista`, not `cargando` —
+the codebase already uses bare `cargando` for "an action is in flight" (`CrearPlanEstado.cargando`,
+similar fields elsewhere). Reusing that name for "the screen is loading" would collide in meaning
+one call site away, in the same `PlanesScreen` composable.
 
 `resumenesPorPlan` is explicitly **not** given this treatment — `PlanCard` already renders correctly
 with `resumen == null` (just omits the balance line), so gating the whole screen on it would trade a
@@ -90,7 +101,7 @@ Confirmed with the user: the loading state replaces only the `LazyColumn` conten
 they are — the chrome the user's session identity lives in shouldn't disappear during a load.
 
 ```kotlin
-if (cargando) {
+if (cargandoLista) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator()
     }
@@ -102,7 +113,7 @@ if (cargando) {
 waits (the Guardar button in the movimiento form, `CrearPlanDialog`'s confirm button) — no new
 component invented.
 
-No artificial minimum display time, no timeout: `cargando` flips to `false` the instant both flows
+No artificial minimum display time, no timeout: `cargandoLista` flips to `false` the instant both flows
 resolve, matching the project's already-documented "no artificial delay" philosophy (the same
 principle the splash screen itself was built on, per `doc/architecture.md`).
 
@@ -118,15 +129,15 @@ principle the splash screen itself was built on, per `doc/architecture.md`).
 ## Testing
 
 Per `AGENTS.md`'s strict TDD:
-- `PlanesViewModelTest`: a test proving `cargando` starts `true` and flips to `false` only after
+- `PlanesViewModelTest`: a test proving `cargandoLista` starts `true` and flips to `false` only after
   both a `planes` and an `invitaciones` emission have been observed (using a controllable fake
   repository flow, same technique as the movimiento category-race test in sub-project 1 — a
   `MutableStateFlow` the test drives manually to reproduce the empty-then-real transition
   deterministically).
-- A test proving `cargando` stays `true` while `sesion.uid` is still null (session not yet
+- A test proving `cargandoLista` stays `true` while `sesion.uid` is still null (session not yet
   established).
 - A Compose test on `PlanesScreen`/`PlanesLista` proving the spinner renders in place of the list
-  while `cargando`, and that the TopBar/FAB remain visible during that state.
+  while `cargandoLista`, and that the TopBar/FAB remain visible during that state.
 - A regression test proving the existing empty-state text ("no plans") still renders correctly once
-  `cargando` is `false` and both lists are genuinely empty — this is the actual "user has zero
+  `cargandoLista` is `false` and both lists are genuinely empty — this is the actual "user has zero
   plans" case, not the loading case, and must not regress.

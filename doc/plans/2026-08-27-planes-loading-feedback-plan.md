@@ -8,8 +8,8 @@
 indicator, per `doc/designs/2026-08-27-planes-loading-feedback-design.md`.
 
 **Architecture:** Nullable-sentinel `StateFlow`s in `PlanesViewModel` to distinguish "not loaded
-yet" from "genuinely empty", combined into one `cargando: StateFlow<Boolean>`; `PlanesLista` shows
-a centered `CircularProgressIndicator` in the list area only while `cargando`, leaving the TopBar
+yet" from "genuinely empty", combined into one `cargandoLista: StateFlow<Boolean>`; `PlanesLista` shows
+a centered `CircularProgressIndicator` in the list area only while `cargandoLista`, leaving the TopBar
 and FAB untouched.
 
 **Tech Stack:** Kotlin, Jetpack Compose (Material 3), JUnit4 + kotlinx-coroutines-test (ViewModel
@@ -21,7 +21,7 @@ tests use `StandardTestDispatcher`, matching this file's existing convention) + 
 
 ---
 
-## Task 1: `PlanesViewModel` — nullable-sentinel flows and `cargando`
+## Task 1: `PlanesViewModel` — nullable-sentinel flows and `cargandoLista`
 
 **Files:**
 - Modify: `feature/planes/src/main/java/com/agoitdev/spenvo/planes/PlanesViewModel.kt:54-78`
@@ -78,31 +78,31 @@ Run: `./gradlew :feature:planes:testDebugUnitTest --rerun-tasks`
 Expected: BUILD SUCCESSFUL, all existing tests still pass (behavior unchanged, only the fakes
 became controllable).
 
-- [ ] **Step 2: Write the failing tests for `cargando`**
+- [ ] **Step 2: Write the failing tests for `cargandoLista`**
 
 Add three new `@Test` functions to `PlanesViewModelTest`:
 
 ```kotlin
     @Test
-    fun `cargando arranca en true y pasa a false una vez que planes e invitaciones resuelven`() = runTest {
+    fun `cargandoLista arranca en true y pasa a false una vez que planes e invitaciones resuelven`() = runTest {
         val viewModel = crearViewModel()
 
-        val job = launch { viewModel.cargando.collect {} }
-        assertTrue(viewModel.cargando.value)
+        val job = launch { viewModel.cargandoLista.collect {} }
+        assertTrue(viewModel.cargandoLista.value)
         advanceUntilIdle()
-        assertFalse(viewModel.cargando.value)
+        assertFalse(viewModel.cargandoLista.value)
         job.cancel()
     }
 
     @Test
-    fun `cargando permanece en true mientras la sesion no tenga uid`() = runTest {
+    fun `cargandoLista permanece en true mientras la sesion no tenga uid`() = runTest {
         sesionFlow.value = Sesion.Anonima
         val viewModel = crearViewModel()
 
-        val job = launch { viewModel.cargando.collect {} }
+        val job = launch { viewModel.cargandoLista.collect {} }
         advanceUntilIdle()
 
-        assertTrue(viewModel.cargando.value)
+        assertTrue(viewModel.cargandoLista.value)
         job.cancel()
     }
 
@@ -115,7 +115,7 @@ Add three new `@Test` functions to `PlanesViewModelTest`:
         advanceUntilIdle()
 
         assertEquals(listOf(plan("p1")), viewModel.planes.value)
-        assertFalse(viewModel.cargando.value)
+        assertFalse(viewModel.cargandoLista.value)
         job.cancel()
     }
 ```
@@ -124,10 +124,10 @@ Add the import `org.junit.Assert.assertFalse` if not already present (the file a
 `assertTrue`/`assertEquals`).
 
 Run: `./gradlew :feature:planes:testDebugUnitTest --tests "*.PlanesViewModelTest"`
-Expected: **compile failure** — `viewModel.cargando` doesn't exist yet. This is expected; it
+Expected: **compile failure** — `viewModel.cargandoLista` doesn't exist yet. This is expected; it
 confirms the test is exercising a symbol that doesn't exist until Step 3.
 
-- [ ] **Step 3: Implement the nullable-sentinel flows and `cargando`**
+- [ ] **Step 3: Implement the nullable-sentinel flows and `cargandoLista`**
 
 In `PlanesViewModel.kt`, replace the `planes` and `invitacionesPendientes` declarations (currently
 around lines 54-78) with:
@@ -167,7 +167,7 @@ around lines 54-78) with:
         .map { it.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val cargando: StateFlow<Boolean> = combine(planesRaw, invitacionesRaw) { planes, invitaciones ->
+    val cargandoLista: StateFlow<Boolean> = combine(planesRaw, invitacionesRaw) { planes, invitaciones ->
         planes == null || invitaciones == null
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 ```
@@ -194,9 +194,9 @@ unchanged).
 
 - [ ] **Step 5: Mutation check**
 
-Temporarily revert the `cargando` declaration's condition from `planes == null || invitaciones == null`
+Temporarily revert the `cargandoLista` declaration's condition from `planes == null || invitaciones == null`
 to a hardcoded `false`. Re-run `./gradlew :feature:planes:testDebugUnitTest --tests "*.PlanesViewModelTest"`
-and confirm `cargando arranca en true...` and `cargando permanece en true...` both fail. Restore the
+and confirm `cargandoLista arranca en true...` and `cargandoLista permanece en true...` both fail. Restore the
 real condition and confirm all tests pass again.
 
 - [ ] **Step 6: detekt**
@@ -366,7 +366,7 @@ class PlanesScreenTest {
 
     @Test
     fun `muestra el spinner en el area de lista mientras carga, sin ocultar la topbar ni el FAB`() {
-        sesionFlow.value = Sesion.Anonima // never resolves -> cargando stays true
+        sesionFlow.value = Sesion.Anonima // never resolves -> cargandoLista stays true
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
@@ -468,7 +468,7 @@ Run: `./gradlew :feature:planes:testDebugUnitTest --tests "*.PlanesScreenTest" -
 Expected: the two existing `PlanCard` tests pass unchanged; the three new tests fail — either a
 compile error (`onNodeWithTag`/`assertDoesNotExist` used against a tag that doesn't exist yet
 because `PlanesLista` has no loading branch) or a runtime failure once it compiles against a
-`PlanesScreen`/`PlanesLista` that doesn't accept/use `cargando` yet.
+`PlanesScreen`/`PlanesLista` that doesn't accept/use `cargandoLista` yet.
 
 - [ ] **Step 2: Implement the spinner in `PlanesLista`**
 
@@ -483,7 +483,7 @@ import androidx.compose.ui.platform.testTag
 Change the `PlanesScreen` composable's state reads and `PlanesLista` call
 (currently around lines 58-104):
 ```kotlin
-    val cargando by viewModel.cargando.collectAsStateWithLifecycle()
+    val cargandoLista by viewModel.cargandoLista.collectAsStateWithLifecycle()
     val planes by viewModel.planes.collectAsStateWithLifecycle()
     val resumenesPorPlan by viewModel.resumenesPorPlan.collectAsStateWithLifecycle()
     val invitaciones by viewModel.invitacionesPendientes.collectAsStateWithLifecycle()
@@ -493,7 +493,7 @@ Change the `PlanesScreen` composable's state reads and `PlanesLista` call
 and:
 ```kotlin
         PlanesLista(
-            cargando = cargando,
+            cargandoLista = cargandoLista,
             planes = planes,
             resumenesPorPlan = resumenesPorPlan,
             invitaciones = invitaciones,
@@ -508,7 +508,7 @@ Change `PlanesLista`'s signature and body (currently around lines 139-185):
 @Suppress("LongParameterList")
 @Composable
 private fun PlanesLista(
-    cargando: Boolean,
+    cargandoLista: Boolean,
     planes: List<PlanFinanciero>,
     resumenesPorPlan: Map<String, ResumenMensualPlan>,
     invitaciones: List<AccesoPlan>,
@@ -516,7 +516,7 @@ private fun PlanesLista(
     onAbrirPlan: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (cargando) {
+    if (cargandoLista) {
         Box(
             modifier = modifier.fillMaxSize().testTag("planes_cargando"),
             contentAlignment = Alignment.Center,
@@ -563,8 +563,8 @@ private fun PlanesLista(
     }
 }
 ```
-(The `LazyColumn` body is unchanged from today — only the new early-return `if (cargando)` block
-and the new `cargando: Boolean` parameter are added.)
+(The `LazyColumn` body is unchanged from today — only the new early-return `if (cargandoLista)` block
+and the new `cargandoLista: Boolean` parameter are added.)
 
 - [ ] **Step 3: Run tests to verify they pass**
 
@@ -573,7 +573,7 @@ Expected: all 5 tests pass (2 existing `PlanCard` tests + 3 new).
 
 - [ ] **Step 4: Mutation check**
 
-Temporarily hardcode `PlanesLista`'s `if (cargando)` to `if (false)`. Re-run the same test command,
+Temporarily hardcode `PlanesLista`'s `if (cargandoLista)` to `if (false)`. Re-run the same test command,
 confirm `muestra el spinner en el area de lista...` fails. Restore, confirm all 5 pass again.
 
 - [ ] **Step 5: detekt**
