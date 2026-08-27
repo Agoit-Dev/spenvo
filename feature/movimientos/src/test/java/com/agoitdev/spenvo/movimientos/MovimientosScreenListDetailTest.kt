@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizacion
 import com.agoitdev.spenvo.domain.model.Categoria
@@ -147,6 +148,27 @@ class MovimientosScreenListDetailTest {
 
         composeTestRule.onNodeWithText("Editar movimiento").assertDoesNotExist()
         composeTestRule.onNodeWithText("Seleccioná un movimiento para ver el detalle.").assertDoesNotExist()
+    }
+
+    // doc/designs/2026-08-27-home-bottom-nav-design.md: MovimientosTopBar's two icon shortcuts to
+    // Categorías/Miembros were removed once both became reachable via the (upcoming) bottom nav.
+    @Test
+    fun `la topbar ya no muestra los accesos a categorias ni miembros`() {
+        val viewModel = crearViewModel()
+
+        composeTestRule.setContent {
+            MovimientosPantallaCompacta(
+                modifier = Modifier,
+                acciones = acciones,
+                filtro = filtro,
+                snackbarHostState = remember { SnackbarHostState() },
+                lista = listaEstado(),
+                formularioParametros = formularioParametros(FormularioMovimiento.Cerrado, viewModel),
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Categorías").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("Miembros").assertDoesNotExist()
     }
 
     @Test
