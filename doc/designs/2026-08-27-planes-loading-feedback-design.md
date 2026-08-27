@@ -125,6 +125,15 @@ principle the splash screen itself was built on, per `doc/architecture.md`).
 - `resumenesPorPlan` — already tolerates a not-yet-loaded state per plan, not gated.
 - Sub-project 3 (Home screen, bottom navigation) — separate design cycle.
 - M8 items (osv-scanner, MFA) — unrelated.
+- **Known follow-up, found during final review (2026-08-27), deliberately not fixed here:** the
+  "create plan" FAB stays enabled while `cargandoLista` is true (by design — the chrome shouldn't
+  disappear during a load), but `PlanesViewModel.crearPlan()` silently no-ops if `sesion.value.uid`
+  is still null (`val uid = sesion.value.uid ?: return`). This branch makes that window more
+  visible/reachable than before (the loading state is now an explicit, longer-lived UI state
+  instead of a flash), so a user could open the dialog, submit, and see nothing happen — no error,
+  no spinner, dialog stays open. Fixing it (e.g. disabling the FAB while `cargandoLista`, or
+  surfacing an error from `crearPlan()`) belongs in its own change with its own tests, not bundled
+  into this one.
 
 ## Testing
 
