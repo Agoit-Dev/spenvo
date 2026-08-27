@@ -140,9 +140,21 @@ class PlanesScreenTest {
             PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
         }
 
-        composeTestRule.onNodeWithTag("planes_cargando").assertIsDisplayed()
+        composeTestRule.onNodeWithTag(TAG_PLANES_CARGANDO).assertIsDisplayed()
         composeTestRule.onNodeWithText("Planes").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Nuevo plan").assertIsDisplayed()
+    }
+
+    @Test
+    fun `el spinner tiene descripcion accesible`() {
+        sesionFlow.value = Sesion.Anonima
+        val viewModel = crearViewModel()
+
+        composeTestRule.setContent {
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+        }
+
+        composeTestRule.onNodeWithContentDescription("Cargando planes").assertIsDisplayed()
     }
 
     @Test
@@ -154,7 +166,7 @@ class PlanesScreenTest {
             PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
         }
 
-        composeTestRule.onNodeWithTag("planes_cargando").assertDoesNotExist()
+        composeTestRule.onNodeWithTag(TAG_PLANES_CARGANDO).assertDoesNotExist()
         composeTestRule.onNodeWithText("Casa").assertIsDisplayed()
     }
 
@@ -166,7 +178,7 @@ class PlanesScreenTest {
             PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
         }
 
-        composeTestRule.onNodeWithTag("planes_cargando").assertDoesNotExist()
+        composeTestRule.onNodeWithTag(TAG_PLANES_CARGANDO).assertDoesNotExist()
         composeTestRule.onNodeWithText(
             "Todavía no hay planes. Toca + para crear tu primer plan.",
         ).assertIsDisplayed()

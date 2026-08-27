@@ -2,6 +2,7 @@
 <resources>
     <string name="plans_title">Plans</string>
     <string name="plans_empty">No plans yet. Tap + to create your first plan.</string>
+    <string name="plans_loading">Loading plans</string>
     <string name="plans_create">New plan</string>
     <string name="plans_create_name">Plan name</string>
     <string name="plans_create_currency">Currency (ISO 4217)</string>

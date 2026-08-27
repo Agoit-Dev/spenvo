@@ -41,6 +41,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,6 +51,8 @@ import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.Sesion
+
+const val TAG_PLANES_CARGANDO = "planes_cargando"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,7 +115,7 @@ fun PlanesScreen(
 
     if (mostrarDialogoCrear) {
         CrearPlanDialog(
-            cargando = estadoCrear.cargando,
+            creandoPlan = estadoCrear.cargando,
             onConfirmar = { nombre, moneda ->
                 viewModel.crearPlan(nombre, moneda)
             },
@@ -153,8 +157,12 @@ private fun PlanesLista(
     modifier: Modifier = Modifier,
 ) {
     if (cargandoLista) {
+        val cargandoDescripcion = stringResource(R.string.plans_loading)
         Box(
-            modifier = modifier.fillMaxSize().testTag("planes_cargando"),
+            modifier = modifier
+                .fillMaxSize()
+                .testTag(TAG_PLANES_CARGANDO)
+                .semantics { contentDescription = cargandoDescripcion },
             contentAlignment = Alignment.Center,
         ) {
             CircularProgressIndicator()
@@ -254,7 +262,7 @@ private fun InvitacionCard(acceso: AccesoPlan, onAceptar: () -> Unit) {
 
 @Composable
 private fun CrearPlanDialog(
-    cargando: Boolean,
+    creandoPlan: Boolean,
     onConfirmar: (String, String) -> Unit,
     onCancelar: () -> Unit,
 ) {
@@ -285,9 +293,9 @@ private fun CrearPlanDialog(
         confirmButton = {
             TextButton(
                 onClick = { onConfirmar(nombre.trim(), moneda.trim()) },
-                enabled = !cargando,
+                enabled = !creandoPlan,
             ) {
-                if (cargando) {
+                if (creandoPlan) {
                     CircularProgressIndicator(modifier = Modifier.padding(4.dp))
                 } else {
                     Text(stringResource(R.string.plans_create_confirm))
