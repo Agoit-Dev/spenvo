@@ -1,3 +1,8 @@
-<resources>
-    <string name="app_name">Spenvo</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Brand name, intentionally left untranslated in values-en/. -->
+    <string name="app_name" tools:ignore="MissingTranslation">Spenvo</string>
+    <string name="nav_home">Inicio</string>
+    <string name="nav_movements">Movimientos</string>
+    <string name="nav_categories">Categorías</string>
+    <string name="nav_members">Miembros</string>
 </resources>

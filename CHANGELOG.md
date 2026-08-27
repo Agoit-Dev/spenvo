@@ -55,6 +55,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `:app` gains a bottom-navigation shell (`PlanScaffold`) hosting Home/Movimientos/Categorías/
+  Miembros as tabs of a single plan, replacing the previous separate `MovimientosRoute`/
+  `MiembrosRoute`/`CategoriasRoute` nav-3 entries with one `PlanRoute(planId)` entry. Home and
+  Movimientos share the existing `MovimientosViewModel` instance (hoisted once per `PlanRoute`
+  entry via `hiltViewModel()`), matching the sync/error-consumption coupling already documented
+  between those two screens. Each tab's own inner `Scaffold` now has its window insets consumed
+  via `Modifier.consumeWindowInsets(innerPadding)` on `PlanScaffold`'s content `Box`, avoiding
+  double-counted status-bar padding from the outer and inner `Scaffold`s both applying
+  `WindowInsets.systemBars`. `:app` gained its first Compose UI test infrastructure (Robolectric +
+  `ui-test-junit4`, `libs.androidx.compose.material.icons.{core,extended}` for the tab icons) and
+  its first test, `PlanScaffoldTest`. New `nav_home`/`nav_movements`/`nav_categories`/
+  `nav_members` strings; `:app` also gains its first `values-en/strings.xml` (only `app_name`
+  stays untranslated, marked `tools:ignore="MissingTranslation"` as a proper noun).
 - `:core:designsystem` gains a shared `ConfirmarEliminarDialog`, de-duplicating two nearly
   identical private delete-confirmation `AlertDialog`s that `:feature:categorias` and
   `:feature:movimientos` each had implemented on their own (behavior unchanged — same dialog, same

@@ -11,6 +11,7 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -20,7 +21,9 @@ import androidx.navigation3.ui.NavDisplay
 import com.agoitdev.spenvo.categorias.CategoriasScreen
 import com.agoitdev.spenvo.cuenta.CuentaScreen
 import com.agoitdev.spenvo.designsystem.theme.SpenvoTheme
+import com.agoitdev.spenvo.movimientos.HomeScreen
 import com.agoitdev.spenvo.movimientos.MovimientosScreen
+import com.agoitdev.spenvo.movimientos.MovimientosViewModel
 import com.agoitdev.spenvo.planes.MiembrosScreen
 import com.agoitdev.spenvo.planes.PlanesScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -30,13 +33,7 @@ import kotlinx.serialization.Serializable
 data object PlanesRoute : NavKey
 
 @Serializable
-data class MovimientosRoute(val planId: String) : NavKey
-
-@Serializable
-data class MiembrosRoute(val planId: String) : NavKey
-
-@Serializable
-data class CategoriasRoute(val planId: String) : NavKey
+data class PlanRoute(val planId: String) : NavKey
 
 @Serializable
 data object CuentaRoute : NavKey
@@ -75,17 +72,21 @@ fun SpenvoApp(modifier: Modifier = Modifier) {
                 entry<PlanesRoute> {
                     PlanesScreen(
                         onCrearCuenta = { backStack.add(CuentaRoute) },
-                        onAbrirPlan = { planId -> backStack.add(MovimientosRoute(planId)) },
+                        onAbrirPlan = { planId -> backStack.add(PlanRoute(planId)) },
                     )
                 }
-                entry<MovimientosRoute> { route ->
-                    MovimientosScreen(planId = route.planId)
-                }
-                entry<MiembrosRoute> { route ->
-                    MiembrosScreen(planId = route.planId)
-                }
-                entry<CategoriasRoute> { route ->
-                    CategoriasScreen(planId = route.planId)
+                entry<PlanRoute> { route ->
+                    val movimientosViewModel: MovimientosViewModel = hiltViewModel()
+                    PlanScaffold(
+                        contenidoHome = {
+                            HomeScreen(planId = route.planId, movimientosViewModel = movimientosViewModel)
+                        },
+                        contenidoMovimientos = {
+                            MovimientosScreen(planId = route.planId, viewModel = movimientosViewModel)
+                        },
+                        contenidoCategorias = { CategoriasScreen(planId = route.planId) },
+                        contenidoMiembros = { MiembrosScreen(planId = route.planId) },
+                    )
                 }
                 entry<CuentaRoute> {
                     CuentaScreen(
