@@ -24,6 +24,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -62,16 +63,16 @@ class PlanesViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun crearViewModel() = PlanesViewModel(
+    private fun crearViewModel(accesosRepo: AccesoPlanRepository = accesoPlanRepo) = PlanesViewModel(
         crearPlan = CrearPlanUseCase(
             planFinancieroRepo,
-            accesoPlanRepo,
+            accesosRepo,
             SembrarCategoriasPorDefectoUseCase(categoriaRepo),
         ),
         observarPlanes = ObservarPlanesDelUsuarioUseCase(planFinancieroRepo),
-        aceptarInvitacion = AceptarInvitacionUseCase(accesoPlanRepo),
+        aceptarInvitacion = AceptarInvitacionUseCase(accesosRepo),
         sincronizador = sincronizador,
-        accesosRepository = accesoPlanRepo,
+        accesosRepository = accesosRepo,
         observarResumenMensualPlan = ObservarResumenMensualPlanUseCase(movimientoRepo),
         // Isolated fakes pre-seeded with a plan, so the guard always sees "already has a
         // plan" and never touches the shared repos the tests actually assert on.
@@ -174,25 +175,25 @@ class PlanesViewModelTest {
     }
 
     @Test
-    fun `cargando arranca en true y pasa a false una vez que planes e invitaciones resuelven`() = runTest {
+    fun `cargandoLista arranca en true y pasa a false una vez que planes e invitaciones resuelven`() = runTest {
         val viewModel = crearViewModel()
 
-        val job = launch { viewModel.cargando.collect {} }
-        assertTrue(viewModel.cargando.value)
+        val job = launch { viewModel.cargandoLista.collect {} }
+        assertTrue(viewModel.cargandoLista.value)
         advanceUntilIdle()
-        assertFalse(viewModel.cargando.value)
+        assertFalse(viewModel.cargandoLista.value)
         job.cancel()
     }
 
     @Test
-    fun `cargando permanece en true mientras la sesion no tenga uid`() = runTest {
+    fun `cargandoLista permanece en true mientras la sesion no tenga uid`() = runTest {
         sesionFlow.value = Sesion.Anonima
         val viewModel = crearViewModel()
 
-        val job = launch { viewModel.cargando.collect {} }
+        val job = launch { viewModel.cargandoLista.collect {} }
         advanceUntilIdle()
 
-        assertTrue(viewModel.cargando.value)
+        assertTrue(viewModel.cargandoLista.value)
         job.cancel()
     }
 
@@ -203,13 +204,31 @@ class PlanesViewModelTest {
         val viewModel = crearViewModel()
 
         val job = launch { viewModel.planes.collect {} }
-        val cargandoJob = launch { viewModel.cargando.collect {} }
+        val cargandoListaJob = launch { viewModel.cargandoLista.collect {} }
         advanceUntilIdle()
 
         assertEquals(listOf(planP1), viewModel.planes.value)
-        assertFalse(viewModel.cargando.value)
+        assertFalse(viewModel.cargandoLista.value)
         job.cancel()
-        cargandoJob.cancel()
+        cargandoListaJob.cancel()
+    }
+
+    @Test
+    fun `cargandoLista sigue en true si invitaciones no resolvio aunque planes ya lo hizo`() = runTest {
+        val accesosSinResolver = MutableSharedFlow<List<AccesoPlan>>()
+        val accesoPlanRepoSinResolver = FakeAccesoPlanRepository(accesosSinResolver)
+        val planP1 = plan("p1")
+        planesFlow.value = listOf(planP1)
+        val viewModel = crearViewModel(accesosRepo = accesoPlanRepoSinResolver)
+
+        val job = launch { viewModel.cargandoLista.collect {} }
+        val planesJob = launch { viewModel.planes.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(listOf(planP1), viewModel.planes.value)
+        assertTrue(viewModel.cargandoLista.value)
+        job.cancel()
+        planesJob.cancel()
     }
 }
 
@@ -225,7 +244,7 @@ private class FakePlanFinancieroRepository(
 }
 
 private class FakeAccesoPlanRepository(
-    private val accesosFlow: MutableStateFlow<List<AccesoPlan>> = MutableStateFlow(emptyList()),
+    private val accesosFlow: Flow<List<AccesoPlan>> = MutableStateFlow(emptyList()),
 ) : AccesoPlanRepository {
     override fun observarAccesosDelUsuario(usuarioId: String): Flow<List<AccesoPlan>> = accesosFlow
     override fun observarAccesosDelPlan(planId: String): Flow<List<AccesoPlan>> = flowOf(emptyList())
