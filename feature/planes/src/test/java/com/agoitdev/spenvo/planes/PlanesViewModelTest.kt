@@ -34,6 +34,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -41,13 +42,15 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlanesViewModelTest {
 
+    private val sesionFlow = MutableStateFlow(Sesion(uid = "user-1", esAnonima = true))
+    private val accesosFlow = MutableStateFlow<List<AccesoPlan>>(emptyList())
     private val planesFlow = MutableStateFlow<List<PlanFinanciero>>(emptyList())
     private val planFinancieroRepo = FakePlanFinancieroRepository(planesFlow)
-    private val accesoPlanRepo = FakeAccesoPlanRepository()
+    private val accesoPlanRepo = FakeAccesoPlanRepository(accesosFlow)
     private val categoriaRepo = FakeCategoriaRepository()
     private val movimientoRepo = FakeMovimientoRepository()
     private val sincronizador = FakePlanSincronizacion()
-    private val authRepository = FakeAuthRepository()
+    private val authRepository = FakeAuthRepository(sesionFlow)
 
     @Before
     fun setUp() {
@@ -169,6 +172,45 @@ class PlanesViewModelTest {
         assertEquals(800L, resumenes.getValue("p2").netoDelMes.unidadesMenores)
         job.cancel()
     }
+
+    @Test
+    fun `cargando arranca en true y pasa a false una vez que planes e invitaciones resuelven`() = runTest {
+        val viewModel = crearViewModel()
+
+        val job = launch { viewModel.cargando.collect {} }
+        assertTrue(viewModel.cargando.value)
+        advanceUntilIdle()
+        assertFalse(viewModel.cargando.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `cargando permanece en true mientras la sesion no tenga uid`() = runTest {
+        sesionFlow.value = Sesion.Anonima
+        val viewModel = crearViewModel()
+
+        val job = launch { viewModel.cargando.collect {} }
+        advanceUntilIdle()
+
+        assertTrue(viewModel.cargando.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `planes conserva la lista real y no queda pegado al valor inicial del StateFlow`() = runTest {
+        val planP1 = plan("p1")
+        planesFlow.value = listOf(planP1)
+        val viewModel = crearViewModel()
+
+        val job = launch { viewModel.planes.collect {} }
+        val cargandoJob = launch { viewModel.cargando.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(listOf(planP1), viewModel.planes.value)
+        assertFalse(viewModel.cargando.value)
+        job.cancel()
+        cargandoJob.cancel()
+    }
 }
 
 private class FakePlanFinancieroRepository(
@@ -182,8 +224,10 @@ private class FakePlanFinancieroRepository(
     override suspend fun actualizarPlan(plan: PlanFinanciero) = Unit
 }
 
-private class FakeAccesoPlanRepository : AccesoPlanRepository {
-    override fun observarAccesosDelUsuario(usuarioId: String): Flow<List<AccesoPlan>> = flowOf(emptyList())
+private class FakeAccesoPlanRepository(
+    private val accesosFlow: MutableStateFlow<List<AccesoPlan>> = MutableStateFlow(emptyList()),
+) : AccesoPlanRepository {
+    override fun observarAccesosDelUsuario(usuarioId: String): Flow<List<AccesoPlan>> = accesosFlow
     override fun observarAccesosDelPlan(planId: String): Flow<List<AccesoPlan>> = flowOf(emptyList())
     override suspend fun invitarMiembro(acceso: AccesoPlan) = Unit
     override suspend fun aceptarInvitacion(usuarioId: String, planId: String) = Unit
@@ -223,8 +267,10 @@ private class FakePlanSincronizacion : PlanSincronizacion {
     }
 }
 
-private class FakeAuthRepository : AuthRepository {
-    override fun observeSesion(): Flow<Sesion> = flowOf(Sesion(uid = "user-1", esAnonima = true))
+private class FakeAuthRepository(
+    private val sesionFlow: MutableStateFlow<Sesion> = MutableStateFlow(Sesion(uid = "user-1", esAnonima = true)),
+) : AuthRepository {
+    override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit

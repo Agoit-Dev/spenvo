@@ -51,10 +51,14 @@ class PlanesViewModel @Suppress("LongParameterList") @Inject constructor(
     val sesion: StateFlow<Sesion> = authRepository.observeSesion()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Sesion.Anonima)
 
-    val planes: StateFlow<List<PlanFinanciero>> = sesion.flatMapLatest { s ->
+    private val planesRaw: StateFlow<List<PlanFinanciero>?> = sesion.flatMapLatest { s ->
         val uid = s.uid
-        if (uid == null) flowOf(emptyList()) else observarPlanes(uid)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        if (uid == null) flowOf<List<PlanFinanciero>?>(null) else observarPlanes(uid)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val planes: StateFlow<List<PlanFinanciero>> = planesRaw
+        .map { it.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val resumenesPorPlan: StateFlow<Map<String, ResumenMensualPlan>> = planes.flatMapLatest { planesActuales ->
         if (planesActuales.isEmpty()) {
@@ -66,16 +70,24 @@ class PlanesViewModel @Suppress("LongParameterList") @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    val invitacionesPendientes: StateFlow<List<AccesoPlan>> = sesion.flatMapLatest { s ->
+    private val invitacionesRaw: StateFlow<List<AccesoPlan>?> = sesion.flatMapLatest { s ->
         val uid = s.uid
         if (uid == null) {
-            flowOf(emptyList())
+            flowOf<List<AccesoPlan>?>(null)
         } else {
             accesosRepository.observarAccesosDelUsuario(uid).map { accesos ->
                 accesos.filter { it.invitacionEstado == InvitacionEstado.PENDIENTE }
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val invitacionesPendientes: StateFlow<List<AccesoPlan>> = invitacionesRaw
+        .map { it.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val cargando: StateFlow<Boolean> = combine(planesRaw, invitacionesRaw) { planesActuales, invitacionesActuales ->
+        planesActuales == null || invitacionesActuales == null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     private val _estadoCrear = MutableStateFlow(CrearPlanEstado())
     val estadoCrear: StateFlow<CrearPlanEstado> = _estadoCrear.asStateFlow()
