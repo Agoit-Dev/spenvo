@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Home screen: a failed save (e.g. `PERMISSION_DENIED`) had no error feedback at all and left the
+  shared `MovimientosViewModel`'s error flag unconsumed, so it would leak into the Movimientos tab
+  as a stale snackbar later. Home now wraps its content in a `Scaffold`+`SnackbarHost` and mirrors
+  `MovimientosScreen`'s `EfectosMovimientos` shape: it attaches `sincronizar(planId)` on open and
+  shows/consumes the error the same way. Also replaced the hand-rolled `formatearMontoPlano` (raw
+  string concatenation, appended the ISO currency code) with a `NumberFormat.getCurrencyInstance`
+  based formatter per AGENTS.md's i18n rule, added `testTag`s so the income/expense/balance figures
+  are individually addressable, and gave the quick-action circular buttons an explicit
+  `secondaryContainer` color — they previously had no container color and were invisible against
+  the screen background.
 - Center the adaptive launcher icon artwork in both the standard and round
   launcher masks.
 - Movimientos edit modal: the type (Gasto/Ingreso) could be changed on an existing movimiento via

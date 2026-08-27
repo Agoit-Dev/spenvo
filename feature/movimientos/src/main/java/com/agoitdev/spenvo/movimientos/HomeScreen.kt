@@ -15,6 +15,9 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -34,7 +38,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.TipoCategoria
-import kotlin.math.abs
+import java.text.NumberFormat
+import java.util.Currency
+import java.util.Locale
+
+const val TAG_HOME_INGRESOS_MES = "home_ingresos_mes"
+const val TAG_HOME_GASTOS_MES = "home_gastos_mes"
+const val TAG_HOME_BALANCE_ACUMULADO = "home_balance_acumulado"
 
 @Composable
 fun HomeScreen(
@@ -48,7 +58,18 @@ fun HomeScreen(
     val balanceAcumulado by remember(planId) { viewModel.balanceAcumulado(planId) }.collectAsStateWithLifecycle()
     var tipoFormularioAbierto by rememberSaveable { mutableStateOf<TipoCategoria?>(null) }
     val estadoForm by movimientosViewModel.estadoForm.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    // Home shares MovimientosViewModel with the Movimientos tab (see EfectosMovimientos in
+    // MovimientosScreen.kt): the sync attach here and the error/guardado consumption below must
+    // mirror that screen's effects exactly, or a stale error/guardado flag leaks into the other tab.
+    LaunchedEffect(planId) { movimientosViewModel.sincronizar(planId) }
+    LaunchedEffect(estadoForm.error) {
+        estadoForm.error?.let {
+            snackbarHostState.showSnackbar(it)
+            movimientosViewModel.consumir(error = true)
+        }
+    }
     LaunchedEffect(estadoForm.guardado) {
         if (estadoForm.guardado) {
             tipoFormularioAbierto = null
@@ -56,15 +77,20 @@ fun HomeScreen(
         }
     }
 
-    HomeContenido(
-        nombrePlan = plan?.nombre.orEmpty(),
-        moneda = plan?.moneda.orEmpty(),
-        resumen = resumen,
-        balanceAcumulado = balanceAcumulado,
-        onNuevoGasto = { tipoFormularioAbierto = TipoCategoria.GASTO },
-        onNuevoIngreso = { tipoFormularioAbierto = TipoCategoria.INGRESO },
+    Scaffold(
         modifier = modifier,
-    )
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { innerPadding ->
+        HomeContenido(
+            nombrePlan = plan?.nombre.orEmpty(),
+            moneda = plan?.moneda.orEmpty(),
+            resumen = resumen,
+            balanceAcumulado = balanceAcumulado,
+            onNuevoGasto = { tipoFormularioAbierto = TipoCategoria.GASTO },
+            onNuevoIngreso = { tipoFormularioAbierto = TipoCategoria.INGRESO },
+            modifier = Modifier.padding(innerPadding),
+        )
+    }
 
     tipoFormularioAbierto?.let { tipo ->
         MovimientoFormSheet(
@@ -130,8 +156,9 @@ private fun BalanceAcumuladoCard(balanceAcumulado: Monto, moneda: String) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = stringResource(R.string.home_balance_acumulado), style = MaterialTheme.typography.bodyMedium)
             Text(
-                text = formatearMontoPlano(balanceAcumulado, moneda),
+                text = formatearMonto(balanceAcumulado, moneda),
                 style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.testTag(TAG_HOME_BALANCE_ACUMULADO),
             )
         }
     }
@@ -144,23 +171,36 @@ private fun ResumenMensualRow(ingresosMes: Monto, gastosMes: Monto, moneda: Stri
             etiqueta = stringResource(R.string.home_income_label),
             monto = ingresosMes,
             moneda = moneda,
+            testTag = TAG_HOME_INGRESOS_MES,
             modifier = Modifier.weight(1f),
         )
         ResumenMensualCard(
             etiqueta = stringResource(R.string.home_expense_label),
             monto = gastosMes,
             moneda = moneda,
+            testTag = TAG_HOME_GASTOS_MES,
             modifier = Modifier.weight(1f),
         )
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
-private fun ResumenMensualCard(etiqueta: String, monto: Monto, moneda: String, modifier: Modifier = Modifier) {
+private fun ResumenMensualCard(
+    etiqueta: String,
+    monto: Monto,
+    moneda: String,
+    testTag: String,
+    modifier: Modifier = Modifier,
+) {
     Card(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = etiqueta, style = MaterialTheme.typography.bodySmall)
-            Text(text = formatearMontoPlano(monto, moneda), style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = formatearMonto(monto, moneda),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.testTag(testTag),
+            )
         }
     }
 }
@@ -174,7 +214,14 @@ private fun AccionRapida(icono: ImageVector, etiqueta: String, onClick: () -> Un
         modifier = Modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Surface(shape = CircleShape, modifier = Modifier.size(56.dp)) {
+        // Explicit container color: an unset Surface color renders transparent against the screen
+        // background, making the whole circle invisible. Surface derives a matching contentColor
+        // (and thus the icon's tint) from this automatically via contentColorFor(color).
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            modifier = Modifier.size(56.dp),
+        ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -187,13 +234,14 @@ private fun AccionRapida(icono: ImageVector, etiqueta: String, onClick: () -> Un
     }
 }
 
-private const val UNIDADES_MENORES_POR_UNIDAD = 100L
+private const val UNIDADES_MENORES_POR_UNIDAD = 100.0
 
-private fun formatearMontoPlano(monto: Monto, moneda: String): String {
-    val negativo = monto.unidadesMenores < 0
-    val valorAbsoluto = abs(monto.unidadesMenores)
-    val enteros = valorAbsoluto / UNIDADES_MENORES_POR_UNIDAD
-    val centimos = valorAbsoluto % UNIDADES_MENORES_POR_UNIDAD
-    val signo = if (negativo) "-" else ""
-    return "$signo$enteros,${centimos.toString().padStart(2, '0')} $moneda"
+/**
+ * AGENTS.md i18n rule: money goes through NumberFormat, never hand-concatenation, so the sign,
+ * decimal separator and currency symbol all follow the active locale correctly.
+ */
+private fun formatearMonto(monto: Monto, moneda: String): String {
+    val formato = NumberFormat.getCurrencyInstance(Locale.getDefault())
+    runCatching { Currency.getInstance(moneda) }.getOrNull()?.let { formato.currency = it }
+    return formato.format(monto.unidadesMenores / UNIDADES_MENORES_POR_UNIDAD)
 }

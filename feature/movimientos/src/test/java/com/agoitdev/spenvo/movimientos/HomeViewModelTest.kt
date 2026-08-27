@@ -2,12 +2,14 @@ package com.agoitdev.spenvo.movimientos
 
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
+import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
 import com.agoitdev.spenvo.domain.usecase.ObservarBalanceAcumuladoPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +35,23 @@ class HomeViewModelTest {
         createdBy = "user-1",
     )
 
+    private val hoy = LocalDate.now()
+    private val mesAnterior = hoy.minusYears(1)
+
+    // One shared repository so the resumen and the balance use cases observe the SAME data.
+    // The out-of-month gasto is what makes balance (500) differ from netoDelMes (1500): with only
+    // in-month movimientos both figures would collapse to the same number and a wiring swap
+    // between the two use cases would go unnoticed.
+    private val movimientoRepo = FakeMovimientoRepositorioHome(
+        gastos = listOf(
+            gasto(id = "g-mes", unidadesMenores = 2_500, fecha = hoy),
+            gasto(id = "g-viejo", unidadesMenores = 1_000, fecha = mesAnterior),
+        ),
+        ingresos = listOf(
+            ingreso(id = "i-mes", unidadesMenores = 4_000, fecha = hoy),
+        ),
+    )
+
     @Before
     fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
@@ -47,8 +66,8 @@ class HomeViewModelTest {
     fun `expone el plan, el resumen del mes y el balance acumulado`() = runTest {
         val viewModel = HomeViewModel(
             observarPlan = ObservarPlanUseCase(FakePlanFinancieroRepositorioHome(plan)),
-            observarResumenMensual = ObservarResumenMensualPlanUseCase(FakeMovimientoRepositorioHome()),
-            observarBalanceAcumulado = ObservarBalanceAcumuladoPlanUseCase(FakeMovimientoRepositorioHome()),
+            observarResumenMensual = ObservarResumenMensualPlanUseCase(movimientoRepo),
+            observarBalanceAcumulado = ObservarBalanceAcumuladoPlanUseCase(movimientoRepo),
         )
 
         val planFlow = viewModel.plan("p1")
@@ -61,14 +80,35 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(plan, planFlow.value)
-        assertEquals(0L, resumenFlow.value?.netoDelMes?.unidadesMenores)
-        assertEquals(0L, balanceFlow.value.unidadesMenores)
+        assertEquals(4_000L, resumenFlow.value?.ingresosMes?.unidadesMenores)
+        assertEquals(2_500L, resumenFlow.value?.gastosMes?.unidadesMenores)
+        assertEquals(1_500L, resumenFlow.value?.netoDelMes?.unidadesMenores)
+        // Accumulated balance spans every month: 4000 - (2500 + 1000).
+        assertEquals(500L, balanceFlow.value.unidadesMenores)
 
         planJob.cancel()
         resumenJob.cancel()
         balanceJob.cancel()
     }
 }
+
+private fun gasto(id: String, unidadesMenores: Long, fecha: LocalDate) = Gasto(
+    id = id,
+    planId = "p1",
+    categoriaId = "cat-1",
+    monto = Monto(unidadesMenores),
+    fecha = fecha,
+    creadoPor = "user-1",
+)
+
+private fun ingreso(id: String, unidadesMenores: Long, fecha: LocalDate) = Ingreso(
+    id = id,
+    planId = "p1",
+    categoriaId = "cat-2",
+    monto = Monto(unidadesMenores),
+    fecha = fecha,
+    creadoPor = "user-1",
+)
 
 private class FakePlanFinancieroRepositorioHome(private val plan: PlanFinanciero?) : PlanFinancieroRepository {
     override fun observarPlanesDelUsuario(usuarioId: String): Flow<List<PlanFinanciero>> = flowOf(listOfNotNull(plan))
@@ -77,7 +117,10 @@ private class FakePlanFinancieroRepositorioHome(private val plan: PlanFinanciero
     override suspend fun actualizarPlan(plan: PlanFinanciero) = Unit
 }
 
-private class FakeMovimientoRepositorioHome : MovimientoRepository {
+private class FakeMovimientoRepositorioHome(
+    private val gastos: List<Gasto> = emptyList(),
+    private val ingresos: List<Ingreso> = emptyList(),
+) : MovimientoRepository {
     override suspend fun addGasto(gasto: Gasto) = Unit
     override suspend fun addIngreso(ingreso: Ingreso) = Unit
     override suspend fun actualizarGasto(gasto: Gasto) = Unit
@@ -86,6 +129,6 @@ private class FakeMovimientoRepositorioHome : MovimientoRepository {
     override suspend fun eliminarIngreso(ingreso: Ingreso) = Unit
     override suspend fun aplicarGastoRemoto(id: String) = Unit
     override suspend fun aplicarIngresoRemoto(id: String) = Unit
-    override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(emptyList())
-    override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(emptyList())
+    override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(gastos.filter { it.planId == planId })
+    override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(ingresos.filter { it.planId == planId })
 }
