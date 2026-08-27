@@ -112,7 +112,6 @@ class PlanesScreenTest {
                 plan = plan,
                 resumen = ResumenMensualPlan(
                     planId = "p1",
-                    netoDelMes = Monto(2000),
                     ingresosMes = Monto(2000),
                     gastosMes = Monto(0),
                 ),
@@ -130,7 +129,6 @@ class PlanesScreenTest {
                 plan = plan,
                 resumen = ResumenMensualPlan(
                     planId = "p1",
-                    netoDelMes = Monto(-4000),
                     ingresosMes = Monto(0),
                     gastosMes = Monto(4000),
                 ),

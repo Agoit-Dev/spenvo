@@ -23,7 +23,6 @@ class ObservarResumenMensualPlanUseCase(
                 .sumOf { it.monto.unidadesMenores }
             ResumenMensualPlan(
                 planId = planId,
-                netoDelMes = Monto(ingresosMes - gastosMes),
                 ingresosMes = Monto(ingresosMes),
                 gastosMes = Monto(gastosMes),
             )
