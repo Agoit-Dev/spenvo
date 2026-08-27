@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Cancelar silently restoring a movimiento's stored category even when that category had since
   been deleted — it was blindly reverting to the original id instead of re-checking whether that
   id still exists in the loaded list.
+- Planes screen briefly showed "no plans yet" on cold start before the real plan list (or a
+  pending invitation) loaded in, because `planes`/`invitacionesPendientes` started at a synthetic
+  empty-list `StateFlow` value indistinguishable from "genuinely has none". Both flows now
+  distinguish "not loaded yet" from "loaded and empty" internally (`PlanesViewModel.cargandoLista`),
+  and the list area shows a centered, accessibly-labeled spinner while loading — covering both the
+  anonymous-session-establishment window and the initial Room query — instead of flashing the
+  empty state. The top bar and "create plan" FAB are unaffected.
 
 ### Changed
 
