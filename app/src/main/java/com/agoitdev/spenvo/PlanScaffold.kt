@@ -17,13 +17,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
 private enum class PlanTab { HOME, MOVIMIENTOS, CATEGORIAS, MIEMBROS }
 
-@Suppress("LongParameterList")
 @Composable
 internal fun PlanScaffold(
     contenidoHome: @Composable () -> Unit,
@@ -65,12 +65,15 @@ internal fun PlanScaffold(
             }
         },
     ) { innerPadding ->
+        val stateHolder = rememberSaveableStateHolder()
         Box(modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) {
-            when (tabSeleccionada) {
-                PlanTab.HOME -> contenidoHome()
-                PlanTab.MOVIMIENTOS -> contenidoMovimientos()
-                PlanTab.CATEGORIAS -> contenidoCategorias()
-                PlanTab.MIEMBROS -> contenidoMiembros()
+            stateHolder.SaveableStateProvider(tabSeleccionada) {
+                when (tabSeleccionada) {
+                    PlanTab.HOME -> contenidoHome()
+                    PlanTab.MOVIMIENTOS -> contenidoMovimientos()
+                    PlanTab.CATEGORIAS -> contenidoCategorias()
+                    PlanTab.MIEMBROS -> contenidoMiembros()
+                }
             }
         }
     }

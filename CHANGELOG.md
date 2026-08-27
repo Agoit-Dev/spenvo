@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `PlanScaffold`'s bottom-nav tab switching disposed the non-selected tab's whole composable subtree
+  on every switch, which unregistered its `rememberSaveable` state — e.g. Movimientos' search text,
+  selected type filter, and list scroll position were all lost when navigating away and back. Fixed
+  by wrapping each tab's content in a `rememberSaveableStateHolder()` keyed per tab (the same
+  primitive Navigation 3's own `rememberSaveableStateHolderNavEntryDecorator` uses), which snapshots
+  and restores `rememberSaveable` state across the tab's dispose/recompose cycle. Also removed the
+  now-unnecessary `@Suppress("LongParameterList")` on `PlanScaffold` (5 params, under detekt's
+  default threshold of 6).
 - Home screen: a failed save (e.g. `PERMISSION_DENIED`) had no error feedback at all and left the
   shared `MovimientosViewModel`'s error flag unconsumed, so it would leak into the Movimientos tab
   as a stale snackbar later. Home now wraps its content in a `Scaffold`+`SnackbarHost` and mirrors
