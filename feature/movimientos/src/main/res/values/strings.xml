@@ -2,8 +2,6 @@
 <resources>
     <string name="movements_title">Movimientos</string>
     <string name="movements_placeholder">Movimientos del plan %1$s (M5)</string>
-    <string name="movements_view_members">Miembros</string>
-    <string name="movements_manage_categories">Categorías</string>
     <string name="movements_search_placeholder">Buscar movimientos…</string>
     <string name="movements_filter_all">Todos</string>
     <string name="movements_filter_expense">Gastos</string>

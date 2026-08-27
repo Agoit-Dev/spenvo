@@ -2,8 +2,6 @@
 <resources>
     <string name="movements_title">Movements</string>
     <string name="movements_placeholder">Movements for plan %1$s (M5)</string>
-    <string name="movements_view_members">Members</string>
-    <string name="movements_manage_categories">Categories</string>
     <string name="movements_search_placeholder">Search transactions…</string>
     <string name="movements_filter_all">All</string>
     <string name="movements_filter_expense">Expenses</string>

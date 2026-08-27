@@ -50,8 +50,6 @@ import java.time.LocalDate
 @Composable
 fun MovimientosScreen(
     planId: String,
-    onVerMiembros: () -> Unit,
-    onGestionarCategorias: () -> Unit,
     viewModel: MovimientosViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -76,8 +74,6 @@ fun MovimientosScreen(
     MovimientosPantallas(
         modifier = modifier,
         acciones = MovimientosAcciones(
-            onVerMiembros = onVerMiembros,
-            onGestionarCategorias = onGestionarCategorias,
             onNuevoMovimiento = { formulario = FormularioMovimiento.Nuevo },
         ),
         filtro = MovimientosFiltro(
@@ -244,8 +240,6 @@ private fun filtrarMovimientos(
 }
 
 internal data class MovimientosAcciones(
-    val onVerMiembros: () -> Unit,
-    val onGestionarCategorias: () -> Unit,
     val onNuevoMovimiento: () -> Unit,
 )
 
@@ -274,7 +268,7 @@ private fun MovimientosScaffold(
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { MovimientosTopBar(acciones.onGestionarCategorias, acciones.onVerMiembros) },
+        topBar = { MovimientosTopBar() },
         floatingActionButton = {
             FloatingActionButton(onClick = acciones.onNuevoMovimiento) {
                 Icon(imageVector = Icons.Filled.Add, contentDescription = stringResource(R.string.movements_add))

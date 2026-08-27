@@ -79,11 +79,7 @@ fun SpenvoApp(modifier: Modifier = Modifier) {
                     )
                 }
                 entry<MovimientosRoute> { route ->
-                    MovimientosScreen(
-                        planId = route.planId,
-                        onVerMiembros = { backStack.add(MiembrosRoute(route.planId)) },
-                        onGestionarCategorias = { backStack.add(CategoriasRoute(route.planId)) },
-                    )
+                    MovimientosScreen(planId = route.planId)
                 }
                 entry<MiembrosRoute> { route ->
                     MiembrosScreen(planId = route.planId)

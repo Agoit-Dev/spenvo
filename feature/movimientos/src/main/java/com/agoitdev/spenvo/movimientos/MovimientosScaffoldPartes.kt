@@ -3,13 +3,8 @@ package com.agoitdev.spenvo.movimientos
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -22,24 +17,8 @@ import com.agoitdev.spenvo.domain.model.TipoCategoria
 /** Extracted from `MovimientosScreen.kt` to stay under detekt's `TooManyFunctions` file threshold. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MovimientosTopBar(onGestionarCategorias: () -> Unit, onVerMiembros: () -> Unit) {
-    TopAppBar(
-        title = { Text(stringResource(R.string.movements_title)) },
-        actions = {
-            IconButton(onClick = onGestionarCategorias) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.List,
-                    contentDescription = stringResource(R.string.movements_manage_categories),
-                )
-            }
-            IconButton(onClick = onVerMiembros) {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = stringResource(R.string.movements_view_members),
-                )
-            }
-        },
-    )
+internal fun MovimientosTopBar() {
+    TopAppBar(title = { Text(stringResource(R.string.movements_title)) })
 }
 
 @Composable

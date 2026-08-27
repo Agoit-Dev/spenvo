@@ -115,9 +115,7 @@ class MovimientosScreenListDetailTest {
         onMovimientoClick = onClick,
     )
 
-    private val acciones = MovimientosAcciones(
-        onVerMiembros = {}, onGestionarCategorias = {}, onNuevoMovimiento = {},
-    )
+    private val acciones = MovimientosAcciones(onNuevoMovimiento = {})
     private val filtro = MovimientosFiltro(
         busqueda = "", onBusquedaChange = {}, tipoSeleccionado = null, onTipoChange = {},
     )
