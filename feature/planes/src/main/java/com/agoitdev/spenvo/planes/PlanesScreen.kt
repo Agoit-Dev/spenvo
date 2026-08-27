@@ -1,6 +1,7 @@
 package com.agoitdev.spenvo.planes
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,7 +37,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -55,6 +58,7 @@ fun PlanesScreen(
     viewModel: PlanesViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
+    val cargandoLista by viewModel.cargandoLista.collectAsStateWithLifecycle()
     val planes by viewModel.planes.collectAsStateWithLifecycle()
     val resumenesPorPlan by viewModel.resumenesPorPlan.collectAsStateWithLifecycle()
     val invitaciones by viewModel.invitacionesPendientes.collectAsStateWithLifecycle()
@@ -95,6 +99,7 @@ fun PlanesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         PlanesLista(
+            cargandoLista = cargandoLista,
             planes = planes,
             resumenesPorPlan = resumenesPorPlan,
             invitaciones = invitaciones,
@@ -139,6 +144,7 @@ private fun PlanesTopBar(
 @Suppress("LongParameterList")
 @Composable
 private fun PlanesLista(
+    cargandoLista: Boolean,
     planes: List<PlanFinanciero>,
     resumenesPorPlan: Map<String, ResumenMensualPlan>,
     invitaciones: List<AccesoPlan>,
@@ -146,6 +152,15 @@ private fun PlanesLista(
     onAbrirPlan: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (cargandoLista) {
+        Box(
+            modifier = modifier.fillMaxSize().testTag("planes_cargando"),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
