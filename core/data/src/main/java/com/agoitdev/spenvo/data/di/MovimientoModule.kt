@@ -12,6 +12,7 @@ import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
+import com.agoitdev.spenvo.domain.usecase.ObservarBalanceAcumuladoPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
@@ -104,4 +105,9 @@ object MovimientoResumenUseCaseModule {
     fun provideObservarResumenMensualPlan(
         movimientoRepository: MovimientoRepository,
     ): ObservarResumenMensualPlanUseCase = ObservarResumenMensualPlanUseCase(movimientoRepository)
+
+    @Provides
+    fun provideObservarBalanceAcumuladoPlan(
+        movimientoRepository: MovimientoRepository,
+    ): ObservarBalanceAcumuladoPlanUseCase = ObservarBalanceAcumuladoPlanUseCase(movimientoRepository)
 }

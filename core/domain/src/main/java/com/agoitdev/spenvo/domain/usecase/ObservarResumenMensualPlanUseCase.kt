@@ -21,6 +21,11 @@ class ObservarResumenMensualPlanUseCase(
             val ingresosMes = i
                 .filter { it.deletedAt == null && YearMonth.from(it.fecha) == mes }
                 .sumOf { it.monto.unidadesMenores }
-            ResumenMensualPlan(planId, Monto(ingresosMes - gastosMes))
+            ResumenMensualPlan(
+                planId = planId,
+                netoDelMes = Monto(ingresosMes - gastosMes),
+                ingresosMes = Monto(ingresosMes),
+                gastosMes = Monto(gastosMes),
+            )
         }
 }

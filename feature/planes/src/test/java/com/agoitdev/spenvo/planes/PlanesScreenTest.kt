@@ -110,7 +110,12 @@ class PlanesScreenTest {
         composeTestRule.setContent {
             PlanCard(
                 plan = plan,
-                resumen = ResumenMensualPlan(planId = "p1", netoDelMes = Monto(2000)),
+                resumen = ResumenMensualPlan(
+                    planId = "p1",
+                    netoDelMes = Monto(2000),
+                    ingresosMes = Monto(2000),
+                    gastosMes = Monto(0),
+                ),
                 onClick = {},
             )
         }
@@ -123,7 +128,12 @@ class PlanesScreenTest {
         composeTestRule.setContent {
             PlanCard(
                 plan = plan,
-                resumen = ResumenMensualPlan(planId = "p1", netoDelMes = Monto(-4000)),
+                resumen = ResumenMensualPlan(
+                    planId = "p1",
+                    netoDelMes = Monto(-4000),
+                    ingresosMes = Monto(0),
+                    gastosMes = Monto(4000),
+                ),
                 onClick = {},
             )
         }

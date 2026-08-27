@@ -38,6 +38,8 @@ class ObservarResumenMensualPlanUseCaseTest {
         val resumen = useCase("plan-1", YearMonth.of(2026, 8)).first()
 
         assertEquals(2000L, resumen.netoDelMes.unidadesMenores)
+        assertEquals(3000L, resumen.ingresosMes.unidadesMenores)
+        assertEquals(1000L, resumen.gastosMes.unidadesMenores)
     }
 
     @Test
