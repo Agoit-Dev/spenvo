@@ -33,7 +33,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         GastoEntity::class,
         IngresoEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -104,6 +104,20 @@ abstract class SpenvoDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE usuarios ADD COLUMN nombreUsuario TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE usuarios RENAME COLUMN nombre TO nombre_old")
+                db.execSQL("ALTER TABLE usuarios ADD COLUMN nombre TEXT")
+                db.execSQL("UPDATE usuarios SET nombre = nombre_old")
+                db.execSQL("ALTER TABLE usuarios DROP COLUMN nombre_old")
+                db.execSQL("ALTER TABLE usuarios RENAME COLUMN email TO email_old")
+                db.execSQL("ALTER TABLE usuarios ADD COLUMN email TEXT")
+                db.execSQL("UPDATE usuarios SET email = email_old")
+                db.execSQL("ALTER TABLE usuarios DROP COLUMN email_old")
+            }
+        }
+
         fun build(context: Context, passphraseProvider: PassphraseProvider): SpenvoDatabase {
             // SQLCipher 4.x no carga la lib nativa automáticamente; el consumidor
             // debe cargarla explícitamente antes de abrir la DB.
@@ -111,7 +125,7 @@ abstract class SpenvoDatabase : RoomDatabase() {
             val passphrase = passphraseProvider.getOrCreate()
             return Room.databaseBuilder(context, SpenvoDatabase::class.java, DATABASE_NAME)
                 .openHelperFactory(SupportOpenHelperFactory(String(passphrase).toByteArray(Charsets.UTF_8)))
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
         }
     }

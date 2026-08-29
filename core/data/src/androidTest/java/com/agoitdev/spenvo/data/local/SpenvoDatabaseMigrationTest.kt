@@ -56,7 +56,28 @@ class SpenvoDatabaseMigrationTest {
         db.close()
     }
 
+    @Test
+    fun migra_de_v2_a_v3_agregando_nombreUsuario() {
+        helper.createDatabase(TEST_DB_V2_V3, 2).use { db ->
+            db.execSQL(
+                "INSERT INTO usuarios (id, nombre, email, avatarUrl, createdAt, updatedAt) " +
+                    "VALUES ('u1', 'Ana', 'ana@example.com', NULL, 123456, 123456)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB_V2_V3, 3, true, SpenvoDatabase.MIGRATION_2_3)
+
+        db.query("SELECT nombre, email, nombreUsuario FROM usuarios WHERE id = 'u1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Ana", cursor.getString(0))
+            assertEquals("ana@example.com", cursor.getString(1))
+            assertEquals("", cursor.getString(2))
+        }
+        db.close()
+    }
+
     companion object {
         private const val TEST_DB = "migration-test-v1-to-v2"
+        private const val TEST_DB_V2_V3 = "migration-test-v2-to-v3"
     }
 }

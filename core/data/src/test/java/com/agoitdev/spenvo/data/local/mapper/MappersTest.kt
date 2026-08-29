@@ -21,6 +21,7 @@ class MappersTest {
     fun `usuario roundtrip entidad y dominio`() {
         val domain = Usuario(
             id = "user-1",
+            nombreUsuario = "tiago",
             nombre = "Tiago",
             email = "tiago@spenvo.dev",
             avatarUrl = "https://img/spenvo.png",
@@ -30,6 +31,7 @@ class MappersTest {
 
         val entity = domain.toEntity()
         assertEquals("user-1", entity.id)
+        assertEquals("tiago", entity.nombreUsuario)
         assertEquals(1000, entity.createdAt.toEpochMilli())
         assertEquals(domain, entity.toDomain())
     }

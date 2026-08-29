@@ -4,8 +4,9 @@ import java.time.Instant
 
 data class Usuario(
     val id: String,
-    val nombre: String,
-    val email: String,
+    val nombreUsuario: String,
+    val nombre: String? = null,
+    val email: String? = null,
     val avatarUrl: String? = null,
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant = Instant.now(),

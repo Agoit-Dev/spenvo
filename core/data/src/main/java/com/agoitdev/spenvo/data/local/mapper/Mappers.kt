@@ -11,6 +11,7 @@ import com.agoitdev.spenvo.domain.model.Usuario
 
 fun Usuario.toEntity(): UsuarioEntity = UsuarioEntity(
     id = id,
+    nombreUsuario = nombreUsuario,
     nombre = nombre,
     email = email,
     avatarUrl = avatarUrl,
@@ -20,6 +21,7 @@ fun Usuario.toEntity(): UsuarioEntity = UsuarioEntity(
 
 fun UsuarioEntity.toDomain(): Usuario = Usuario(
     id = id,
+    nombreUsuario = nombreUsuario,
     nombre = nombre,
     email = email,
     avatarUrl = avatarUrl,
