@@ -63,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
+  `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
+  across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's
+  income/expense split, and quick "Nuevo Gasto"/"Nuevo Ingreso" actions opening the existing
+  `MovimientoFormSheet`. `ResumenMensualPlan` (via `ObservarResumenMensualPlanUseCase`) now exposes
+  the month's income and expense totals separately — `netoDelMes` is derived from them rather than
+  stored redundantly.
 - `:app` gains a bottom-navigation shell (`PlanScaffold`) hosting Home/Movimientos/Categorías/
   Miembros as tabs of a single plan, replacing the previous separate `MovimientosRoute`/
   `MiembrosRoute`/`CategoriasRoute` nav-3 entries with one `PlanRoute(planId)` entry. Home and
