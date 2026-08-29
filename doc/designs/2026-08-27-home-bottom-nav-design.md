@@ -125,10 +125,26 @@ Per `AGENTS.md`'s strict TDD:
   without losing the other tabs' state (e.g. Movimientos' scroll position or filter survives a
   round-trip through another tab) — exact preservation mechanism (`rememberSaveable` scoping per
   tab) is a planning-phase implementation detail.
-- Compose test proving back-button-from-any-tab exits to Planes.
-- Compose test proving a movimiento added via Home's quick action appears in the Movimientos tab
-  without navigating away.
 - Regression test confirming `MovimientosTopBar` no longer renders the removed icon buttons.
+
+**Deferred at implementation time** (documented exception, per `AGENTS.md`'s "documented exceptions
+only" TDD clause):
+- Compose test proving back-button-from-any-tab exits to Planes, and compose test proving a
+  movimiento added via Home's quick action appears in the Movimientos tab without navigating away.
+  Both properties are guaranteed by already-tested lower-level primitives rather than by
+  `PlanScaffold`-local behavior: `SpenvoApp`'s `NavDisplay` has a single flat `backStack` with one
+  `onBack = { backStack.removeLastOrNull() }` — tab switching is `PlanScaffold`-local
+  `rememberSaveable` state that never touches the backstack, so `Back` always pops `PlanRoute`
+  regardless of the selected tab, the same guarantee every other route in this app already relies
+  on. Home and Movimientos are wired to the exact same `MovimientosViewModel` instance (a single
+  `hiltViewModel()` call at `entry<PlanRoute>`, passed to both), which reads movimientos from Room
+  via `Flow` — the same "UI always reads from Room via `Flow`" rule already covered by
+  `MovimientosScreen`'s and `HomeViewModel`'s own test suites. Writing a Compose test for either
+  property at the `SpenvoApp` level would mean standing up this app's first app-wide Hilt/Compose
+  integration test harness (fakes for the full Planes/Movimientos/Categorías/Miembros DI graph,
+  sincronizadores included) — infrastructure disproportionate to re-proving guarantees two already
+  green test suites already establish. Revisit if `PlanScaffold` ever grows its own back handling
+  or a per-tab `NavKey`/backstack (the design explicitly rejected that shape — see "Out of scope").
 
 ## Out of scope (explicitly)
 
