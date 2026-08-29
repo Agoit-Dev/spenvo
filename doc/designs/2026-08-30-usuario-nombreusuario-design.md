@@ -164,6 +164,19 @@ invite is for, and only by their own already-verified email — not an open quer
 any authenticated user (anyone can invite). `delete`: only by the matching-email caller (cleanup
 after resolving). No `update`.
 
+## Known gap, deliberately deferred (found during Task 4's review)
+
+`CuentaViewModel.registrar()` runs `vincularCredencial(...)` (which permanently upgrades the
+Firebase Auth account from anonymous to email+password) and `asegurarUsuario.paraVincularEmail(...)`
+inside the same `runCatching` block. If the Auth linking succeeds but the Firestore `Usuario`
+sync then fails, the UI reports registration as failed even though the account was actually
+created — and a retry would hit Firebase Auth's "credential already linked" error instead of
+succeeding. Not fixed here: the right fix (treat the Firestore sync as best-effort like
+`PlanesViewModel`'s equivalent call, or give `registrar()` a distinct partial-failure state) is a
+product decision about error surfacing, not a mechanical one, and out of this slice's scope.
+Revisit before front 2 (real login) ships, since a confusing stuck-registration state is exactly
+the kind of thing that pushes someone toward re-registering instead of logging in.
+
 ## Out of scope (explicitly)
 
 - Front 2 (real login screen, logout without auto-anonymous re-entry) and front 3 (avatar/profile
