@@ -7,6 +7,7 @@ import com.agoitdev.spenvo.domain.repository.StorageRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
+import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -47,11 +49,13 @@ class CuentaViewModelTest {
     private fun crearViewModel() = CuentaViewModel(
         vincularCredencial = VincularCredencialUseCase(authRepository),
         authRepository = authRepository,
+        usuarioRepository = usuarioRepository,
         subirAvatarUseCase = SubirAvatarUseCase(storageRepository),
         asegurarUsuario = AsegurarUsuarioUseCase(
             usuarioRepository,
             GenerarNombreUsuarioUnicoUseCase(usuarioRepository),
         ),
+        renombrarUsuario = RenombrarUsuarioUseCase(usuarioRepository),
     )
 
     @Test
@@ -136,6 +140,52 @@ class CuentaViewModelTest {
         assertTrue(viewModel.estado.value.completado)
         job.cancel()
     }
+
+    @Test
+    fun `al abrir el perfil de una sesion vinculada carga el nombreUsuario existente`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
+        job.cancel()
+    }
+
+    @Test
+    fun `editarNombreUsuario exitoso actualiza el estado con el nuevo valor`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        usuarioRepository.resultadoRenombrar = true
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.editarNombreUsuario("ZorroVeloz9")
+        advanceUntilIdle()
+
+        assertEquals("ZorroVeloz9", viewModel.perfilEstado.value.nombreUsuario)
+        assertNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        job.cancel()
+    }
+
+    @Test
+    fun `editarNombreUsuario fallido expone un error sin tocar el estado previo`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        usuarioRepository.resultadoRenombrar = false
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.editarNombreUsuario("ZorroVeloz9")
+        advanceUntilIdle()
+
+        assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
+        assertNotNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        job.cancel()
+    }
 }
 
 private class FakeAuthRepositorioCuenta : AuthRepository {
@@ -170,6 +220,7 @@ private class FakeUsuarioRepositorioCuenta : UsuarioRepository {
     val usuarios = mutableMapOf<String, Usuario>()
     val actualizados = mutableListOf<Usuario>()
     val indicesEmail = mutableListOf<Pair<String, String>>()
+    var resultadoRenombrar = true
 
     override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
     override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
@@ -193,7 +244,7 @@ private class FakeUsuarioRepositorioCuenta : UsuarioRepository {
         usuarioId: String,
         nombreUsuarioAnterior: String,
         nombreUsuarioNuevo: String,
-    ): Boolean = true
+    ): Boolean = resultadoRenombrar
 
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) {
         indicesEmail.add(emailNormalizado to usuarioId)

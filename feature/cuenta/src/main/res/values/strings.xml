@@ -13,4 +13,6 @@
     <string name="account_profile_info_title">Información de la cuenta</string>
     <string name="account_profile_info_email">Correo: %1$s</string>
     <string name="account_profile_logout">Cerrar sesión</string>
+    <string name="account_profile_nombre_usuario">Nombre de usuario</string>
+    <string name="account_profile_guardar_nombre_usuario">Guardar</string>
 </resources>

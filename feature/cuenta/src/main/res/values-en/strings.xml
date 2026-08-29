@@ -13,4 +13,6 @@
     <string name="account_profile_info_title">Account info</string>
     <string name="account_profile_info_email">Email: %1$s</string>
     <string name="account_profile_logout">Log out</string>
+    <string name="account_profile_nombre_usuario">Username</string>
+    <string name="account_profile_guardar_nombre_usuario">Save</string>
 </resources>

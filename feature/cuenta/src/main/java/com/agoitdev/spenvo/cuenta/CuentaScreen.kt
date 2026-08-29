@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.Button
@@ -25,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,9 +75,10 @@ fun CuentaScreen(
         } else {
             PerfilContenido(
                 sesion = sesion,
-                subiendoAvatar = perfilEstado.subiendoAvatar,
+                perfilEstado = perfilEstado,
                 onEditarAvatar = { seleccionarImagen() },
                 onLogout = viewModel::logout,
+                onEditarNombreUsuario = viewModel::editarNombreUsuario,
                 modifier = contentModifier,
             )
         }
@@ -130,16 +134,18 @@ private fun rememberSeleccionarImagenLauncher(onImagenSeleccionada: (ByteArray, 
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun PerfilContenido(
     sesion: Sesion,
-    subiendoAvatar: Boolean,
+    perfilEstado: PerfilEstado,
     onEditarAvatar: () -> Unit,
     onLogout: () -> Unit,
+    onEditarNombreUsuario: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(24.dp))
@@ -149,7 +155,7 @@ private fun PerfilContenido(
             editContentDescription = stringResource(R.string.account_profile_avatar_edit_description),
             onEditarClick = onEditarAvatar,
         )
-        if (subiendoAvatar) {
+        if (perfilEstado.subiendoAvatar) {
             Spacer(Modifier.height(8.dp))
             CircularProgressIndicator(modifier = Modifier.height(16.dp))
         }
@@ -158,7 +164,13 @@ private fun PerfilContenido(
             text = sesion.nombre ?: stringResource(R.string.account_profile_sin_nombre),
             style = MaterialTheme.typography.headlineSmall,
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(8.dp))
+        CampoNombreUsuario(
+            nombreUsuario = perfilEstado.nombreUsuario,
+            error = perfilEstado.nombreUsuarioError,
+            onGuardar = onEditarNombreUsuario,
+        )
+        Spacer(Modifier.height(16.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -181,6 +193,32 @@ private fun PerfilContenido(
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.account_profile_logout))
         }
+    }
+}
+
+@Composable
+private fun CampoNombreUsuario(
+    nombreUsuario: String?,
+    error: String?,
+    onGuardar: (String) -> Unit,
+) {
+    var nombreUsuarioEditado by rememberSaveable(nombreUsuario) {
+        mutableStateOf(nombreUsuario.orEmpty())
+    }
+    OutlinedTextField(
+        value = nombreUsuarioEditado,
+        onValueChange = { nombreUsuarioEditado = it },
+        label = { Text(stringResource(R.string.account_profile_nombre_usuario)) },
+        isError = error != null,
+        supportingText = error?.let { { Text(it) } },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    TextButton(
+        onClick = { onGuardar(nombreUsuarioEditado) },
+        enabled = nombreUsuarioEditado != nombreUsuario,
+    ) {
+        Text(stringResource(R.string.account_profile_guardar_nombre_usuario))
     }
 }
 

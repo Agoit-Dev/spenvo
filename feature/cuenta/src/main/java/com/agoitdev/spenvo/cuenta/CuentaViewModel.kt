@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,8 +23,10 @@ import kotlinx.coroutines.launch
 class CuentaViewModel @Inject constructor(
     private val vincularCredencial: VincularCredencialUseCase,
     private val authRepository: AuthRepository,
+    private val usuarioRepository: UsuarioRepository,
     private val subirAvatarUseCase: SubirAvatarUseCase,
     private val asegurarUsuario: AsegurarUsuarioUseCase,
+    private val renombrarUsuario: RenombrarUsuarioUseCase,
 ) : ViewModel() {
 
     val sesion: StateFlow<Sesion> = authRepository.observeSesion()
@@ -33,6 +37,18 @@ class CuentaViewModel @Inject constructor(
 
     private val _perfilEstado = MutableStateFlow(PerfilEstado())
     val perfilEstado: StateFlow<PerfilEstado> = _perfilEstado.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            sesion.collect { sesionActual ->
+                val uid = sesionActual.uid
+                if (!sesionActual.esAnonima && uid != null) {
+                    val usuario = usuarioRepository.obtener(uid)
+                    _perfilEstado.update { it.copy(nombreUsuario = usuario?.nombreUsuario) }
+                }
+            }
+        }
+    }
 
     fun registrar(nombre: String, email: String, password: String) {
         _estado.update { it.copy(cargando = true, error = null) }
@@ -77,6 +93,18 @@ class CuentaViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch { authRepository.cerrarSesion() }
     }
+
+    fun editarNombreUsuario(nuevo: String) {
+        val uid = sesion.value.uid ?: return
+        val anterior = _perfilEstado.value.nombreUsuario ?: return
+        viewModelScope.launch {
+            val exito = renombrarUsuario(usuarioId = uid, nombreUsuarioAnterior = anterior, nombreUsuarioNuevo = nuevo)
+            _perfilEstado.update {
+                if (exito) it.copy(nombreUsuario = nuevo, nombreUsuarioError = null)
+                else it.copy(nombreUsuarioError = "Ese nombre de usuario ya está en uso")
+            }
+        }
+    }
 }
 
 data class RegistroEstado(
@@ -88,4 +116,6 @@ data class RegistroEstado(
 data class PerfilEstado(
     val subiendoAvatar: Boolean = false,
     val avatarError: String? = null,
+    val nombreUsuario: String? = null,
+    val nombreUsuarioError: String? = null,
 )

@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AuthRepository
@@ -13,6 +15,7 @@ import com.agoitdev.spenvo.domain.repository.StorageRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
+import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +43,7 @@ class CuentaScreenTest {
     val composeTestRule = createComposeRule()
 
     private val storageRepository = FakeStorageRepositorioPantalla()
+    private val usuarioRepository = FakeUsuarioRepositorioPantalla()
 
     @Before
     fun setUp() {
@@ -54,11 +58,13 @@ class CuentaScreenTest {
     private fun crearViewModel(authRepository: AuthRepository) = CuentaViewModel(
         vincularCredencial = VincularCredencialUseCase(authRepository),
         authRepository = authRepository,
+        usuarioRepository = usuarioRepository,
         subirAvatarUseCase = SubirAvatarUseCase(storageRepository),
         asegurarUsuario = AsegurarUsuarioUseCase(
-            FakeUsuarioRepositorioPantalla(),
-            GenerarNombreUsuarioUnicoUseCase(FakeUsuarioRepositorioPantalla()),
+            usuarioRepository,
+            GenerarNombreUsuarioUnicoUseCase(usuarioRepository),
         ),
+        renombrarUsuario = RenombrarUsuarioUseCase(usuarioRepository),
     )
 
     @Test
@@ -85,7 +91,7 @@ class CuentaScreenTest {
         composeTestRule.onNodeWithText("Ana").assertIsDisplayed()
         composeTestRule.onNodeWithText("ana@spenvo.dev", substring = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("Información de la cuenta").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Cerrar sesión").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cerrar sesión").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Tus datos de invitado", substring = true).assertDoesNotExist()
     }
 
@@ -100,10 +106,30 @@ class CuentaScreenTest {
             CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel)
         }
 
-        composeTestRule.onNodeWithText("Cerrar sesión").performClick()
+        composeTestRule.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
         composeTestRule.waitForIdle()
 
         assertTrue(authRepository.cerrarSesionLlamado)
+    }
+
+    @Test
+    fun `el perfil muestra el campo de nombreUsuario con el valor seeded y permite guardarlo`() {
+        val sesion = Sesion(uid = "user-1", esAnonima = false, email = "ana@spenvo.dev", nombre = "Ana")
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        val viewModel = crearViewModel(FakeAuthRepositorioPantalla(sesion))
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel)
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("GatoAzul1").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("GatoAzul1").performTextReplacement("ZorroVeloz9")
+        composeTestRule.onNodeWithText("Guardar").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("ZorroVeloz9").assertIsDisplayed()
     }
 
     @Test
@@ -142,7 +168,7 @@ private class FakeStorageRepositorioPantalla : StorageRepository {
 }
 
 private class FakeUsuarioRepositorioPantalla : UsuarioRepository {
-    private val usuarios = mutableMapOf<String, Usuario>()
+    val usuarios = mutableMapOf<String, Usuario>()
 
     override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
     override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
