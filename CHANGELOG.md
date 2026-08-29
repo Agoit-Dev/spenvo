@@ -77,6 +77,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `crear`, `actualizar`, `renombrar`, `registrarIndiceEmail`, `resolverPorNombreUsuario`,
   `resolverPorEmail`) with no implementation yet, and `normalizarNombreUsuario`/`normalizarEmail`
   helpers for case/whitespace-insensitive lookups.
+- Usuario entity + nombreUsuario, slice 3/10 (still no caller wired in): implements
+  `UsuarioRepository` against real Firestore (`FirebaseUsuarioRepository`, `usuarios`/
+  `nombres_usuario`/`emails_usuario` collections) plus the `UsuarioDto` mapper (`uid` field name,
+  matching the existing `usuarios/{usuarioId}` security rule's `request.resource.data.uid ==
+  usuarioId` check). `intentarReservarNombreUsuario` and `renombrar` use a Firestore transaction to
+  keep the `nombres_usuario` reservation index and the user document consistent. Wired via
+  `UsuarioModule`/`UsuarioUseCaseModule` (Hilt). No unit test for the repository itself — same
+  pattern as `FirebasePlanFinancieroRepository`/`FirebaseAccesoPlanRepository`, which talk to real
+  Firestore and are only covered by DTO tests plus the emulator-based `rules-tests`.
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's
