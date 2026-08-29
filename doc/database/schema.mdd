@@ -97,10 +97,10 @@ erDiagram
 - `editedBy`/`editedAt` are written by Firestore (rules) with `request.auth.uid` and `request.time`;
   the client never chooses them.
 
-## 3. Room (version 2 — M1)
+## 3. Room (version 3)
 
 Room is the encrypted local cache. Schema exports are versioned in
-`core/data/schemas/com.agoitdev.spenvo.data.local.SpenvoDatabase/` (`1.json`, `2.json`).
+`core/data/schemas/com.agoitdev.spenvo.data.local.SpenvoDatabase/` (`1.json`, `2.json`, `3.json`).
 
 ### `sync_state` (v1, unchanged)
 | Column | Type | Notes |
@@ -108,12 +108,13 @@ Room is the encrypted local cache. Schema exports are versioned in
 | id | TEXT (PK) | singleton `"default"` |
 | lastSyncedAtMillis | INTEGER? | sync metadata (M1/M2) |
 
-### `usuarios` (new in v2)
+### `usuarios` (new in v2, `nombreUsuario` + nullable `nombre`/`email` in v3)
 | Column | Type | Notes |
 |---|---|---|
 | id | TEXT (PK) | uid |
-| nombre | TEXT | |
-| email | TEXT | |
+| nombreUsuario | TEXT | unique public handle, generated on first sign-in (v3) |
+| nombre | TEXT? | null for an anonymous session (v3: was non-null in v2) |
+| email | TEXT? | null for an anonymous session (v3: was non-null in v2) |
 | avatarUrl | TEXT? | M7 (Storage) |
 | createdAt | INTEGER | epoch millis |
 | updatedAt | INTEGER | |
