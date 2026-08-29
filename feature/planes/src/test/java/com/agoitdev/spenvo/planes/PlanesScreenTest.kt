@@ -15,15 +15,19 @@ import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.TipoCategoria
+import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
+import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AceptarInvitacionUseCase
+import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearPlanUseCase
+import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.SembrarCategoriasPorDefectoUseCase
@@ -101,6 +105,10 @@ class PlanesScreenTest {
             ),
             crearGasto = CrearGastoUseCase(FakeMovimientoRepositorioScreen(), ValidarMontoUseCase()),
             crearIngreso = CrearIngresoUseCase(FakeMovimientoRepositorioScreen(), ValidarMontoUseCase()),
+        ),
+        asegurarUsuario = AsegurarUsuarioUseCase(
+            FakeUsuarioRepositorioScreen(),
+            GenerarNombreUsuarioUnicoUseCase(FakeUsuarioRepositorioScreen()),
         ),
         authRepository = authRepository,
     )
@@ -248,4 +256,35 @@ private class FakeAuthRepositorioScreen(
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
     override suspend fun cerrarSesion() = Unit
+}
+
+private class FakeUsuarioRepositorioScreen : UsuarioRepository {
+    private val usuarios = mutableMapOf<String, Usuario>()
+
+    override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
+    override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
+        usuarioIds.mapNotNull { usuarios[it] }
+
+    override suspend fun intentarReservarNombreUsuario(
+        nombreUsuarioNormalizado: String,
+        usuarioId: String,
+    ): Boolean = true
+
+    override suspend fun crear(usuario: Usuario) {
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun actualizar(usuario: Usuario) {
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun renombrar(
+        usuarioId: String,
+        nombreUsuarioAnterior: String,
+        nombreUsuarioNuevo: String,
+    ): Boolean = true
+
+    override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
+    override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
+    override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
 }

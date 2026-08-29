@@ -1,8 +1,12 @@
 package com.agoitdev.spenvo.cuenta
 
 import com.agoitdev.spenvo.domain.model.Sesion
+import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.StorageRepository
+import com.agoitdev.spenvo.domain.repository.UsuarioRepository
+import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +32,7 @@ class CuentaViewModelTest {
 
     private val authRepository = FakeAuthRepositorioCuenta()
     private val storageRepository = FakeStorageRepositorioCuenta()
+    private val usuarioRepository = FakeUsuarioRepositorioCuenta()
 
     @Before
     fun setUp() {
@@ -43,6 +48,10 @@ class CuentaViewModelTest {
         vincularCredencial = VincularCredencialUseCase(authRepository),
         authRepository = authRepository,
         subirAvatarUseCase = SubirAvatarUseCase(storageRepository),
+        asegurarUsuario = AsegurarUsuarioUseCase(
+            usuarioRepository,
+            GenerarNombreUsuarioUnicoUseCase(usuarioRepository),
+        ),
     )
 
     @Test
@@ -108,6 +117,25 @@ class CuentaViewModelTest {
         assertTrue(authRepository.cerrarSesionLlamado)
         job.cancel()
     }
+
+    @Test
+    fun `registrar exitoso actualiza el Usuario con nombre y email conservando el nombreUsuario`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = true)
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.registrar(nombre = "Ana", email = "ana@example.com", password = "secret123")
+        advanceUntilIdle()
+
+        val actualizado = usuarioRepository.actualizados.single()
+        assertEquals("GatoAzul1", actualizado.nombreUsuario)
+        assertEquals("Ana", actualizado.nombre)
+        assertEquals("ana@example.com", actualizado.email)
+        assertTrue(viewModel.estado.value.completado)
+        job.cancel()
+    }
 }
 
 private class FakeAuthRepositorioCuenta : AuthRepository {
@@ -136,4 +164,41 @@ private class FakeStorageRepositorioCuenta : StorageRepository {
         if (fallar) error("subida fallida")
         return urlDevuelta
     }
+}
+
+private class FakeUsuarioRepositorioCuenta : UsuarioRepository {
+    val usuarios = mutableMapOf<String, Usuario>()
+    val actualizados = mutableListOf<Usuario>()
+    val indicesEmail = mutableListOf<Pair<String, String>>()
+
+    override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
+    override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
+        usuarioIds.mapNotNull { usuarios[it] }
+
+    override suspend fun intentarReservarNombreUsuario(
+        nombreUsuarioNormalizado: String,
+        usuarioId: String,
+    ): Boolean = true
+
+    override suspend fun crear(usuario: Usuario) {
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun actualizar(usuario: Usuario) {
+        actualizados.add(usuario)
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun renombrar(
+        usuarioId: String,
+        nombreUsuarioAnterior: String,
+        nombreUsuarioNuevo: String,
+    ): Boolean = true
+
+    override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) {
+        indicesEmail.add(emailNormalizado to usuarioId)
+    }
+
+    override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
+    override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
 }

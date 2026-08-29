@@ -9,13 +9,17 @@ import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.TipoCategoria
+import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
+import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AceptarInvitacionUseCase
+import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearPlanUseCase
+import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.SembrarCategoriasPorDefectoUseCase
@@ -52,6 +56,7 @@ class PlanesViewModelTest {
     private val movimientoRepo = FakeMovimientoRepository()
     private val sincronizador = FakePlanSincronizacion()
     private val authRepository = FakeAuthRepository(sesionFlow)
+    private val usuarioRepo = FakeUsuarioRepository()
 
     @Before
     fun setUp() {
@@ -63,7 +68,13 @@ class PlanesViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun crearViewModel(accesosRepo: AccesoPlanRepository = accesoPlanRepo) = PlanesViewModel(
+    private fun crearViewModel(
+        accesosRepo: AccesoPlanRepository = accesoPlanRepo,
+        asegurarUsuario: AsegurarUsuarioUseCase = AsegurarUsuarioUseCase(
+            usuarioRepo,
+            GenerarNombreUsuarioUnicoUseCase(usuarioRepo),
+        ),
+    ) = PlanesViewModel(
         crearPlan = CrearPlanUseCase(
             planFinancieroRepo,
             accesosRepo,
@@ -94,6 +105,7 @@ class PlanesViewModelTest {
                 com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase(),
             ),
         ),
+        asegurarUsuario = asegurarUsuario,
         authRepository = authRepository,
     )
 
@@ -230,6 +242,15 @@ class PlanesViewModelTest {
         job.cancel()
         planesJob.cancel()
     }
+
+    @Test
+    fun `asegura el Usuario del uid una vez que la sesion anonima resuelve`() = runTest {
+        crearViewModel()
+
+        advanceUntilIdle()
+
+        assertEquals(listOf("user-1"), usuarioRepo.creados.map { it.id })
+    }
 }
 
 private class FakePlanFinancieroRepository(
@@ -294,4 +315,37 @@ private class FakeAuthRepository(
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
     override suspend fun cerrarSesion() = Unit
+}
+
+private class FakeUsuarioRepository : UsuarioRepository {
+    private val usuarios = mutableMapOf<String, Usuario>()
+    val creados = mutableListOf<Usuario>()
+
+    override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
+    override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
+        usuarioIds.mapNotNull { usuarios[it] }
+
+    override suspend fun intentarReservarNombreUsuario(
+        nombreUsuarioNormalizado: String,
+        usuarioId: String,
+    ): Boolean = true
+
+    override suspend fun crear(usuario: Usuario) {
+        creados.add(usuario)
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun actualizar(usuario: Usuario) {
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun renombrar(
+        usuarioId: String,
+        nombreUsuarioAnterior: String,
+        nombreUsuarioNuevo: String,
+    ): Boolean = true
+
+    override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
+    override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
+    override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
 }

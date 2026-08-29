@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +22,7 @@ class CuentaViewModel @Inject constructor(
     private val vincularCredencial: VincularCredencialUseCase,
     private val authRepository: AuthRepository,
     private val subirAvatarUseCase: SubirAvatarUseCase,
+    private val asegurarUsuario: AsegurarUsuarioUseCase,
 ) : ViewModel() {
 
     val sesion: StateFlow<Sesion> = authRepository.observeSesion()
@@ -35,7 +37,11 @@ class CuentaViewModel @Inject constructor(
     fun registrar(nombre: String, email: String, password: String) {
         _estado.update { it.copy(cargando = true, error = null) }
         viewModelScope.launch {
-            runCatching { vincularCredencial(email = email, password = password, nombre = nombre) }
+            runCatching {
+                vincularCredencial(email = email, password = password, nombre = nombre)
+                val uid = sesion.value.uid ?: error("sin uid tras vincular")
+                asegurarUsuario.paraVincularEmail(usuarioId = uid, nombre = nombre, email = email)
+            }
                 .onSuccess { _estado.value = RegistroEstado(completado = true) }
                 .onFailure { error ->
                     _estado.value = RegistroEstado(error = error.message)

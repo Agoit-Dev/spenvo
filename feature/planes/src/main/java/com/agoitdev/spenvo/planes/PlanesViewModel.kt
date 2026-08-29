@@ -11,6 +11,7 @@ import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.usecase.AceptarInvitacionUseCase
+import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearPlanRequest
 import com.agoitdev.spenvo.domain.usecase.CrearPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanesDelUsuarioUseCase
@@ -45,6 +46,7 @@ class PlanesViewModel @Suppress("LongParameterList") @Inject constructor(
     private val accesosRepository: AccesoPlanRepository,
     private val observarResumenMensualPlan: ObservarResumenMensualPlanUseCase,
     private val sembrarPlanEjemplo: SembrarPlanEjemploUseCase,
+    private val asegurarUsuario: AsegurarUsuarioUseCase,
     authRepository: AuthRepository,
 ) : ViewModel() {
 
@@ -110,6 +112,11 @@ init {
             }
                 .catch { /* best-effort sync: un error de red/rules no debe tumbar la app */ }
                 .collect { }
+        }
+        viewModelScope.launch {
+            val uid = sesion.filter { it.uid != null }.first().uid ?: return@launch
+            // Best-effort bootstrap: ensures the Usuario doc (nombreUsuario) exists for this uid.
+            runCatching { asegurarUsuario.paraSesionAnonima(uid) }
         }
         viewModelScope.launch {
             val uid = sesion.filter { it.uid != null }.first().uid ?: return@launch

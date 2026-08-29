@@ -86,6 +86,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `UsuarioModule`/`UsuarioUseCaseModule` (Hilt). No unit test for the repository itself — same
   pattern as `FirebasePlanFinancieroRepository`/`FirebaseAccesoPlanRepository`, which talk to real
   Firestore and are only covered by DTO tests plus the emulator-based `rules-tests`.
+- Usuario entity + nombreUsuario, slice 4/10 (still no UI showing it, but the first slice where
+  `nombreUsuario` actually gets created/persisted through real app flows): adds
+  `AsegurarUsuarioUseCase`, wired into both `PlanesViewModel`'s anonymous-session bootstrap and
+  `CuentaViewModel.registrar()`. `paraSesionAnonima` is a best-effort call made once the anonymous
+  session resolves a real uid — creates the `Usuario` doc with a freshly generated `nombreUsuario`
+  if one doesn't exist yet, no-ops otherwise. `paraVincularEmail` runs right after linking an
+  email/password credential — updates `nombre`/`email` on the existing doc (preserving its
+  `nombreUsuario`) and registers the `emails_usuario` index entry; it also has a defensive fallback
+  that creates the doc if the anonymous bootstrap was somehow skipped.
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's

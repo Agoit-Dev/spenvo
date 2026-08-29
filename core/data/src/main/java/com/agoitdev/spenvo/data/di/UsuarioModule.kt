@@ -2,6 +2,7 @@ package com.agoitdev.spenvo.data.di
 
 import com.agoitdev.spenvo.data.remote.repository.FirebaseUsuarioRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
+import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
 import dagger.Binds
 import dagger.Module
@@ -27,4 +28,10 @@ object UsuarioUseCaseModule {
     fun provideGenerarNombreUsuarioUnico(
         usuarioRepository: UsuarioRepository,
     ): GenerarNombreUsuarioUnicoUseCase = GenerarNombreUsuarioUnicoUseCase(usuarioRepository)
+
+    @Provides
+    fun provideAsegurarUsuario(
+        usuarioRepository: UsuarioRepository,
+        generarNombreUsuarioUnico: GenerarNombreUsuarioUnicoUseCase,
+    ): AsegurarUsuarioUseCase = AsegurarUsuarioUseCase(usuarioRepository, generarNombreUsuarioUnico)
 }

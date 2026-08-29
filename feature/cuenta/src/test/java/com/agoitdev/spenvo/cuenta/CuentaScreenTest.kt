@@ -7,8 +7,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.agoitdev.spenvo.domain.model.Sesion
+import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.StorageRepository
+import com.agoitdev.spenvo.domain.repository.UsuarioRepository
+import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import kotlinx.coroutines.Dispatchers
@@ -51,6 +55,10 @@ class CuentaScreenTest {
         vincularCredencial = VincularCredencialUseCase(authRepository),
         authRepository = authRepository,
         subirAvatarUseCase = SubirAvatarUseCase(storageRepository),
+        asegurarUsuario = AsegurarUsuarioUseCase(
+            FakeUsuarioRepositorioPantalla(),
+            GenerarNombreUsuarioUnicoUseCase(FakeUsuarioRepositorioPantalla()),
+        ),
     )
 
     @Test
@@ -131,4 +139,35 @@ private class FakeAuthRepositorioPantalla(sesionInicial: Sesion) : AuthRepositor
 private class FakeStorageRepositorioPantalla : StorageRepository {
     override suspend fun subirAvatar(uid: String, bytes: ByteArray, contentType: String): String =
         "https://cdn.spenvo.dev/avatars/user-1/avatar.jpg"
+}
+
+private class FakeUsuarioRepositorioPantalla : UsuarioRepository {
+    private val usuarios = mutableMapOf<String, Usuario>()
+
+    override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
+    override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
+        usuarioIds.mapNotNull { usuarios[it] }
+
+    override suspend fun intentarReservarNombreUsuario(
+        nombreUsuarioNormalizado: String,
+        usuarioId: String,
+    ): Boolean = true
+
+    override suspend fun crear(usuario: Usuario) {
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun actualizar(usuario: Usuario) {
+        usuarios[usuario.id] = usuario
+    }
+
+    override suspend fun renombrar(
+        usuarioId: String,
+        nombreUsuarioAnterior: String,
+        nombreUsuarioNuevo: String,
+    ): Boolean = true
+
+    override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
+    override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
+    override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
 }
