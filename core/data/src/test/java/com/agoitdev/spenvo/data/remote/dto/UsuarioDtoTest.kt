@@ -41,6 +41,7 @@ class UsuarioDtoTest {
         assertEquals("u1", dto?.uid)
         assertNull(dto?.nombre)
         assertNull(dto?.email)
+        assertNull(dto?.avatarUrl)
     }
 
     @Test

@@ -7,9 +7,13 @@ import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
+
+/** Signals "the transaction aborted because the target was already taken", never a real I/O failure. */
+private class NombreUsuarioYaReservadoException : Exception()
 
 @Singleton
 class FirebaseUsuarioRepository @Inject constructor(
@@ -21,25 +25,47 @@ class FirebaseUsuarioRepository @Inject constructor(
         return snapshot.data?.let { UsuarioDto.fromData(it)?.toDomain() }
     }
 
-    override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> = coroutineScope {
-        usuarioIds.map { id -> async { obtener(id) } }.awaitAll().filterNotNull()
+    /**
+     * One member's lookup failing (network blip, permission edge case) must not take down the
+     * rest of the batch — [supervisorScope] isolates each child, and only cancellation still
+     * propagates, per structured concurrency. A failed lookup resolves to null, same as a
+     * genuinely-missing doc, letting the caller show a per-member loading/unknown state.
+     */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> = supervisorScope {
+        usuarioIds.map { id ->
+            async {
+                try {
+                    obtener(id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Un miembro que no resuelve no debe tumbar el resto del batch (ver KDoc arriba).
+                    null
+                }
+            }
+        }.awaitAll().filterNotNull()
     }
 
+    @Suppress("SwallowedException")
     override suspend fun intentarReservarNombreUsuario(
         nombreUsuarioNormalizado: String,
         usuarioId: String,
     ): Boolean {
         val ref = firestore.collection(NOMBRES_USUARIO_COLLECTION).document(nombreUsuarioNormalizado)
-        return runCatching {
+        return try {
             firestore.runTransaction { transaction ->
                 val existente = transaction.get(ref)
                 if (existente.exists()) {
-                    error("nombreUsuario ya reservado")
+                    throw NombreUsuarioYaReservadoException()
                 }
                 transaction.set(ref, mapOf("usuarioId" to usuarioId))
             }.await()
             true
-        }.getOrElse { false }
+        } catch (e: NombreUsuarioYaReservadoException) {
+            // e is our own control-flow signal, not a real failure to surface — see class KDoc.
+            false
+        }
     }
 
     override suspend fun crear(usuario: Usuario) {
@@ -52,6 +78,7 @@ class FirebaseUsuarioRepository @Inject constructor(
         firestore.collection(USUARIOS_COLLECTION).document(usuario.id).set(dto.toMap()).await()
     }
 
+    @Suppress("SwallowedException")
     override suspend fun renombrar(
         usuarioId: String,
         nombreUsuarioAnterior: String,
@@ -60,18 +87,21 @@ class FirebaseUsuarioRepository @Inject constructor(
         val refAnterior = firestore.collection(NOMBRES_USUARIO_COLLECTION).document(nombreUsuarioAnterior)
         val refNuevo = firestore.collection(NOMBRES_USUARIO_COLLECTION).document(nombreUsuarioNuevo)
         val refUsuario = firestore.collection(USUARIOS_COLLECTION).document(usuarioId)
-        return runCatching {
+        return try {
             firestore.runTransaction { transaction ->
                 val existenteNuevo = transaction.get(refNuevo)
                 if (existenteNuevo.exists()) {
-                    error("nombreUsuario ya reservado")
+                    throw NombreUsuarioYaReservadoException()
                 }
                 transaction.delete(refAnterior)
                 transaction.set(refNuevo, mapOf("usuarioId" to usuarioId))
                 transaction.update(refUsuario, "nombreUsuario", nombreUsuarioNuevo)
             }.await()
             true
-        }.getOrElse { false }
+        } catch (e: NombreUsuarioYaReservadoException) {
+            // e is our own control-flow signal, not a real failure to surface — see class KDoc.
+            false
+        }
     }
 
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) {
