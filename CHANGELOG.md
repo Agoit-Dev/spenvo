@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that will replace raw UID display in Miembros), and `nombre`/`email` become nullable to
   correctly represent an anonymous session, which has neither. Room migration 2→3 backfills
   existing rows. Nothing writes or reads `nombreUsuario` yet — that lands in the following slices.
+- Usuario entity + nombreUsuario, slice 2/10 (foundation only, still nothing wired to real
+  Firestore): adds `GenerarNombreUsuarioUnicoUseCase`, which produces a random
+  adjective+noun+number candidate (e.g. `RapidoZorro42`) and retries against a bounded budget of
+  8 attempts (widening the numeric range after the first 5 collisions) until the repository
+  confirms a transactional reservation, failing loudly if none succeeds. Also adds the
+  `UsuarioRepository` domain interface (`obtener`, `obtenerVarios`, `intentarReservarNombreUsuario`,
+  `crear`, `actualizar`, `renombrar`, `registrarIndiceEmail`, `resolverPorNombreUsuario`,
+  `resolverPorEmail`) with no implementation yet, and `normalizarNombreUsuario`/`normalizarEmail`
+  helpers for case/whitespace-insensitive lookups.
 
 ### Fixed
 
