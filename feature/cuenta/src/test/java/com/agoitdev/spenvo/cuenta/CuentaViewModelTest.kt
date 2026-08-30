@@ -10,10 +10,13 @@ import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.StorageRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.EnviarRecuperacionPasswordUseCase
 import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
+import com.agoitdev.spenvo.domain.usecase.IniciarSesionConEmailUseCase
 import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -54,6 +57,8 @@ class CuentaViewModelTest {
 
     private fun crearViewModel() = CuentaViewModel(
         vincularCredencial = VincularCredencialUseCase(authRepository),
+        iniciarSesionConEmail = IniciarSesionConEmailUseCase(authRepository),
+        enviarRecuperacionPassword = EnviarRecuperacionPasswordUseCase(authRepository),
         authRepository = authRepository,
         usuarioRepository = usuarioRepository,
         subirAvatarUseCase = SubirAvatarUseCase(storageRepository),
@@ -146,6 +151,51 @@ class CuentaViewModelTest {
         assertEquals("Ana", actualizado.nombre)
         assertEquals("ana@example.com", actualizado.email)
         assertTrue(viewModel.estado.value.completado)
+        job.cancel()
+    }
+
+    @Test
+    fun `iniciarSesion exitoso marca el estado como completado`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.iniciarSesion(email = "ana@example.com", password = "secret123")
+        advanceUntilIdle()
+
+        assertEquals("ana@example.com", authRepository.ultimoEmailLogin)
+        assertEquals("secret123", authRepository.ultimaPasswordLogin)
+        assertTrue(viewModel.estado.value.completado)
+        job.cancel()
+    }
+
+    @Test
+    fun `iniciarSesion con credenciales invalidas expone el mismo mensaje que usuario inexistente`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        authRepository.excepcionLogin = FirebaseAuthInvalidCredentialsException("ERROR_WRONG_PASSWORD", "wrong password")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.iniciarSesion(email = "ana@example.com", password = "wrong")
+        advanceUntilIdle()
+
+        assertEquals(R.string.account_error_credenciales_invalidas, viewModel.estado.value.errorRes)
+        job.cancel()
+    }
+
+    @Test
+    fun `recuperarPassword siempre marca exito visible sin importar si el email existe`() = runTest {
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.recuperarPassword(email = "quien-sea@example.com")
+        advanceUntilIdle()
+
+        assertEquals("quien-sea@example.com", authRepository.ultimoEmailRecovery)
+        assertTrue(viewModel.recoveryEstado.value.exito)
         job.cancel()
     }
 
@@ -271,9 +321,22 @@ private class FakeAuthRepositorioCuenta : AuthRepository {
     val sesionFlow = MutableStateFlow(Sesion.Anonima)
     var ultimoPhotoUrlActualizado: String? = null
     var cerrarSesionLlamado = false
+    var ultimoEmailLogin: String? = null
+    var ultimaPasswordLogin: String? = null
+    var excepcionLogin: Throwable? = null
+    var ultimoEmailRecovery: String? = null
 
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
+    override suspend fun iniciarSesionConEmail(email: String, password: String) {
+        ultimoEmailLogin = email
+        ultimaPasswordLogin = password
+        excepcionLogin?.let { throw it }
+        sesionFlow.value = Sesion(uid = "user-1", esAnonima = false, email = email)
+    }
+    override suspend fun enviarRecuperacionPassword(email: String) {
+        ultimoEmailRecovery = email
+    }
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) {
         ultimoPhotoUrlActualizado = photoUrl

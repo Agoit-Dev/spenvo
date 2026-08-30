@@ -7,6 +7,8 @@ import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.EnviarRecuperacionPasswordUseCase
+import com.agoitdev.spenvo.domain.usecase.IniciarSesionConEmailUseCase
 import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
@@ -23,6 +25,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class CuentaViewModel @Inject constructor(
     private val vincularCredencial: VincularCredencialUseCase,
+    private val iniciarSesionConEmail: IniciarSesionConEmailUseCase,
+    private val enviarRecuperacionPassword: EnviarRecuperacionPasswordUseCase,
     private val authRepository: AuthRepository,
     private val usuarioRepository: UsuarioRepository,
     private val subirAvatarUseCase: SubirAvatarUseCase,
@@ -38,6 +42,9 @@ class CuentaViewModel @Inject constructor(
 
     private val _perfilEstado = MutableStateFlow(PerfilEstado())
     val perfilEstado: StateFlow<PerfilEstado> = _perfilEstado.asStateFlow()
+
+    private val _recoveryEstado = MutableStateFlow(RecoveryEstado())
+    val recoveryEstado: StateFlow<RecoveryEstado> = _recoveryEstado.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -74,7 +81,33 @@ class CuentaViewModel @Inject constructor(
     }
 
     fun consumirError() {
-        _estado.update { it.copy(error = null) }
+        _estado.update { it.copy(error = null, errorRes = null) }
+    }
+
+    fun iniciarSesion(email: String, password: String) {
+        _estado.update { it.copy(cargando = true, error = null, errorRes = null) }
+        viewModelScope.launch {
+            runCatching { iniciarSesionConEmail(email, password) }
+                .onSuccess { _estado.value = RegistroEstado(completado = true) }
+                .onFailure { error ->
+                    _estado.value = RegistroEstado(errorRes = mapearErrorAuth(error))
+                }
+        }
+    }
+
+    /**
+     * El mismo resultado visible tanto si el email existe como si no — evita que la UI
+     * permita enumerar cuentas registradas probando direcciones.
+     */
+    fun recuperarPassword(email: String) {
+        viewModelScope.launch {
+            runCatching { enviarRecuperacionPassword(email) }
+            _recoveryEstado.value = RecoveryEstado(exito = true)
+        }
+    }
+
+    fun consumirRecoveryEstado() {
+        _recoveryEstado.value = RecoveryEstado()
     }
 
     /** Uploads the linked user's avatar; bytes/contentType are read by the caller. */
@@ -143,6 +176,11 @@ data class RegistroEstado(
     val cargando: Boolean = false,
     val completado: Boolean = false,
     val error: String? = null,
+    @param:StringRes val errorRes: Int? = null,
+)
+
+data class RecoveryEstado(
+    val exito: Boolean = false,
 )
 
 data class PerfilEstado(

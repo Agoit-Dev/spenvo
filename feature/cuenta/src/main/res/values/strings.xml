@@ -18,4 +18,18 @@
     <string name="account_profile_nombre_usuario_vacio">El nombre de usuario no puede estar vacío</string>
     <string name="account_profile_nombre_usuario_en_uso">Ese nombre de usuario ya está en uso</string>
     <string name="account_profile_nombre_usuario_error">No se pudo actualizar el nombre de usuario</string>
+    <string name="account_login_tab">Iniciar sesión</string>
+    <string name="account_registration_tab">Crear cuenta</string>
+    <string name="account_login_email">Correo</string>
+    <string name="account_login_password">Contraseña</string>
+    <string name="account_login_submit">Iniciar sesión</string>
+    <string name="account_login_forgot_password">¿Olvidaste tu contraseña?</string>
+    <string name="account_recovery_title">Recuperar contraseña</string>
+    <string name="account_recovery_email_label">Correo</string>
+    <string name="account_recovery_submit">Enviar</string>
+    <string name="account_recovery_cancel">Cancelar</string>
+    <string name="account_recovery_success">Si el correo existe, te enviamos instrucciones para recuperar tu contraseña.</string>
+    <string name="account_error_credenciales_invalidas">Email o contraseña incorrectos</string>
+    <string name="account_error_sin_red">Revisá tu conexión e intentá de nuevo</string>
+    <string name="account_error_generico">Ocurrió un error. Intentá de nuevo</string>
 </resources>
