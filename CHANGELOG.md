@@ -177,6 +177,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the full matrix (get/list split, create/delete ownership, no-overwrite, scoped-list, and the three
   self-grant cases: correct role succeeds, wrong role fails, no matching pending invite fails) with
   no regressions in the pre-existing `acceso_plan_financiero` suite.
+- Usuario entity + nombreUsuario, slice 10/10 (pre-merge security fix round, from the branch's
+  final holistic review): closes a **privilege-escalation chain** and a **handle-impersonation**
+  hole, both of which were reachable straight from the Firestore SDK with no app involvement.
+  (1) `invitaciones_pendientes_por_email.create` was `if isSignedIn()` with no constraint on the
+  document or on the caller's relationship to the plan. Combined with slice 9's self-grant
+  disjunct on `acceso_plan_financiero.create` — which trusts any pending-invite doc matching the
+  caller's own verified email — any authenticated user could write
+  `invitaciones_pendientes_por_email/{ownEmail}_{anyPlanId}` with `rol: 'owner'` of their own
+  choosing and then self-grant themselves owner access to a plan they had nothing to do with
+  (plan IDs are enumerable, since `acceso_plan_financiero` allows an open `read`). `create` now
+  requires admin(2)+ on the target plan (mirroring the check `acceso_plan_financiero.create`
+  already used for a legitimate inviter), pins `invitadoPor` to the caller's uid, and pins the
+  doc id to its own `email`/`planId` fields so id and data can't be desynchronized. Note that the
+  rule is the *only* barrier here: `MiembrosScreen` offers "Invitar" to any plan member without
+  checking their role, so a viewer/editor's invite of an unregistered email now fails at the rule
+  — consistent with a viewer's invite of an *already-registered* user, which slice 9's rules
+  already rejected, so the anti-enumeration property (identical outcome regardless of whether the
+  identifier resolved) still holds for every role. Gating the invite UI by role is a follow-up.
+  (2) `invitaciones_pendientes_por_email`'s `list`/`delete` compared `resource.data.email` against
+  the raw `request.auth.token.email`, while the self-grant disjunct compares against
+  `.lower()` and the client always stores the email lowercased. A token carrying any uppercase
+  character could therefore resolve its invitation but never list or delete it, orphaning the
+  pending doc permanently; all three sites now lowercase consistently.
+  (3) `usuarios.create`/`update` only checked "this is my own document", but `nombreUsuario` is
+  rendered publicly (`MiembroCard`), so anyone could bypass `RenombrarUsuarioUseCase`'s
+  reservation flow and write another member's handle directly, impersonating them in the Miembros
+  list. Both now require that the `nombres_usuario/{normalizado}` reservation for the written
+  handle already exists and already points at the caller's uid; an update that leaves
+  `nombreUsuario` unchanged (avatar/nombre/email writes) short-circuits without the extra `get()`.
+  This forced `FirebaseUsuarioRepository.renombrar` to split into **two** sequential,
+  separately-committed transactions (reserve; then move the display field and drop the old
+  reservation) — verified empirically against the emulator, a rules `get()` reads the
+  pre-transaction snapshot, so a reservation written earlier in the *same* transaction isn't yet
+  visible when the `usuarios` write is validated, and the previous single-transaction shape is
+  denied outright. The accepted tradeoff (a rename is no longer atomic: if the reservation
+  commits and the second transaction fails, the user holds both reservations and keeps their old
+  display name — nothing lost, retry completes it) is documented in the design doc rather than
+  engineered around. The display value is now trimmed before being written, since the rule
+  re-derives the reservation id with `.lower()` and the rules language has no `.trim()`.
+  `rules-tests/rules.test.mjs` covers all of it, including the exact original exploit, the
+  legitimate admin-invites path, the full end-to-end invite→register→self-grant chain, a
+  mixed-case token resolving its lowercase-stored invitation, and the paired
+  one-transaction-denied / two-transactions-allowed rename cases. Also: the three
+  `nombreUsuario` error messages in `CuentaViewModel` and the invite-validation message in
+  `MiembrosViewModel` were hardcoded Spanish strings in Kotlin, which lint's
+  `HardcodedText`/`MissingTranslation` checks never see (they only scan XML) — they now travel as
+  `@StringRes` ids resolved by the Composable, with entries in both `values/` and `values-en/`.
+  Docs corrected to match reality: `schema.mdd` gains its missing v1.3 change-control rows and a
+  "Migration v2 → v3" section, and the design doc no longer promises an "Invitación enviada"
+  confirmation the invite dialog never actually showed.
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's

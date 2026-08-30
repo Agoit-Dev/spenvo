@@ -1,5 +1,6 @@
 package com.agoitdev.spenvo.cuenta
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.Sesion
@@ -101,25 +102,36 @@ class CuentaViewModel @Inject constructor(
         viewModelScope.launch { authRepository.cerrarSesion() }
     }
 
+    /**
+     * [nuevo] se recorta antes de nada: el valor visible que termina en
+     * `usuarios/{uid}.nombreUsuario` tiene que coincidir con la reserva
+     * `nombres_usuario/{normalizado}` salvo por mayúsculas, porque la regla de Firestore
+     * re-deriva el id de la reserva con `.lower()` y el lenguaje de reglas no tiene `trim()`.
+     */
     fun editarNombreUsuario(nuevo: String) {
         val uid = sesion.value.uid ?: return
         val anterior = _perfilEstado.value.nombreUsuario ?: return
-        if (nuevo.isBlank()) {
-            _perfilEstado.update { it.copy(nombreUsuarioError = "El nombre de usuario no puede estar vacío") }
+        val nuevoVisible = nuevo.trim()
+        if (nuevoVisible.isEmpty()) {
+            _perfilEstado.update { it.copy(nombreUsuarioError = R.string.account_profile_nombre_usuario_vacio) }
         } else {
             viewModelScope.launch {
                 runCatching {
-                    renombrarUsuario(usuarioId = uid, nombreUsuarioAnterior = anterior, nombreUsuarioNuevo = nuevo)
+                    renombrarUsuario(
+                        usuarioId = uid,
+                        nombreUsuarioAnterior = anterior,
+                        nombreUsuarioNuevo = nuevoVisible,
+                    )
                 }
                     .onSuccess { exito ->
                         _perfilEstado.update {
-                            if (exito) it.copy(nombreUsuario = nuevo, nombreUsuarioError = null)
-                            else it.copy(nombreUsuarioError = "Ese nombre de usuario ya está en uso")
+                            if (exito) it.copy(nombreUsuario = nuevoVisible, nombreUsuarioError = null)
+                            else it.copy(nombreUsuarioError = R.string.account_profile_nombre_usuario_en_uso)
                         }
                     }
                     .onFailure {
                         _perfilEstado.update {
-                            it.copy(nombreUsuarioError = "No se pudo actualizar el nombre de usuario")
+                            it.copy(nombreUsuarioError = R.string.account_profile_nombre_usuario_error)
                         }
                     }
             }
@@ -137,5 +149,10 @@ data class PerfilEstado(
     val subiendoAvatar: Boolean = false,
     val avatarError: String? = null,
     val nombreUsuario: String? = null,
-    val nombreUsuarioError: String? = null,
+    /**
+     * Recurso traducible, no texto: un ViewModel no es un Composable, así que no puede
+     * llamar a `stringResource()` — resuelve `CuentaScreen`. Mantiene los mensajes de UI
+     * dentro de `values/`+`values-en/` como exige AGENTS.md (lint solo audita XML).
+     */
+    @param:StringRes val nombreUsuarioError: Int? = null,
 )

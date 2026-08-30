@@ -24,4 +24,5 @@
     <string name="members_invite_role">Rol</string>
     <string name="members_invite_confirm">Invitar</string>
     <string name="members_invite_cancel">Cancelar</string>
+    <string name="members_invite_identificador_requerido">El nombre de usuario o email es obligatorio</string>
 </resources>

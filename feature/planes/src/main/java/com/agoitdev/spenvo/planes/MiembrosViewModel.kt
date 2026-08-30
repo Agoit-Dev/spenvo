@@ -1,5 +1,6 @@
 package com.agoitdev.spenvo.planes
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.MiembroResuelto
@@ -44,10 +45,10 @@ fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
 
     fun invitar(planId: String, identificador: String, rol: Rol) {
         if (identificador.isBlank()) {
-            _estadoInvitar.value = InvitarEstado(error = "El nombre de usuario o email es obligatorio")
+            _estadoInvitar.value = InvitarEstado(errorRes = R.string.members_invite_identificador_requerido)
             return
         }
-        _estadoInvitar.update { it.copy(cargando = true, error = null) }
+        _estadoInvitar.update { it.copy(cargando = true, error = null, errorRes = null) }
         viewModelScope.launch {
             val invitadoPor = authRepository.observeSesion().first().uid.orEmpty()
             runCatching {
@@ -67,7 +68,7 @@ fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
     }
 
     fun consumirError() {
-        _estadoInvitar.update { it.copy(error = null) }
+        _estadoInvitar.update { it.copy(error = null, errorRes = null) }
     }
 
 fun consumirInvitado() {
@@ -82,5 +83,12 @@ fun consumirInvitado() {
 data class InvitarEstado(
     val cargando: Boolean = false,
     val invitado: Boolean = false,
+    /** Mensaje ya resuelto de un fallo real (Firestore/red), no una string de UI propia. */
     val error: String? = null,
+    /**
+     * Error de validación propio de la UI, como recurso traducible: un ViewModel no puede
+     * llamar a `stringResource()`, así que lo resuelve `MiembrosScreen`. Mantiene el mensaje
+     * en `values/`+`values-en/` como exige AGENTS.md (lint solo audita XML).
+     */
+    @param:StringRes val errorRes: Int? = null,
 )

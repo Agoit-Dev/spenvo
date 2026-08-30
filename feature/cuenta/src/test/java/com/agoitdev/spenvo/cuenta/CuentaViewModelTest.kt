@@ -191,7 +191,7 @@ class CuentaViewModelTest {
         advanceUntilIdle()
 
         assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
-        assertNotNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        assertEquals(R.string.account_profile_nombre_usuario_en_uso, viewModel.perfilEstado.value.nombreUsuarioError)
         job.cancel()
     }
 
@@ -208,7 +208,7 @@ class CuentaViewModelTest {
 
         assertFalse(usuarioRepository.renombrarLlamado)
         assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
-        assertNotNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        assertEquals(R.string.account_profile_nombre_usuario_vacio, viewModel.perfilEstado.value.nombreUsuarioError)
         job.cancel()
     }
 
@@ -225,7 +225,7 @@ class CuentaViewModelTest {
         advanceUntilIdle()
 
         assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
-        assertNotNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        assertEquals(R.string.account_profile_nombre_usuario_error, viewModel.perfilEstado.value.nombreUsuarioError)
         job.cancel()
     }
 

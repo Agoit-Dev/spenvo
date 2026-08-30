@@ -1,5 +1,7 @@
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where } from 'firebase/firestore';
+import {
+  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where, runTransaction,
+} from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -443,12 +445,19 @@ test('nadie puede borrar un ingreso directamente', async () => {
 });
 
 // ---------------- usuarios ----------------
+// El flujo legitimo siempre reserva primero (GenerarNombreUsuarioUnicoUseCase) y recien
+// despues escribe usuarios/{uid}, que es justo lo que exige la regla.
+async function seedUsuarioConReserva(uid, nombreUsuario) {
+  const ctx = authed(uid);
+  await setDoc(doc(ctx.firestore(), 'nombres_usuario', nombreUsuario.toLowerCase()), { usuarioId: uid });
+  await setDoc(doc(ctx.firestore(), 'usuarios', uid), {
+    uid, nombreUsuario, createdAt: new Date(), updatedAt: new Date(),
+  });
+}
+
 test('cualquier autenticado puede hacer get de un usuario conocido', async () => {
   await limpiarDatos();
-  const u1 = authed('u1');
-  await setDoc(doc(u1.firestore(), 'usuarios', 'u1'), {
-    uid: 'u1', nombreUsuario: 'gatoazul1', createdAt: new Date(), updatedAt: new Date(),
-  });
+  await seedUsuarioConReserva('u1', 'GatoAzul1');
   const u2 = authed('u2');
   await assertSucceeds(getDoc(doc(u2.firestore(), 'usuarios', 'u1')));
 });
@@ -459,19 +468,90 @@ test('deniega list sobre la coleccion usuarios', async () => {
   await assertFails(getDocs(collection(u2.firestore(), 'usuarios')));
 });
 
-test('el dueno puede crear su propio doc de usuarios', async () => {
+test('el dueno puede crear su propio doc de usuarios tras reservar el nombreUsuario', async () => {
   await limpiarDatos();
   const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u1' });
   await assertSucceeds(setDoc(doc(u1.firestore(), 'usuarios', 'u1'), {
-    uid: 'u1', nombreUsuario: 'gatoazul1', createdAt: new Date(), updatedAt: new Date(),
+    uid: 'u1', nombreUsuario: 'GatoAzul1', createdAt: new Date(), updatedAt: new Date(),
+  }));
+});
+
+test('no se puede crear un doc de usuarios con un nombreUsuario sin reserva propia', async () => {
+  await limpiarDatos();
+  const u2 = authed('u2');
+  await setDoc(doc(u2.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u2' });
+  const u1 = authed('u1');
+  await assertFails(setDoc(doc(u1.firestore(), 'usuarios', 'u1'), {
+    uid: 'u1', nombreUsuario: 'GatoAzul1', createdAt: new Date(), updatedAt: new Date(),
   }));
 });
 
 test('no se puede crear un doc de usuarios apuntando a otro uid', async () => {
   await limpiarDatos();
   const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u1' });
   await assertFails(setDoc(doc(u1.firestore(), 'usuarios', 'u2'), {
-    uid: 'u2', nombreUsuario: 'gatoazul1', createdAt: new Date(), updatedAt: new Date(),
+    uid: 'u2', nombreUsuario: 'GatoAzul1', createdAt: new Date(), updatedAt: new Date(),
+  }));
+});
+
+test('no se puede cambiar el nombreUsuario a un handle sin reserva (suplantacion)', async () => {
+  await limpiarDatos();
+  await seedUsuarioConReserva('u1', 'GatoAzul1');
+  const u1 = authed('u1');
+  // Ni siquiera existe la reserva del handle destino.
+  await assertFails(updateDoc(doc(u1.firestore(), 'usuarios', 'u1'), { nombreUsuario: 'ZorroVeloz9' }));
+});
+
+test('no se puede cambiar el nombreUsuario a un handle reservado por otro uid', async () => {
+  await limpiarDatos();
+  await seedUsuarioConReserva('u1', 'GatoAzul1');
+  await seedUsuarioConReserva('u2', 'ZorroVeloz9');
+  const u1 = authed('u1');
+  await assertFails(updateDoc(doc(u1.firestore(), 'usuarios', 'u1'), { nombreUsuario: 'ZorroVeloz9' }));
+});
+
+test('actualizar el perfil sin tocar el nombreUsuario sigue permitido', async () => {
+  await limpiarDatos();
+  await seedUsuarioConReserva('u1', 'GatoAzul1');
+  const u1 = authed('u1');
+  await assertSucceeds(updateDoc(doc(u1.firestore(), 'usuarios', 'u1'), {
+    nombre: 'Ana', email: 'ana@example.com', updatedAt: new Date(),
+  }));
+});
+
+// Verificado empiricamente contra el emulador: los get() de las reglas leen el snapshot
+// PREVIO a la transaccion, asi que la reserva creada en la misma transaccion todavia no
+// es visible cuando se valida el update de usuarios. De ahi que FirebaseUsuarioRepository
+// .renombrar use dos transacciones secuenciales en vez de una sola.
+test('renombrar en UNA sola transaccion es denegado (el get de reglas no ve la reserva recien escrita)', async () => {
+  await limpiarDatos();
+  await seedUsuarioConReserva('u1', 'GatoAzul1');
+  const db = authed('u1').firestore();
+  await assertFails(runTransaction(db, async (tx) => {
+    const refNuevo = doc(db, 'nombres_usuario', 'zorroveloz9');
+    await tx.get(refNuevo);
+    tx.set(refNuevo, { usuarioId: 'u1' });
+    tx.delete(doc(db, 'nombres_usuario', 'gatoazul1'));
+    tx.update(doc(db, 'usuarios', 'u1'), { nombreUsuario: 'ZorroVeloz9' });
+  }));
+});
+
+test('renombrar en DOS transacciones secuenciales (reserva, luego display + baja) funciona', async () => {
+  await limpiarDatos();
+  await seedUsuarioConReserva('u1', 'GatoAzul1');
+  const db = authed('u1').firestore();
+  // Transaccion A: reservar el handle nuevo.
+  await assertSucceeds(runTransaction(db, async (tx) => {
+    const refNuevo = doc(db, 'nombres_usuario', 'zorroveloz9');
+    await tx.get(refNuevo);
+    tx.set(refNuevo, { usuarioId: 'u1' });
+  }));
+  // Transaccion B: mover el campo visible y dar de baja la reserva anterior.
+  await assertSucceeds(runTransaction(db, async (tx) => {
+    tx.update(doc(db, 'usuarios', 'u1'), { nombreUsuario: 'ZorroVeloz9' });
+    tx.delete(doc(db, 'nombres_usuario', 'gatoazul1'));
   }));
 });
 
@@ -562,33 +642,126 @@ test('solo el dueno puede borrar su propio indice de email', async () => {
 });
 
 // ---------------- invitaciones_pendientes_por_email ----------------
-test('cualquier autenticado puede crear una invitacion pendiente', async () => {
+// Crear una invitacion pendiente exige ser admin(2)+ del plan, asi que todo seeding pasa
+// por un owner real con su acceso_plan_financiero ya creado.
+async function seedPlanConOwner(planId, ownerUid) {
+  const owner = authed(ownerUid);
+  await setDoc(doc(owner.firestore(), 'planes_financieros', planId), {
+    id: planId, nombre: 'Casa', moneda: 'ARS', createdBy: ownerUid,
+  });
+  await setDoc(
+    doc(owner.firestore(), 'acceso_plan_financiero', `${ownerUid}_${planId}`),
+    { usuarioId: ownerUid, planId, rol: 'owner', invitacionEstado: 'aceptada' },
+  );
+}
+
+async function seedInvitacionPendientePorOwner(rol = 'editor', email = 'ana@example.com') {
+  await seedPlanConOwner('p1', 'owner-seed');
+  const owner = authed('owner-seed');
+  await setDoc(
+    doc(owner.firestore(), 'invitaciones_pendientes_por_email', `${email}_p1`),
+    { email, planId: 'p1', rol, invitadoPor: 'owner-seed', createdAt: new Date() },
+  );
+}
+
+test('un admin del plan puede crear una invitacion pendiente para el email de otra persona', async () => {
   await limpiarDatos();
-  const u1 = authed('u1');
+  await setupPlanConMiembros();
+  const admin = authed(UID_ADMIN);
   await assertSucceeds(setDoc(
-    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
-    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
+    doc(admin.firestore(), 'invitaciones_pendientes_por_email', `ana@example.com_${PLAN_ID}`),
+    {
+      email: 'ana@example.com', planId: PLAN_ID, rol: 'editor',
+      invitadoPor: UID_ADMIN, createdAt: new Date(),
+    },
+  ));
+});
+
+// Exploit original: sin la comprobacion de admin(2)+, cualquiera se auto-invitaba como
+// owner a un plan ajeno y luego usaba el self-grant de acceso_plan_financiero.create.
+test('un outsider no puede auto-invitarse como owner a un plan ajeno', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const atacante = authed(UID_OUTSIDER, { email: 'atacante@example.com' });
+  await assertFails(setDoc(
+    doc(atacante.firestore(), 'invitaciones_pendientes_por_email', `atacante@example.com_${PLAN_ID}`),
+    {
+      email: 'atacante@example.com', planId: PLAN_ID, rol: 'owner',
+      invitadoPor: UID_OUTSIDER, createdAt: new Date(),
+    },
+  ));
+});
+
+test('un outsider tampoco puede auto-invitarse con el rol mas bajo a un plan ajeno', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const atacante = authed(UID_OUTSIDER, { email: 'atacante@example.com' });
+  await assertFails(setDoc(
+    doc(atacante.firestore(), 'invitaciones_pendientes_por_email', `atacante@example.com_${PLAN_ID}`),
+    {
+      email: 'atacante@example.com', planId: PLAN_ID, rol: 'viewer',
+      invitadoPor: UID_OUTSIDER, createdAt: new Date(),
+    },
+  ));
+});
+
+test('un viewer o editor del plan no puede crear invitaciones pendientes', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const viewer = authed(UID_VIEWER);
+  await assertFails(setDoc(
+    doc(viewer.firestore(), 'invitaciones_pendientes_por_email', `ana@example.com_${PLAN_ID}`),
+    {
+      email: 'ana@example.com', planId: PLAN_ID, rol: 'editor',
+      invitadoPor: UID_VIEWER, createdAt: new Date(),
+    },
+  ));
+  const editor = authed(UID_EDITOR);
+  await assertFails(setDoc(
+    doc(editor.firestore(), 'invitaciones_pendientes_por_email', `ana@example.com_${PLAN_ID}`),
+    {
+      email: 'ana@example.com', planId: PLAN_ID, rol: 'editor',
+      invitadoPor: UID_EDITOR, createdAt: new Date(),
+    },
+  ));
+});
+
+test('un admin no puede crear una invitacion pendiente atribuida a otro invitadoPor', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const admin = authed(UID_ADMIN);
+  await assertFails(setDoc(
+    doc(admin.firestore(), 'invitaciones_pendientes_por_email', `ana@example.com_${PLAN_ID}`),
+    {
+      email: 'ana@example.com', planId: PLAN_ID, rol: 'editor',
+      invitadoPor: UID_OWNER, createdAt: new Date(),
+    },
+  ));
+});
+
+test('el doc id de la invitacion pendiente debe coincidir con sus campos email_planId', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+  const admin = authed(UID_ADMIN);
+  await assertFails(setDoc(
+    doc(admin.firestore(), 'invitaciones_pendientes_por_email', `otra@example.com_${PLAN_ID}`),
+    {
+      email: 'ana@example.com', planId: PLAN_ID, rol: 'editor',
+      invitadoPor: UID_ADMIN, createdAt: new Date(),
+    },
   ));
 });
 
 test('get directo sobre invitaciones_pendientes_por_email es denegado', async () => {
   await limpiarDatos();
-  const u1 = authed('u1');
-  await setDoc(
-    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
-    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
-  );
+  await seedInvitacionPendientePorOwner();
   const ana = authed('u2', { email: 'ana@example.com' });
   await assertFails(getDoc(doc(ana.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1')));
 });
 
 test('list solo funciona filtrando por el propio email verificado', async () => {
   await limpiarDatos();
-  const u1 = authed('u1');
-  await setDoc(
-    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
-    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
-  );
+  await seedInvitacionPendientePorOwner();
   const ana = authed('u2', { email: 'ana@example.com' });
   await assertSucceeds(getDocs(
     query(collection(ana.firestore(), 'invitaciones_pendientes_por_email'), where('email', '==', 'ana@example.com')),
@@ -599,24 +772,29 @@ test('list solo funciona filtrando por el propio email verificado', async () => 
   ));
 });
 
+// El email siempre se guarda normalizado (minusculas). Sin .lower() en list/delete, un
+// token con mayusculas resolvia su invitacion (el self-grant si baja a minusculas) pero
+// nunca podia listarla ni limpiarla: doc pendiente huerfano permanente.
+test('list y delete resuelven la invitacion aunque el token traiga el email en mayusculas', async () => {
+  await limpiarDatos();
+  await seedInvitacionPendientePorOwner();
+  const ana = authed('u2', { email: 'Ana@Example.COM' });
+  await assertSucceeds(getDocs(
+    query(collection(ana.firestore(), 'invitaciones_pendientes_por_email'), where('email', '==', 'ana@example.com')),
+  ));
+  await assertSucceeds(deleteDoc(doc(ana.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1')));
+});
+
 test('deniega list sin filtrar sobre invitaciones_pendientes_por_email, incluso para el propio email', async () => {
   await limpiarDatos();
-  const u1 = authed('u1');
-  await setDoc(
-    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
-    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
-  );
+  await seedInvitacionPendientePorOwner();
   const ana = authed('u2', { email: 'ana@example.com' });
   await assertFails(getDocs(collection(ana.firestore(), 'invitaciones_pendientes_por_email')));
 });
 
 test('solo el invitado con el email coincidente puede borrar la invitacion pendiente', async () => {
   await limpiarDatos();
-  const u1 = authed('u1');
-  await setDoc(
-    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
-    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
-  );
+  await seedInvitacionPendientePorOwner();
   const otro = authed('u3', { email: 'otro@example.com' });
   await assertFails(deleteDoc(doc(otro.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1')));
   const ana = authed('u2', { email: 'ana@example.com' });
@@ -625,15 +803,47 @@ test('solo el invitado con el email coincidente puede borrar la invitacion pendi
 
 // ---------------- acceso_plan_financiero create: auto-resolucion de invitacion pendiente ----------------
 async function seedInvitacionPendiente(rol) {
-  const seeder = authed('owner-seed');
-  await setDoc(doc(seeder.firestore(), 'planes_financieros', 'p1'), {
-    id: 'p1', nombre: 'Casa', moneda: 'ARS', createdBy: 'owner-seed',
-  });
-  await setDoc(
-    doc(seeder.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
-    { email: 'ana@example.com', planId: 'p1', rol, invitadoPor: 'owner-seed', createdAt: new Date() },
-  );
+  await seedInvitacionPendientePorOwner(rol);
 }
+
+// Cadena completa del flujo legitimo, extremo a extremo: un admin invita un email que aun
+// no tiene cuenta, esa persona se registra y AsegurarUsuarioUseCase.paraVincularEmail
+// resuelve la invitacion pendiente en un acceso real y la limpia.
+test('cadena legitima completa: admin invita por email, el invitado se registra y se auto-otorga el acceso', async () => {
+  await limpiarDatos();
+  await setupPlanConMiembros();
+
+  // 1) El admin del plan crea la invitacion pendiente por email.
+  const admin = authed(UID_ADMIN);
+  await assertSucceeds(setDoc(
+    doc(admin.firestore(), 'invitaciones_pendientes_por_email', `ana@example.com_${PLAN_ID}`),
+    {
+      email: 'ana@example.com', planId: PLAN_ID, rol: 'editor',
+      invitadoPor: UID_ADMIN, createdAt: new Date(),
+    },
+  ));
+
+  // 2) Ana se registra: reserva su nombreUsuario, crea su doc e indexa su email.
+  const ana = authed('ana-uid', { email: 'ana@example.com' });
+  await assertSucceeds(setDoc(doc(ana.firestore(), 'nombres_usuario', 'gatoazul7'), { usuarioId: 'ana-uid' }));
+  await assertSucceeds(setDoc(doc(ana.firestore(), 'usuarios', 'ana-uid'), {
+    uid: 'ana-uid', nombreUsuario: 'GatoAzul7', nombre: 'Ana', email: 'ana@example.com',
+    createdAt: new Date(), updatedAt: new Date(),
+  }));
+  await assertSucceeds(setDoc(doc(ana.firestore(), 'emails_usuario', 'ana@example.com'), { usuarioId: 'ana-uid' }));
+
+  // 3) Lista sus invitaciones pendientes, se auto-otorga el acceso y limpia el pendiente.
+  await assertSucceeds(getDocs(
+    query(collection(ana.firestore(), 'invitaciones_pendientes_por_email'), where('email', '==', 'ana@example.com')),
+  ));
+  await assertSucceeds(setDoc(doc(ana.firestore(), 'acceso_plan_financiero', `ana-uid_${PLAN_ID}`), {
+    usuarioId: 'ana-uid', planId: PLAN_ID, rol: 'editor', invitacionEstado: 'pendiente',
+    createdAt: new Date(), updatedAt: new Date(),
+  }));
+  await assertSucceeds(deleteDoc(
+    doc(ana.firestore(), 'invitaciones_pendientes_por_email', `ana@example.com_${PLAN_ID}`),
+  ));
+});
 
 test('el propio invitado puede auto-otorgarse el rol exacto de su invitacion pendiente', async () => {
   await limpiarDatos();

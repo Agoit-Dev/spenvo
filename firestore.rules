@@ -67,12 +67,34 @@ service cloud.firestore {
     // get: cualquier autenticado (co-miembros de plan resuelven nombreUsuario/avatar
     // de otros uids). list: false — evita volcar email/nombre de toda la coleccion
     // via orderBy/limit; toda resolucion de identidad pasa por get() de un id conocido.
+    //
+    // El campo nombreUsuario es publico (MiembroCard lo renderiza tal cual), asi que
+    // "es mi propio doc" NO alcanza como unica condicion de escritura: sin mas, cualquiera
+    // podria saltarse RenombrarUsuarioUseCase y escribir el handle de otro miembro
+    // directamente con el SDK, suplantandolo en la lista de Miembros. Por eso toda
+    // escritura que FIJE O CAMBIE nombreUsuario exige que la reserva de unicidad
+    // nombres_usuario/{normalizado} ya exista Y apunte a este mismo uid.
+    //
+    // Normalizacion: el doc id de nombres_usuario es normalizarNombreUsuario() =
+    // trim + lowercase (core/domain/.../model/NombreUsuario.kt). El lenguaje de reglas
+    // solo tiene .lower(), no .trim(), asi que la parte de trim se garantiza del lado
+    // app: FirebaseUsuarioRepository escribe siempre el valor visible ya recortado
+    // (conservando mayusculas). Con eso, .lower() aqui re-deriva exactamente el mismo id.
+    //
+    // El disjunto "nombreUsuario no cambia" mantiene baratas las escrituras que no tocan
+    // el handle (avatar, nombre, email en AsegurarUsuarioUseCase.paraVincularEmail) sin
+    // gastar un get() extra.
     match /usuarios/{usuarioId} {
       allow get: if isSignedIn();
       allow list: if false;
       allow create: if isSignedIn() && request.auth.uid == usuarioId
-        && request.resource.data.uid == usuarioId;
-      allow update: if isSignedIn() && request.auth.uid == usuarioId;
+        && request.resource.data.uid == usuarioId
+        && get(/databases/$(database)/documents/nombres_usuario/$(request.resource.data.nombreUsuario.lower())).data.usuarioId == request.auth.uid;
+      allow update: if isSignedIn() && request.auth.uid == usuarioId
+        && (
+          request.resource.data.nombreUsuario == resource.data.nombreUsuario
+          || get(/databases/$(database)/documents/nombres_usuario/$(request.resource.data.nombreUsuario.lower())).data.usuarioId == request.auth.uid
+        );
       allow delete: if false;
     }
 
@@ -112,16 +134,42 @@ service cloud.firestore {
     // resultado posible la satisface, asi que esto NO abre una query general sobre
     // la coleccion (patron documentado en
     // https://firebase.google.com/docs/firestore/security/rules-query, usando
-    // resource.data en vez del no soportado request.query.where). create: cualquier
-    // autenticado (invitar a alguien no requiere tener ya acceso al plan mas alla de
-    // lo que ya exige InvitarMiembroUseCase del lado app). delete: solo quien
-    // verifico ese email (limpieza tras resolver la invitacion). No update.
+    // resource.data en vez del no soportado request.query.where).
+    //
+    // create: SOLO un admin(2)+ del plan invitado. Un "cualquier autenticado" aqui era
+    // una escalada de privilegios directa, no un permiso laxo: combinado con el tercer
+    // disjunto de acceso_plan_financiero.create (self-grant desde invitacion pendiente),
+    // cualquiera podia crear invitaciones_pendientes_por_email/{miEmail}_{planAjeno} con
+    // rol 'owner' elegido por el mismo y acto seguido auto-otorgarse ese acceso owner
+    // sobre un plan al que no pertenece (los planId son enumerables porque
+    // acceso_plan_financiero.read esta abierto). Ademas de exigir admin(2)+ se fija
+    // invitadoPor == uid del caller y se ata el doc id a sus propios campos
+    // email_planId, para que no se pueda desalinear id y datos.
+    //
+    // Nunca se confia en el cliente para esto: MiembrosScreen hoy ofrece "Invitar" a
+    // cualquier miembro del plan, sin comprobar rol, asi que la regla es la unica
+    // barrera real (ver hallazgo de UI anotado en el CHANGELOG de esta ronda).
+    //
+    // delete: solo quien verifico ese email (limpieza tras resolver la invitacion).
+    // list/delete comparan contra request.auth.token.email.lower(): el email se almacena
+    // siempre normalizado (normalizarEmail del lado app) y el self-grant de
+    // acceso_plan_financiero.create tambien baja a minusculas, asi que sin .lower() aqui
+    // un token con mayusculas resolvia su invitacion pero jamas podia listarla ni
+    // borrarla, dejando el doc pendiente huerfano para siempre. No update.
     match /invitaciones_pendientes_por_email/{invitacionId} {
       allow get: if false;
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      allow create: if isSignedIn();
+      allow list: if isSignedIn() && request.auth.token.email != null
+        && resource.data.email == request.auth.token.email.lower();
+      allow create: if isSignedIn()
+        && invitacionId == request.resource.data.email + '_' + request.resource.data.planId
+        && request.resource.data.invitadoPor == request.auth.uid
+        && tieneRolMinimo(
+            get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
+            2
+          );
       allow update: if false;
-      allow delete: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow delete: if isSignedIn() && request.auth.token.email != null
+        && resource.data.email == request.auth.token.email.lower();
     }
 
     // ---------- planes_financieros ----------

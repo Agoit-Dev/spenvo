@@ -61,7 +61,12 @@ Three top-level collections, all single-document-keyed lookups — no collection
   against this collection is ever allowed, for the same reason as the two index collections below:
   an open `list` would let anyone dump every user's `email`/`nombre` via `orderBy`/`limit`,
   defeating the point of routing email lookups through `emails_usuario` in the first place. Write:
-  only the doc's own uid.
+  only the doc's own uid — *and*, for any write that sets or changes `nombreUsuario`, only if the
+  matching `nombres_usuario/{normalizado}` reservation already exists and already points at that
+  same uid. "It's my own document" is not sufficient on its own here, because `nombreUsuario` is
+  rendered publicly (`MiembroCard`): without the reservation check, anyone could bypass
+  `RenombrarUsuarioUseCase` and write another member's handle straight through the SDK,
+  impersonating them in the Miembros list.
 - **`nombres_usuario/{nombreUsuarioNormalizado}`** — `{ usuarioId }`. Doc ID is the normalized
   (lowercased, trimmed) `nombreUsuario`; existence of the doc *is* the uniqueness guarantee.
   Create: only if the request's `usuarioId` matches `request.auth.uid` and the doc doesn't already
@@ -109,11 +114,36 @@ Generation happens once, at `Usuario` creation time:
 Editable, but only from `PerfilContenido` (`CuentaScreen.kt`), which today only renders for a
 non-anonymous session — consistent with front 3's decision that an anonymous session has no
 profile screen of its own, only the account-creation flow. In practice: auto-generated always,
-editable once registered. Editing goes through the same reservation-transaction path (delete old
-`nombres_usuario` doc, create new one, update `usuarios/{uid}`), surfaced as a text field + save
-action next to the existing avatar/name/email card, with an inline error if the chosen name is
-taken (this one *is* safe to say plainly — collision on your own edit attempt reveals nothing
-about anyone else's account, it is the direct, expected result of your own input).
+editable once registered. Surfaced as a text field + save action next to the existing
+avatar/name/email card, with an inline error if the chosen name is taken (this one *is* safe to
+say plainly — collision on your own edit attempt reveals nothing about anyone else's account, it
+is the direct, expected result of your own input).
+
+Editing runs as **two sequential, separately-committed transactions**, not one:
+
+1. **A** — reserve `nombres_usuario/{normalizadoNuevo}`, aborting if it already exists (this is
+   the "name is taken" answer).
+2. **B**, only if A committed — update `usuarios/{uid}.nombreUsuario` to the new display value
+   and delete the old `nombres_usuario/{normalizadoAnterior}` reservation.
+
+The split is forced by the reservation check on `usuarios` above, and was verified empirically
+against the Firebase Emulator (see the paired `renombrar en UNA/DOS transaccion(es)` cases in
+`rules-tests/rules.test.mjs`): a `get()` evaluated inside a security rule reads the
+*pre-transaction* snapshot, so a reservation written earlier in the **same** transaction is not
+yet visible when the `usuarios` write is validated — the one-transaction version is denied
+outright. By the time B commits, A is durably committed and visible, so the rule passes.
+
+Tradeoff, accepted rather than engineered around: a rename is no longer atomic. If A commits and
+B fails, the user holds *both* reservations and keeps their old display name — nothing is lost
+and no handle is handed to anyone else; the recovery today is simply to try the rename again. A
+retry/repair mechanism for that window is deliberately not built (same "known gap, deliberately
+deferred" stance as the sections below).
+
+The display value written to `usuarios/{uid}.nombreUsuario` is always **trimmed** (casing
+preserved: `GatoAzul42`, never `gatoazul42`). That is load-bearing, not cosmetic: the rule
+re-derives the reservation's doc ID as `request.resource.data.nombreUsuario.lower()`, and the
+Firestore rules language has no `.trim()`, so an untrimmed display value would fail to resolve to
+its own reservation and a perfectly legitimate rename would be denied.
 
 ## Miembros: show nombreUsuario instead of UID
 
@@ -132,8 +162,13 @@ raw UID.
 via `emails_usuario/{emailNormalizado}`; otherwise via `nombres_usuario/{nombreUsuarioNormalizado}`.
 Both are single-document `get`s.
 
-The dialog's outcome is **always** the same generic confirmation ("Invitación enviada"),
-regardless of whether resolution found a real account. What happens behind that message differs:
+The dialog's outcome is **always** identical, regardless of whether resolution found a real
+account: `InvitarDialog` simply closes, with no confirmation message and no error. (That is what
+`MiembrosScreen` actually does — an earlier draft of this doc promised a generic "Invitación
+enviada" snackbar; the anti-enumeration guarantee is the same either way, since what matters is
+that the outcome does not branch on whether the identifier resolved, not that a message is shown.
+Adding a confirmation message is a fine follow-up, but it is not what ships today.) What happens
+behind that identical outcome differs:
 
 - **Resolved to a real `usuarioId`:** creates the `AccesoPlan` exactly as today.
 - **Not resolved, input looked like an email:** writes a pending-invite doc to
@@ -160,9 +195,20 @@ not a `get` — the newly-registered user doesn't know which `planId`s invited t
 Firestore rules restrict that `list` to queries whose equality filter on `email` matches the
 caller's own verified `request.auth.token.email` (a standard Firestore rules pattern for
 "list only your own records"), so this collection is queryable, but only by the exact person the
-invite is for, and only by their own already-verified email — not an open query surface. `create`:
-any authenticated user (anyone can invite). `delete`: only by the matching-email caller (cleanup
-after resolving). No `update`.
+invite is for, and only by their own already-verified email — not an open query surface.
+`create`: only an **admin(2)+ of the target plan**, with `invitadoPor` pinned to the caller's uid
+and the doc ID pinned to its own `email`/`planId` fields. An earlier draft allowed any
+authenticated user here, on the reasoning that "inviting someone doesn't require plan access
+beyond what `InvitarMiembroUseCase` already enforces app-side" — that was wrong, and it was a
+privilege-escalation hole rather than a lax permission: combined with the
+`acceso_plan_financiero.create` self-grant disjunct below, anyone could write
+`invitaciones_pendientes_por_email/{ownEmail}_{anyPlanId}` with `rol: 'owner'` of their own
+choosing and then self-grant owner access to a plan they had nothing to do with (plan IDs are
+enumerable, since `acceso_plan_financiero` allows an open `read`). The rule, not the app, is the
+only real barrier here — `MiembrosScreen` today offers "Invitar" to *any* plan member without
+checking their role. `delete`: only by the matching-email caller (cleanup after resolving), whose
+token email is lowercased before comparison so a mixed-case token still resolves the
+lowercase-stored doc. No `update`.
 
 ## Known gap, deliberately deferred (found during Task 7's review)
 
@@ -229,7 +275,7 @@ Per `AGENTS.md`'s strict TDD:
 - `MiembrosScreen`/`MiembrosViewModel`: shows `nombreUsuario` instead of `usuarioId`, loading
   placeholder before resolution completes.
 - Invite flow: resolves by email, resolves by nombreUsuario, creates pending doc on email miss,
-  discards silently on nombreUsuario miss, always shows the same generic confirmation regardless
-  of outcome (a test that would fail if the UI ever branched its message on resolution success).
+  discards silently on nombreUsuario miss, always reaches the same dialog-closes outcome
+  regardless of resolution (a test that would fail if the UI ever branched on resolution success).
 - Pending-invite resolution: registering with an email that has 1+ pending invites converts them
   into real `AccesoPlan`s and removes the pending docs.

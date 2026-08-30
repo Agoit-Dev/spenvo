@@ -15,4 +15,7 @@
     <string name="account_profile_logout">Log out</string>
     <string name="account_profile_nombre_usuario">Username</string>
     <string name="account_profile_guardar_nombre_usuario">Save</string>
+    <string name="account_profile_nombre_usuario_vacio">Username cannot be empty</string>
+    <string name="account_profile_nombre_usuario_en_uso">That username is already taken</string>
+    <string name="account_profile_nombre_usuario_error">Couldn\'t update the username</string>
 </resources>

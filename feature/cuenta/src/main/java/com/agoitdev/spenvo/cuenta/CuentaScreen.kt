@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -199,9 +200,10 @@ private fun PerfilContenido(
 @Composable
 private fun CampoNombreUsuario(
     nombreUsuario: String?,
-    error: String?,
+    @StringRes error: Int?,
     onGuardar: (String) -> Unit,
 ) {
+    val mensajeError = error?.let { stringResource(it) }
     var nombreUsuarioEditado by rememberSaveable(nombreUsuario) {
         mutableStateOf(nombreUsuario.orEmpty())
     }
@@ -209,8 +211,8 @@ private fun CampoNombreUsuario(
         value = nombreUsuarioEditado,
         onValueChange = { nombreUsuarioEditado = it },
         label = { Text(stringResource(R.string.account_profile_nombre_usuario)) },
-        isError = error != null,
-        supportingText = error?.let { { Text(it) } },
+        isError = mensajeError != null,
+        supportingText = mensajeError?.let { { Text(it) } },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )

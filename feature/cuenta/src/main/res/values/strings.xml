@@ -15,4 +15,7 @@
     <string name="account_profile_logout">Cerrar sesión</string>
     <string name="account_profile_nombre_usuario">Nombre de usuario</string>
     <string name="account_profile_guardar_nombre_usuario">Guardar</string>
+    <string name="account_profile_nombre_usuario_vacio">El nombre de usuario no puede estar vacío</string>
+    <string name="account_profile_nombre_usuario_en_uso">Ese nombre de usuario ya está en uso</string>
+    <string name="account_profile_nombre_usuario_error">No se pudo actualizar el nombre de usuario</string>
 </resources>

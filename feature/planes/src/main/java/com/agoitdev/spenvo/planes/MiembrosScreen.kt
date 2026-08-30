@@ -58,8 +58,11 @@ fun MiembrosScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var mostrarDialogoInvitar by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(estadoInvitar.error) {
-        estadoInvitar.error?.let {
+    // errorRes es una validación propia de la UI (traducible); error es el mensaje ya resuelto
+    // de un fallo real de Firestore/red. Se muestra el que haya.
+    val mensajeError = estadoInvitar.errorRes?.let { stringResource(it) } ?: estadoInvitar.error
+    LaunchedEffect(mensajeError) {
+        mensajeError?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.consumirError()
         }

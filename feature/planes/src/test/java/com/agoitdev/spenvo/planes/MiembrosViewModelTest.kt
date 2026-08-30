@@ -148,7 +148,21 @@ class MiembrosViewModelTest {
         assertTrue(accesosRepo.invitados.isEmpty())
         assertTrue(pendientesRepo.creadas.isEmpty())
         assertEquals(false, viewModel.estadoInvitar.value.invitado)
-        assertEquals("El nombre de usuario o email es obligatorio", viewModel.estadoInvitar.value.error)
+        // El mensaje vive en strings.xml (es/en), no hardcodeado en el ViewModel.
+        assertNull(viewModel.estadoInvitar.value.error)
+        assertEquals(R.string.members_invite_identificador_requerido, viewModel.estadoInvitar.value.errorRes)
+    }
+
+    @Test
+    fun `consumirError limpia tanto el mensaje de fallo como el error de validacion`() = runTest {
+        val viewModel = crearViewModel()
+
+        viewModel.invitar(planId = "p1", identificador = "   ", rol = Rol.VIEWER)
+        advanceUntilIdle()
+        viewModel.consumirError()
+
+        assertNull(viewModel.estadoInvitar.value.error)
+        assertNull(viewModel.estadoInvitar.value.errorRes)
     }
 }
 

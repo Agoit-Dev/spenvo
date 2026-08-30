@@ -83,7 +83,23 @@ class FirebaseUsuarioRepository @Inject constructor(
      * The `nombres_usuario` index doc IDs are always the normalized (lowercase) form, but the
      * `usuarios/{uid}.nombreUsuario` display field must keep [nombreUsuarioNuevo]'s original
      * casing (e.g. `GatoAzul42`, never `gatoazul42`) — see the design doc's "nombreUsuario
-     * generation" section.
+     * generation" section. It IS trimmed, though: the `usuarios` update rule re-derives the
+     * reservation's doc ID as `request.resource.data.nombreUsuario.lower()`, and the rules
+     * language has no `.trim()`, so an untrimmed display value would no longer resolve to its
+     * own reservation and a legitimate rename would be denied.
+     *
+     * Deliberately TWO sequential, separately-committed transactions rather than one. Verified
+     * empirically against the Firebase Emulator (see the two `renombrar en ... transaccion(es)`
+     * cases in `rules-tests/rules.test.mjs`): a `get()` inside a security rule reads the
+     * pre-transaction snapshot, so a reservation written earlier in the SAME transaction is not
+     * yet visible when the `usuarios` update is validated — the single-transaction shape is
+     * denied outright by the anti-impersonation rule.
+     *
+     * Tradeoff, accepted: this is no longer all-or-nothing. If A commits and B fails, the caller
+     * simply owns both the new and the old reservation and keeps their old display name — nothing
+     * is lost or handed to anyone else, and re-running `renombrar` completes it (A returns false
+     * for a reservation the caller already owns, so recovery today means picking the name again).
+     * Left unhandled on purpose, same "known gap, deliberately deferred" stance as the design doc.
      */
     @Suppress("SwallowedException")
     override suspend fun renombrar(
@@ -91,26 +107,33 @@ class FirebaseUsuarioRepository @Inject constructor(
         nombreUsuarioAnterior: String,
         nombreUsuarioNuevo: String,
     ): Boolean {
+        val nombreUsuarioVisible = nombreUsuarioNuevo.trim()
         val refAnterior = firestore.collection(NOMBRES_USUARIO_COLLECTION)
             .document(normalizarNombreUsuario(nombreUsuarioAnterior))
         val refNuevo = firestore.collection(NOMBRES_USUARIO_COLLECTION)
             .document(normalizarNombreUsuario(nombreUsuarioNuevo))
         val refUsuario = firestore.collection(USUARIOS_COLLECTION).document(usuarioId)
-        return try {
+
+        val reservado = try {
             firestore.runTransaction { transaction ->
                 val existenteNuevo = transaction.get(refNuevo)
                 if (existenteNuevo.exists()) {
                     throw NombreUsuarioYaReservadoException()
                 }
-                transaction.delete(refAnterior)
                 transaction.set(refNuevo, mapOf("usuarioId" to usuarioId))
-                transaction.update(refUsuario, "nombreUsuario", nombreUsuarioNuevo)
             }.await()
             true
         } catch (e: NombreUsuarioYaReservadoException) {
             // e is our own control-flow signal, not a real failure to surface — see class KDoc.
             false
         }
+        if (!reservado) return false
+
+        firestore.runTransaction { transaction ->
+            transaction.update(refUsuario, "nombreUsuario", nombreUsuarioVisible)
+            transaction.delete(refAnterior)
+        }.await()
+        return true
     }
 
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) {
