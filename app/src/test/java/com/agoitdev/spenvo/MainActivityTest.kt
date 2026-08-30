@@ -50,4 +50,13 @@ class MainActivityTest {
 
         assertEquals(listOf(PlanesRoute, PlanRoute("x")), backStack.toList())
     }
+
+    @Test
+    fun `MostrarApp when backstack is solely PlanesRoute leaves it unchanged`() {
+        val backStack = mutableListOf<NavKey>(PlanesRoute)
+
+        aplicarEstadoGate(EstadoGate.MostrarApp, backStack)
+
+        assertEquals(listOf(PlanesRoute), backStack.toList())
+    }
 }
