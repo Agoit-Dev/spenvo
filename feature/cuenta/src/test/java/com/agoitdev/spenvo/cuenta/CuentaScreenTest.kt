@@ -93,6 +93,17 @@ class CuentaScreenTest {
     }
 
     @Test
+    fun `sesion anonima real con uid tambien muestra el formulario de registro`() {
+        val viewModel = crearViewModel(FakeAuthRepositorioPantalla(Sesion(uid = "anon-1", esAnonima = true)))
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.CREAR_CUENTA)
+        }
+
+        composeTestRule.onNodeWithText("Tus datos de invitado", substring = true).assertIsDisplayed()
+    }
+
+    @Test
     fun `sesion vinculada muestra el perfil con nombre email e informacion de cuenta`() {
         val sesion = Sesion(uid = "user-1", esAnonima = false, email = "ana@spenvo.dev", nombre = "Ana")
         val viewModel = crearViewModel(FakeAuthRepositorioPantalla(sesion))

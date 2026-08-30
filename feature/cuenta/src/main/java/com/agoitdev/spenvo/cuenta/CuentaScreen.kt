@@ -96,7 +96,7 @@ fun CuentaScreen(
             .fillMaxSize()
             .padding(innerPadding)
             .padding(horizontal = 24.dp)
-        if (!sesion.estaAutenticada) {
+        if (sesion.esAnonima) {
             AuthContenido(
                 estado = estado,
                 tabSeleccionado = tabSeleccionado,
