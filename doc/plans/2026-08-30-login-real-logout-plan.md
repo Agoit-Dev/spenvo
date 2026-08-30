@@ -786,61 +786,7 @@ Expected: FAIL — `Unresolved reference: SesionGateViewModel` / `EstadoGate`
 
 - [ ] **Step 3: Implement `SesionGateViewModel`**
 
-`app/src/main/java/com/agoitdev/spenvo/SesionGateViewModel.kt`:
-
-```kotlin
-package com.agoitdev.spenvo
-
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.agoitdev.spenvo.data.auth.SesionPreferences
-import com.agoitdev.spenvo.domain.repository.AuthRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-
-enum class EstadoGate { Cargando, MostrarApp, MostrarGate }
-
-@OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
-class SesionGateViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
-    sesionPreferences: SesionPreferences,
-) : ViewModel() {
-
-    constructor(authRepository: AuthRepository, flagPendiente: Flow<Boolean>) : this(
-        authRepository = authRepository,
-        sesionPreferences = TODO_NOT_USED,
-    )
-
-    val estado: StateFlow<EstadoGate> = combine(
-        authRepository.observeSesion(),
-        sesionPreferences.sesionCerradaExplicitamente,
-    ) { sesion, flagPendiente -> sesion to flagPendiente }
-        .flatMapLatest { (sesion, flagPendiente) ->
-            when {
-                sesion.uid != null -> flowOf(EstadoGate.MostrarApp)
-                flagPendiente -> flowOf(EstadoGate.MostrarGate)
-                else -> flowOf(EstadoGate.MostrarApp).also {
-                    viewModelScope.launch { authRepository.iniciarSesionAnonima() }
-                }
-            }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoGate.Cargando)
-}
-```
-
-The `constructor(authRepository, flagPendiente: Flow<Boolean>)` overload above is broken pseudocode (`TODO_NOT_USED` doesn't exist) — **do not implement it this way.** Correct approach: keep a single constructor taking `AuthRepository` and `SesionPreferences` (real production shape, Hilt-injectable), and change Step 1's test to construct `SesionPreferences` the same way `SesionPreferencesTest` does in Task 4 — but that needs a real DataStore/Context, which unit tests (not instrumented) don't have.
-
-**Correct resolution:** extract the flag as a constructor parameter of type `Flow<Boolean>` directly (no `SesionPreferences` reference in `SesionGateViewModel` at all), and have the caller (Task 6, `AppModule`/DI wiring) supply `sesionPreferences.sesionCerradaExplicitamente`. Final version to actually implement:
+`app/src/main/java/com/agoitdev/spenvo/SesionGateViewModel.kt`. Note: the constructor takes the flag as a plain `Flow<Boolean>` (qualified with `@LogoutExplicitoFlag`, a Hilt `@Qualifier` created in Task 6's `AppModule`), not the whole `SesionPreferences` class — this keeps `SesionGateViewModel` trivially fake-able in Step 1's unit test above without needing an instrumented DataStore/Context. `AppModule` (Task 6) supplies the binding as `sesionPreferences.sesionCerradaExplicitamente`.
 
 ```kotlin
 package com.agoitdev.spenvo
@@ -1316,6 +1262,14 @@ data class RecoveryEstado(
 
 `CuentaScreen` (Task 8) resolves `errorRes` via `stringResource()` the same way it already resolves `PerfilEstado.nombreUsuarioError`.
 
+Also update the existing `consumirError()` (currently `_estado.update { it.copy(error = null) }`, `CuentaViewModel.kt:76-78`) to also clear the new field, so it resets both error channels:
+
+```kotlin
+    fun consumirError() {
+        _estado.update { it.copy(error = null, errorRes = null) }
+    }
+```
+
 - [ ] **Step 6: Run to confirm the tests pass**
 
 Run: `./gradlew :feature:cuenta:testDebugUnitTest --tests "*.CuentaViewModelTest"`
@@ -1443,10 +1397,11 @@ fun CuentaScreen(
     CuentaSideEffects(estado, perfilEstado, snackbarHostState, onRegistroCompletado, viewModel)
     val seleccionarImagen = rememberSeleccionarImagenLauncher(onImagenSeleccionada = viewModel::subirAvatar)
 
+    val mensajeRecoveryExito = stringResource(R.string.account_recovery_success)
     LaunchedEffect(recoveryEstado.exito) {
         if (recoveryEstado.exito) {
             mostrarRecoveryDialog = false
-            snackbarHostState.showSnackbar(context.getString(R.string.account_recovery_success))
+            snackbarHostState.showSnackbar(mensajeRecoveryExito)
             viewModel.consumirRecoveryEstado()
         }
     }
@@ -1519,8 +1474,7 @@ private fun CuentaSideEffects(
         if (estado.completado) onRegistroCompletado()
     }
 
-    LaunchedEffect(estado.error, estado.errorRes) {
-        val mensaje = estado.error ?: estado.errorRes?.let { snackbarHostState.currentSnackbarData; null }
+    LaunchedEffect(estado.error) {
         estado.error?.let { error ->
             snackbarHostState.showSnackbar(error)
             viewModel.consumirError()
@@ -1688,7 +1642,8 @@ private fun RecoveryDialog(
 
 Notes on this replacement:
 - `sesion.esAnonima` checks become `sesion.estaAutenticada` (inverted) throughout — matches the design doc's "not authenticated" condition, which must also cover the gate's transient `Sesion.Anonima` (`uid == null`) state, not just a real anonymous Firebase user. `Sesion.estaAutenticada` (`uid != null`) already draws exactly that line.
-- `CuentaSideEffects`'s error-snackbar `LaunchedEffect` above has a stray unused `mensaje`/`context` reference in the pseudocode shown — **do not implement it as written**; the actual fix only needs the existing `estado.error` branch unchanged (raw registration errors, untouched by this task) since `estado.errorRes` (login errors) is surfaced inline via `LoginForm`'s `supportingText`, not a snackbar. Delete the broken `mensaje`/`context.getString` lines from `CuentaSideEffects` and from the top-level `LaunchedEffect(recoveryEstado.exito)` — replace `snackbarHostState.showSnackbar(context.getString(R.string.account_recovery_success))` with `snackbarHostState.showSnackbar(stringResource(R.string.account_recovery_success))`, and note `stringResource` needs to be resolved outside the `LaunchedEffect` (it's a `@Composable` function, not callable inside a coroutine): hoist it — `val mensajeRecoverySuccess = stringResource(R.string.account_recovery_success)` declared in `CuentaScreen`'s body above the `LaunchedEffect`, then reference `mensajeRecoverySuccess` inside it.
+- `estado.errorRes` (login errors) is surfaced inline via `LoginForm`'s `supportingText` on the password field, not a snackbar — `CuentaSideEffects`'s error-snackbar effect stays untouched, still only handling `estado.error` (the pre-existing `registrar()` error path). Don't route `errorRes` through it too; that would double-display the same error.
+- `mensajeRecoverySuccess` is resolved via `stringResource()` at `CuentaScreen`'s composable top level (above the `LaunchedEffect(recoveryEstado.exito)` that uses it) — `stringResource()` can only be called from composable context, never from inside a `LaunchedEffect`'s suspend body.
 - Add `import androidx.compose.material3.AlertDialog`, `androidx.compose.material3.Tab`, `androidx.compose.material3.TabRow`, `androidx.compose.runtime.LaunchedEffect`, `androidx.compose.runtime.rememberSaveable` (if not already imported) to the top of the file.
 
 - [ ] **Step 4: Run to confirm the new tests pass, and no existing test regressed**
@@ -1829,12 +1784,16 @@ git commit -m "docs(changelog): front 2 login real + logout sin recreación anó
 - Testing (§5) → every task's own test steps, plus Task 9's explicit regression test.
 - Ripple effect on 13 pre-existing `AuthRepository` fakes (not in the design doc — discovered during planning) → Task 2.
 
-**Ambiguities resolved during planning, flagging back before execution starts:**
+**Post-commit editorial pass (2026-08-30, before dispatching implementers):** re-read the whole plan against the design doc and found this section's items 1 and 2 weren't just drafting noise — the code blocks themselves had leftover broken scratch-work (a nonexistent `TODO_NOT_USED` reference in Task 5; an undefined `context` reference and a double-display bug in Task 8's `CuentaSideEffects`/recovery-success snackbar). Cleaned both directly in this file rather than leaving it for the implementer to untangle:
+- Task 5 now shows only the final, correct `SesionGateViewModel` (single constructor, qualified `Flow<Boolean>`) — the broken draft is gone.
+- Task 8's `CuentaSideEffects` is back to its original shape (only `estado.error`, unchanged) since `errorRes` is already shown inline via `LoginForm`'s `supportingText` — routing it through the snackbar too would've double-displayed the same error. The recovery-success snackbar now resolves its string via `stringResource()` hoisted to composable scope instead of a nonexistent `context.getString(...)`.
+- Task 7 gained one line: `consumirError()` now also clears `errorRes`, so both error channels reset together.
 
-1. **`SesionGateViewModel`'s constructor shape** (Task 5) took two drafts to land on `AuthRepository` + a qualified `Flow<Boolean>` rather than the whole `SesionPreferences` class — done so the ViewModel stays trivially unit-testable without an interface for `SesionPreferences`. This introduces a new `@LogoutExplicitoFlag` Hilt qualifier (Task 6) that isn't in the design doc. Low-risk, but worth a second pair of eyes before implementing.
-2. **`CuentaSideEffects`'s error-`LaunchedEffect`** (Task 8) needed a correction mid-draft (an invalid `stringResource()`-inside-coroutine call) — the final guidance (hoist the string above the effect) is correct but wasn't caught until a second pass; implementer should double-check this specific composable compiles as intended rather than trusting the first snippet verbatim.
-3. **`PlanesViewModelTest`'s exact fake shape is unread** (Task 9, Step 2) — this plan does not have that file's full content, so the regression test there is given in outline form with explicit instructions to match the file's real pattern rather than fabricated field names. Whoever executes Task 9 must read that file first.
-4. **`FirebaseAuthRepository` has no unit test file and this plan doesn't add one** (Task 1) — deliberate, matches existing project precedent (the class is already partially untested), but flagging since it's a deviation from "every new method gets a test."
+**Remaining ambiguities, still flagged for whoever executes:**
+
+1. **`SesionGateViewModel`'s constructor shape** (Task 5) takes `AuthRepository` + a qualified `Flow<Boolean>` rather than the whole `SesionPreferences` class — done so the ViewModel stays trivially unit-testable without an interface for `SesionPreferences`. This introduces a new `@LogoutExplicitoFlag` Hilt qualifier (Task 6) that isn't in the design doc. Low-risk (an implementation detail within the design's intent), but worth a second pair of eyes.
+2. **`PlanesViewModelTest`'s exact fake shape is unread** (Task 9, Step 2) — this plan does not have that file's full content, so the regression test there is given in outline form with explicit instructions to match the file's real pattern rather than fabricated field names. Whoever executes Task 9 must read that file first.
+3. **`FirebaseAuthRepository` has no unit test file and this plan doesn't add one** (Task 1) — deliberate, matches existing project precedent (the class is already partially untested), but flagging since it's a deviation from "every new method gets a test."
 
 **Placeholder scan:** none found — every step above has concrete, compilable (after the noted corrections) code, not descriptions.
 
