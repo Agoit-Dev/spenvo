@@ -153,6 +153,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:core:data` dependency. `:core:data` also gains its first `AndroidManifest.xml`, declaring
   `INTERNET`/`ACCESS_NETWORK_STATE`/`WAKE_LOCK` (required by `FirebaseAnalytics.getInstance`,
   flagged by lint's `MissingPermission` check when analyzed at the library-module level).
+- Usuario entity + nombreUsuario, slice 9/10 (Firestore rules deployment — the anti-enumeration
+  design from slices 1-8 is now actually enforced, not just built): `firestore.rules` splits `get`
+  from `list` on `usuarios` (any authenticated caller can `get` a known uid, `list` is denied
+  outright), and adds the same get-only, list-denied shape for the new `nombres_usuario` and
+  `emails_usuario` lookup indexes (owner-only `create`/`delete`, no `update`, and a `create` on an
+  already-reserved id correctly falls through to the disabled `update` rule instead of silently
+  overwriting someone's reservation). `invitaciones_pendientes_por_email` gets its own rules: `get`
+  is denied (the composite `{email}_{planId}` id isn't something the invitee knows in advance),
+  `create` is open to any authenticated caller, `delete` is restricted to the matching-email caller,
+  and `list` only succeeds for a query whose result set is provably scoped to the caller's own
+  verified `request.auth.token.email` (`resource.data.email == request.auth.token.email`, the
+  documented Firestore pattern for "list only your own records" — `request.query.where` accessors,
+  flagged as unconfirmed in the plan, turned out not to exist in the rules language at all). Also
+  fixes a rule gap found in slice 7's review: `acceso_plan_financiero`'s `create` rule previously
+  only allowed a plan's owner (on plan creation) or an existing admin+ to create an access doc,
+  which meant `AsegurarUsuarioUseCase.paraVincularEmail`'s pending-invite auto-resolution — writing
+  a brand-new invitee's own `AccesoPlan` from their own just-registered session — failed with
+  `PERMISSION_DENIED` on every single pending invite once these rules were enforced. A third
+  disjunct now allows a caller to self-grant access only for the exact role recorded on a matching
+  `invitaciones_pendientes_por_email` doc keyed off their own verified auth-token email, so
+  pending-invite resolution works end-to-end for the first time. `rules-tests/rules.test.mjs` covers
+  the full matrix (get/list split, create/delete ownership, no-overwrite, scoped-list, and the three
+  self-grant cases: correct role succeeds, wrong role fails, no matching pending invite fails) with
+  no regressions in the pre-existing `acceso_plan_financiero` suite.
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's
