@@ -138,6 +138,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same generic success regardless of resolution outcome — the use case never surfaces "not
   found" as an error, only a genuine Firestore failure does — so the UI never confirms or denies
   whether a given identifier belongs to a real account.
+- Usuario entity + nombreUsuario, slice 8/10 (anonymous analytics signal, no user-visible change):
+  `InvitarMiembroUseCase` now fires a `"invitacion_no_resuelta"` event through the new
+  `AnalyticsRepository` (`:core:domain`) on every "not resolved" outcome — the email-pending-invite
+  branch and the nombreUsuario-discarded branch — and stays silent on the resolved branch that
+  creates a real `AccesoPlan`. The event carries no email, nombreUsuario, or other identifying
+  payload, only a bare event name: it exists purely for dev-visibility into resolution-failure
+  volume, never to expose what was searched, per AGENTS.md's "never log emails" rule and the
+  anti-enumeration guarantee slice 7/10 established. `FirebaseAnalyticsRepository` (`:core:data`)
+  implements it via `FirebaseAnalytics.logEvent`, wired through `UsuarioModule`/
+  `UsuarioUseCaseModule` (Hilt); `firebase-analytics` (BOM-managed, no `-ktx` suffix — the BOM at
+  this project's pinned version already merges KTX into the base artifact, matching
+  `firebase-auth`/`firebase-firestore`/`firebase-storage`'s existing non-`-ktx` naming) is a new
+  `:core:data` dependency. `:core:data` also gains its first `AndroidManifest.xml`, declaring
+  `INTERNET`/`ACCESS_NETWORK_STATE`/`WAKE_LOCK` (required by `FirebaseAnalytics.getInstance`,
+  flagged by lint's `MissingPermission` check when analyzed at the library-module level).
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's

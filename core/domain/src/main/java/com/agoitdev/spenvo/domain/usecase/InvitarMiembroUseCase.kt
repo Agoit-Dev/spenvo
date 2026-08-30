@@ -7,6 +7,7 @@ import com.agoitdev.spenvo.domain.model.Rol
 import com.agoitdev.spenvo.domain.model.normalizarEmail
 import com.agoitdev.spenvo.domain.model.normalizarNombreUsuario
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.AnalyticsRepository
 import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 
@@ -22,6 +23,7 @@ class InvitarMiembroUseCase(
     private val accesosRepository: AccesoPlanRepository,
     private val usuarioRepository: UsuarioRepository,
     private val pendientesRepository: InvitacionPendienteRepository,
+    private val analyticsRepository: AnalyticsRepository,
 ) {
     suspend operator fun invoke(planId: String, identificador: String, rol: Rol, invitadoPor: String) {
         val esEmail = identificador.contains('@')
@@ -52,12 +54,14 @@ class InvitarMiembroUseCase(
                     invitadoPor = invitadoPor,
                 ),
             )
+            analyticsRepository.registrarEvento("invitacion_no_resuelta")
         } else {
             // nombreUsuario no resuelto: se descarta, no hay cuenta "futura" que esperar. El segundo
             // await (idéntico al primero, sin efecto) existe solo para que esta rama tarde lo mismo
             // que las otras tres — sin él, "no existe" respondería mensurablemente más rápido que
             // "existe", filtrando por timing lo que el mensaje genérico ya oculta.
             usuarioRepository.resolverPorNombreUsuario(normalizarNombreUsuario(identificador))
+            analyticsRepository.registrarEvento("invitacion_no_resuelta")
         }
     }
 }

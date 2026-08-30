@@ -1,6 +1,7 @@
 package com.agoitdev.spenvo.data.di
 
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.AnalyticsRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
@@ -107,7 +108,13 @@ object PlanUseCaseModule {
         accesosRepository: AccesoPlanRepository,
         usuarioRepository: UsuarioRepository,
         pendientesRepository: InvitacionPendienteRepository,
-    ): InvitarMiembroUseCase = InvitarMiembroUseCase(accesosRepository, usuarioRepository, pendientesRepository)
+        analyticsRepository: AnalyticsRepository,
+    ): InvitarMiembroUseCase = InvitarMiembroUseCase(
+        accesosRepository,
+        usuarioRepository,
+        pendientesRepository,
+        analyticsRepository,
+    )
 
     @Provides
     fun provideAceptarInvitacion(

@@ -4,6 +4,7 @@ import com.agoitdev.spenvo.domain.model.AccesoPlan
 import com.agoitdev.spenvo.domain.model.InvitacionPendiente
 import com.agoitdev.spenvo.domain.model.Rol
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.AnalyticsRepository
 import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,8 @@ class InvitarMiembroUseCaseTest {
         val usuarioRepo = FakeUsuarioRepositorioInvitar(resolucionesNombreUsuario = mapOf("gatoazul1" to "u1"))
         val accesosRepo = FakeAccesoPlanRepositorioInvitar()
         val pendientesRepo = FakePendientesRepositorioInvitar()
-        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo)
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo, analyticsRepo)
 
         useCase(planId = "p1", identificador = "GatoAzul1", rol = Rol.EDITOR, invitadoPor = "u2")
 
@@ -35,7 +37,8 @@ class InvitarMiembroUseCaseTest {
         val usuarioRepo = FakeUsuarioRepositorioInvitar(resolucionesEmail = mapOf("familia@example.com" to "u3"))
         val accesosRepo = FakeAccesoPlanRepositorioInvitar()
         val pendientesRepo = FakePendientesRepositorioInvitar()
-        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo)
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo, analyticsRepo)
 
         useCase(planId = "p1", identificador = "Familia@Example.com", rol = Rol.VIEWER, invitadoPor = "u2")
 
@@ -50,7 +53,8 @@ class InvitarMiembroUseCaseTest {
         val usuarioRepo = FakeUsuarioRepositorioInvitar()
         val accesosRepo = FakeAccesoPlanRepositorioInvitar()
         val pendientesRepo = FakePendientesRepositorioInvitar()
-        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo)
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo, analyticsRepo)
 
         useCase(planId = "p1", identificador = "Familia@Example.com", rol = Rol.VIEWER, invitadoPor = "u2")
 
@@ -67,7 +71,8 @@ class InvitarMiembroUseCaseTest {
         val usuarioRepo = FakeUsuarioRepositorioInvitar()
         val accesosRepo = FakeAccesoPlanRepositorioInvitar()
         val pendientesRepo = FakePendientesRepositorioInvitar()
-        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo)
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo, analyticsRepo)
 
         useCase(planId = "p1", identificador = "NoExiste99", rol = Rol.VIEWER, invitadoPor = "u2")
 
@@ -82,7 +87,8 @@ class InvitarMiembroUseCaseTest {
         val usuarioRepo = FakeUsuarioRepositorioInvitar()
         val accesosRepo = FakeAccesoPlanRepositorioInvitar()
         val pendientesRepo = FakePendientesRepositorioInvitar()
-        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo)
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo, analyticsRepo)
 
         useCase(planId = "p1", identificador = "NoExiste99", rol = Rol.VIEWER, invitadoPor = "u2")
 
@@ -95,9 +101,61 @@ class InvitarMiembroUseCaseTest {
         val usuarioRepo = FakeUsuarioRepositorioInvitar(excepcionResolverEmail = excepcion)
         val accesosRepo = FakeAccesoPlanRepositorioInvitar()
         val pendientesRepo = FakePendientesRepositorioInvitar()
-        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo)
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo, analyticsRepo)
 
         useCase(planId = "p1", identificador = "familia@example.com", rol = Rol.VIEWER, invitadoPor = "u2")
+    }
+
+    @Test
+    fun `invitar por nombreUsuario no resuelto dispara el evento anonimo`() = runTest {
+        val usuarioRepo = FakeUsuarioRepositorioInvitar()
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(
+            FakeAccesoPlanRepositorioInvitar(),
+            usuarioRepo,
+            FakePendientesRepositorioInvitar(),
+            analyticsRepo,
+        )
+
+        useCase(planId = "p1", identificador = "NoExiste99", rol = Rol.VIEWER, invitadoPor = "u2")
+
+        assertEquals(listOf("invitacion_no_resuelta"), analyticsRepo.eventosRegistrados)
+    }
+
+    @Test
+    fun `invitar por email no resuelto dispara el evento anonimo`() = runTest {
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(
+            FakeAccesoPlanRepositorioInvitar(),
+            FakeUsuarioRepositorioInvitar(),
+            FakePendientesRepositorioInvitar(),
+            analyticsRepo,
+        )
+
+        useCase(planId = "p1", identificador = "familia@example.com", rol = Rol.VIEWER, invitadoPor = "u2")
+
+        assertEquals(listOf("invitacion_no_resuelta"), analyticsRepo.eventosRegistrados)
+    }
+
+    @Test
+    fun `invitar resuelto por nombreUsuario o email no dispara el evento anonimo`() = runTest {
+        val analyticsRepo = FakeAnalyticsRepositorioInvitar()
+        val usuarioRepo = FakeUsuarioRepositorioInvitar(
+            resolucionesNombreUsuario = mapOf("gatoazul1" to "u1"),
+            resolucionesEmail = mapOf("familia@example.com" to "u3"),
+        )
+        val useCase = InvitarMiembroUseCase(
+            FakeAccesoPlanRepositorioInvitar(),
+            usuarioRepo,
+            FakePendientesRepositorioInvitar(),
+            analyticsRepo,
+        )
+
+        useCase(planId = "p1", identificador = "GatoAzul1", rol = Rol.EDITOR, invitadoPor = "u2")
+        useCase(planId = "p1", identificador = "Familia@Example.com", rol = Rol.VIEWER, invitadoPor = "u2")
+
+        assertTrue(analyticsRepo.eventosRegistrados.isEmpty())
     }
 }
 
@@ -164,4 +222,12 @@ private class FakePendientesRepositorioInvitar : InvitacionPendienteRepository {
 
     override suspend fun obtenerPorEmail(emailNormalizado: String): List<InvitacionPendiente> = emptyList()
     override suspend fun eliminar(emailNormalizado: String, planId: String) = Unit
+}
+
+private class FakeAnalyticsRepositorioInvitar : AnalyticsRepository {
+    val eventosRegistrados = mutableListOf<String>()
+
+    override fun registrarEvento(nombre: String) {
+        eventosRegistrados.add(nombre)
+    }
 }

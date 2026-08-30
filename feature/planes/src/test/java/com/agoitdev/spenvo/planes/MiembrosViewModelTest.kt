@@ -6,6 +6,7 @@ import com.agoitdev.spenvo.domain.model.Rol
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.AnalyticsRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
@@ -35,6 +36,7 @@ class MiembrosViewModelTest {
     private val usuarioRepo = FakeUsuarioRepositorioMiembros()
     private val pendientesRepo = FakePendientesRepositorioMiembros()
     private val authRepo = FakeAuthRepositorioMiembros()
+    private val analyticsRepo = FakeAnalyticsRepositorioMiembros()
 
     @Before
     fun setUp() {
@@ -53,7 +55,7 @@ class MiembrosViewModelTest {
         authRepo: AuthRepository = this.authRepo,
     ) = MiembrosViewModel(
         accesosRepository = accesosRepo,
-        invitarMiembro = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo),
+        invitarMiembro = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo, analyticsRepo),
         usuarioRepository = usuarioRepo,
         authRepository = authRepo,
     )
@@ -220,4 +222,12 @@ private class FakeAuthRepositorioMiembros : AuthRepository {
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
     override suspend fun cerrarSesion() = Unit
+}
+
+private class FakeAnalyticsRepositorioMiembros : AnalyticsRepository {
+    val eventosRegistrados = mutableListOf<String>()
+
+    override fun registrarEvento(nombre: String) {
+        eventosRegistrados.add(nombre)
+    }
 }
