@@ -256,6 +256,21 @@ class PlanesViewModelTest {
 
         assertEquals(listOf("user-1"), usuarioRepo.creados.map { it.id })
     }
+
+    @Test
+    fun `REGRESION instanciar PlanesViewModel con uid nulo no llama iniciarSesionAnonima`() = runTest {
+        // PlanesViewModel used to own an init-time retry loop that called this unconditionally;
+        // that responsibility moved to SesionGateViewModel. This guards against it silently
+        // coming back if PlanesViewModel.init is touched again without this context.
+        sesionFlow.value = Sesion.Anonima
+        val viewModel = crearViewModel()
+
+        val job = launch { viewModel.cargandoLista.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(false, authRepository.iniciarSesionAnonimaLlamada)
+        job.cancel()
+    }
 }
 
 private class FakePlanFinancieroRepository(
@@ -315,8 +330,12 @@ private class FakePlanSincronizacion : PlanSincronizacion {
 private class FakeAuthRepository(
     private val sesionFlow: MutableStateFlow<Sesion> = MutableStateFlow(Sesion(uid = "user-1", esAnonima = true)),
 ) : AuthRepository {
+    var iniciarSesionAnonimaLlamada = false
+
     override fun observeSesion(): Flow<Sesion> = sesionFlow
-    override suspend fun iniciarSesionAnonima() = Unit
+    override suspend fun iniciarSesionAnonima() {
+        iniciarSesionAnonimaLlamada = true
+    }
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun iniciarSesionConEmail(email: String, password: String) = Unit
     override suspend fun enviarRecuperacionPassword(email: String) = Unit
