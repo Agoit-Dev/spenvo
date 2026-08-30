@@ -52,7 +52,12 @@ class InvitarMiembroUseCase(
                     invitadoPor = invitadoPor,
                 ),
             )
+        } else {
+            // nombreUsuario no resuelto: se descarta, no hay cuenta "futura" que esperar. El segundo
+            // await (idéntico al primero, sin efecto) existe solo para que esta rama tarde lo mismo
+            // que las otras tres — sin él, "no existe" respondería mensurablemente más rápido que
+            // "existe", filtrando por timing lo que el mensaje genérico ya oculta.
+            usuarioRepository.resolverPorNombreUsuario(normalizarNombreUsuario(identificador))
         }
-        // nombreUsuario no resuelto: se descarta silenciosamente, no hay cuenta "futura" que esperar.
     }
 }

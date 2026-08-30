@@ -75,6 +75,20 @@ class InvitarMiembroUseCaseTest {
         assertTrue(pendientesRepo.creadas.isEmpty())
     }
 
+    @Test
+    fun `nombreUsuario no resuelto espera la misma cantidad de llamadas que las demas ramas`() = runTest {
+        // Anti-enumeracion: si esta rama esperara una sola llamada mientras las otras tres esperan
+        // dos, el tiempo de respuesta por si solo delataria si el nombreUsuario existia o no.
+        val usuarioRepo = FakeUsuarioRepositorioInvitar()
+        val accesosRepo = FakeAccesoPlanRepositorioInvitar()
+        val pendientesRepo = FakePendientesRepositorioInvitar()
+        val useCase = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo)
+
+        useCase(planId = "p1", identificador = "NoExiste99", rol = Rol.VIEWER, invitadoPor = "u2")
+
+        assertEquals(listOf("noexiste99", "noexiste99"), usuarioRepo.nombresUsuarioConsultados)
+    }
+
     @Test(expected = IllegalStateException::class)
     fun `una falla real de Firestore al resolver se propaga, no se confunde con no-resuelto`() = runTest {
         val excepcion = IllegalStateException("PERMISSION_DENIED")
