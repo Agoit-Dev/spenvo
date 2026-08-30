@@ -18,7 +18,9 @@ import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.StorageRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.EnviarRecuperacionPasswordUseCase
 import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
+import com.agoitdev.spenvo.domain.usecase.IniciarSesionConEmailUseCase
 import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
@@ -64,6 +66,8 @@ class CuentaScreenTest {
 
     private fun crearViewModel(authRepository: AuthRepository) = CuentaViewModel(
         vincularCredencial = VincularCredencialUseCase(authRepository),
+        iniciarSesionConEmail = IniciarSesionConEmailUseCase(authRepository),
+        enviarRecuperacionPassword = EnviarRecuperacionPasswordUseCase(authRepository),
         authRepository = authRepository,
         usuarioRepository = usuarioRepository,
         subirAvatarUseCase = SubirAvatarUseCase(storageRepository),
@@ -166,6 +170,8 @@ private class FakeAuthRepositorioPantalla(sesionInicial: Sesion) : AuthRepositor
 
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
+    override suspend fun iniciarSesionConEmail(email: String, password: String) = Unit
+    override suspend fun enviarRecuperacionPassword(email: String) = Unit
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
     override suspend fun cerrarSesion() {
