@@ -8,10 +8,13 @@ interface AuthRepository {
 
     suspend fun iniciarSesionAnonima()
 
+    suspend fun iniciarSesionConEmail(email: String, password: String)
+
+    suspend fun enviarRecuperacionPassword(email: String)
+
     suspend fun vincularEmail(email: String, password: String, nombre: String)
 
     suspend fun actualizarPerfil(nombre: String? = null, photoUrl: String? = null)
 
     suspend fun cerrarSesion()
 }
-
