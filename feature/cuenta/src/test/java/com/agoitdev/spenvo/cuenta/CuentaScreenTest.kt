@@ -26,6 +26,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -129,7 +130,9 @@ class CuentaScreenTest {
         composeTestRule.onNodeWithText("Guardar").performClick()
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("ZorroVeloz9").assertIsDisplayed()
+        assertEquals("user-1", usuarioRepository.usuarioIdRecibido)
+        assertEquals("GatoAzul1", usuarioRepository.nombreUsuarioAnteriorRecibido)
+        assertEquals("ZorroVeloz9", usuarioRepository.nombreUsuarioNuevoRecibido)
     }
 
     @Test
@@ -169,6 +172,9 @@ private class FakeStorageRepositorioPantalla : StorageRepository {
 
 private class FakeUsuarioRepositorioPantalla : UsuarioRepository {
     val usuarios = mutableMapOf<String, Usuario>()
+    var usuarioIdRecibido: String? = null
+    var nombreUsuarioAnteriorRecibido: String? = null
+    var nombreUsuarioNuevoRecibido: String? = null
 
     override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
     override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
@@ -191,7 +197,12 @@ private class FakeUsuarioRepositorioPantalla : UsuarioRepository {
         usuarioId: String,
         nombreUsuarioAnterior: String,
         nombreUsuarioNuevo: String,
-    ): Boolean = true
+    ): Boolean {
+        usuarioIdRecibido = usuarioId
+        nombreUsuarioAnteriorRecibido = nombreUsuarioAnterior
+        nombreUsuarioNuevoRecibido = nombreUsuarioNuevo
+        return true
+    }
 
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
     override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null

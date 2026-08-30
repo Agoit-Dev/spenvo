@@ -43,8 +43,15 @@ class CuentaViewModel @Inject constructor(
             sesion.collect { sesionActual ->
                 val uid = sesionActual.uid
                 if (!sesionActual.esAnonima && uid != null) {
-                    val usuario = usuarioRepository.obtener(uid)
-                    _perfilEstado.update { it.copy(nombreUsuario = usuario?.nombreUsuario) }
+                    // A failed lookup (network/permission) must not crash the app nor kill this
+                    // collector for the ViewModel's lifetime — just skip this emission; a future
+                    // sesion re-emission gets another chance.
+                    runCatching { usuarioRepository.obtener(uid) }
+                        .onSuccess { usuario ->
+                            _perfilEstado.update { it.copy(nombreUsuario = usuario?.nombreUsuario) }
+                        }
+                } else {
+                    _perfilEstado.update { it.copy(nombreUsuario = null, nombreUsuarioError = null) }
                 }
             }
         }
@@ -97,11 +104,24 @@ class CuentaViewModel @Inject constructor(
     fun editarNombreUsuario(nuevo: String) {
         val uid = sesion.value.uid ?: return
         val anterior = _perfilEstado.value.nombreUsuario ?: return
-        viewModelScope.launch {
-            val exito = renombrarUsuario(usuarioId = uid, nombreUsuarioAnterior = anterior, nombreUsuarioNuevo = nuevo)
-            _perfilEstado.update {
-                if (exito) it.copy(nombreUsuario = nuevo, nombreUsuarioError = null)
-                else it.copy(nombreUsuarioError = "Ese nombre de usuario ya está en uso")
+        if (nuevo.isBlank()) {
+            _perfilEstado.update { it.copy(nombreUsuarioError = "El nombre de usuario no puede estar vacío") }
+        } else {
+            viewModelScope.launch {
+                runCatching {
+                    renombrarUsuario(usuarioId = uid, nombreUsuarioAnterior = anterior, nombreUsuarioNuevo = nuevo)
+                }
+                    .onSuccess { exito ->
+                        _perfilEstado.update {
+                            if (exito) it.copy(nombreUsuario = nuevo, nombreUsuarioError = null)
+                            else it.copy(nombreUsuarioError = "Ese nombre de usuario ya está en uso")
+                        }
+                    }
+                    .onFailure {
+                        _perfilEstado.update {
+                            it.copy(nombreUsuarioError = "No se pudo actualizar el nombre de usuario")
+                        }
+                    }
             }
         }
     }

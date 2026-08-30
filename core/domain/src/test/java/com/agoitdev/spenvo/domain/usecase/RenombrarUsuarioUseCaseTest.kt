@@ -3,6 +3,7 @@ package com.agoitdev.spenvo.domain.usecase
 import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,11 +37,45 @@ class RenombrarUsuarioUseCaseTest {
 
         assertFalse(resultado)
     }
+
+    @Test
+    fun `pasa el usuarioId y los nombres tal cual los recibio al repositorio`() = runTest {
+        val repo = FakeUsuarioRepositorioRenombrar(resultadoRenombrar = true)
+        val useCase = RenombrarUsuarioUseCase(repo)
+
+        useCase(
+            usuarioId = "u1",
+            nombreUsuarioAnterior = "GatoAzul1",
+            nombreUsuarioNuevo = "ZorroVeloz9",
+        )
+
+        assertEquals("u1", repo.usuarioIdRecibido)
+        assertEquals("GatoAzul1", repo.nombreUsuarioAnteriorRecibido)
+        assertEquals("ZorroVeloz9", repo.nombreUsuarioNuevoRecibido)
+    }
+
+    @Test
+    fun `no normaliza mayusculas ni recorta espacios del nombreUsuario nuevo`() = runTest {
+        val repo = FakeUsuarioRepositorioRenombrar(resultadoRenombrar = true)
+        val useCase = RenombrarUsuarioUseCase(repo)
+
+        useCase(
+            usuarioId = "u1",
+            nombreUsuarioAnterior = "GatoAzul1",
+            nombreUsuarioNuevo = "  ZorroVeloz9  ",
+        )
+
+        assertEquals("  ZorroVeloz9  ", repo.nombreUsuarioNuevoRecibido)
+    }
 }
 
 private class FakeUsuarioRepositorioRenombrar(
     private val resultadoRenombrar: Boolean,
 ) : UsuarioRepository {
+    var usuarioIdRecibido: String? = null
+    var nombreUsuarioAnteriorRecibido: String? = null
+    var nombreUsuarioNuevoRecibido: String? = null
+
     override suspend fun obtener(usuarioId: String): Usuario? = null
     override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> = emptyList()
 
@@ -56,7 +91,12 @@ private class FakeUsuarioRepositorioRenombrar(
         usuarioId: String,
         nombreUsuarioAnterior: String,
         nombreUsuarioNuevo: String,
-    ): Boolean = resultadoRenombrar
+    ): Boolean {
+        usuarioIdRecibido = usuarioId
+        nombreUsuarioAnteriorRecibido = nombreUsuarioAnterior
+        nombreUsuarioNuevoRecibido = nombreUsuarioNuevo
+        return resultadoRenombrar
+    }
 
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
     override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null

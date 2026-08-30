@@ -97,18 +97,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that creates the doc if the anonymous bootstrap was somehow skipped.
 - Usuario entity + nombreUsuario, slice 5/10 (the first slice with real, user-visible UI): a
   registered user can now see and edit their `nombreUsuario` from the account profile screen.
-  Adds `RenombrarUsuarioUseCase` (normalizes both the old and new handle, then delegates to
-  `UsuarioRepository.renombrar`'s transactional release-and-reserve), wired via
-  `UsuarioUseCaseModule`. `CuentaViewModel` now injects `UsuarioRepository` directly (consistent
-  with `AuthRepository` already being a direct constructor param there) and loads the signed-in
-  user's `nombreUsuario` once the session resolves to a real, non-anonymous uid; `PerfilEstado`
-  gains `nombreUsuario`/`nombreUsuarioError`, and `editarNombreUsuario(nuevo)` calls the use case
-  and surfaces a "already taken" error without touching the previous value on failure.
-  `CuentaScreen`'s profile view gets a new username field + Guardar button (same
-  `OutlinedTextField` + inline-error pattern as `RegistroForm`), extracted into its own
-  `CampoNombreUsuario` composable to keep `PerfilContenido` under detekt's `LongMethod` threshold.
-  The profile `Column` is now vertically scrollable to accommodate the extra field on small
-  screens.
+  Adds `RenombrarUsuarioUseCase`, which passes the raw display-form handles straight through to
+  `UsuarioRepository.renombrar`'s transactional release-and-reserve; `FirebaseUsuarioRepository`
+  normalizes locally only for the `nombres_usuario` index doc IDs, keeping the
+  `usuarios/{uid}.nombreUsuario` display field in its original casing (e.g. `GatoAzul42`, never
+  `gatoazul42`), per the design doc. Wired via `UsuarioUseCaseModule`. `CuentaViewModel` now
+  injects `UsuarioRepository` directly (consistent with `AuthRepository` already being a direct
+  constructor param there) and loads the signed-in user's `nombreUsuario` once the session
+  resolves to a real, non-anonymous uid, resetting it when the session goes back to anonymous
+  (e.g. after logout); a failed load no longer kills the collector, so a later session emission
+  gets another chance. `PerfilEstado` gains `nombreUsuario`/`nombreUsuarioError`, and
+  `editarNombreUsuario(nuevo)` rejects blank/whitespace-only input without calling the use case,
+  catches any use-case failure instead of crashing, and otherwise calls the use case and surfaces
+  an "already taken" error without touching the previous value on failure. `CuentaScreen`'s
+  profile view gets a new username field + Guardar button (same `OutlinedTextField` +
+  inline-error pattern as `RegistroForm`, Guardar also disabled while the trimmed input is blank),
+  extracted into its own `CampoNombreUsuario` composable to keep `PerfilContenido` under detekt's
+  `LongMethod` threshold. The profile `Column` is now vertically scrollable to accommodate the
+  extra field on small screens.
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's

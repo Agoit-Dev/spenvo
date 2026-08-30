@@ -186,6 +186,77 @@ class CuentaViewModelTest {
         assertNotNull(viewModel.perfilEstado.value.nombreUsuarioError)
         job.cancel()
     }
+
+    @Test
+    fun `editarNombreUsuario con entrada en blanco no llama al caso de uso y expone error de validacion`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.editarNombreUsuario("   ")
+        advanceUntilIdle()
+
+        assertFalse(usuarioRepository.renombrarLlamado)
+        assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
+        assertNotNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        job.cancel()
+    }
+
+    @Test
+    fun `editarNombreUsuario cuando el caso de uso lanza una excepcion expone un error sin crashear`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        usuarioRepository.excepcionRenombrar = IllegalStateException("PERMISSION_DENIED")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.editarNombreUsuario("ZorroVeloz9")
+        advanceUntilIdle()
+
+        assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
+        assertNotNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        job.cancel()
+    }
+
+    @Test
+    fun `si obtener falla al cargar el perfil no crashea el colector y una emision posterior si actualiza`() = runTest {
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        usuarioRepository.excepcionObtener = IllegalStateException("network down")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        advanceUntilIdle()
+
+        assertNull(viewModel.perfilEstado.value.nombreUsuario)
+
+        usuarioRepository.excepcionObtener = null
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false, email = "ana@spenvo.dev")
+        advanceUntilIdle()
+
+        assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
+        job.cancel()
+    }
+
+    @Test
+    fun `si la sesion pasa a anonima el nombreUsuario previo se limpia del estado`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        usuarioRepository.usuarios["user-1"] = Usuario(id = "user-1", nombreUsuario = "GatoAzul1")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+        assertEquals("GatoAzul1", viewModel.perfilEstado.value.nombreUsuario)
+
+        authRepository.sesionFlow.value = Sesion.Anonima
+        advanceUntilIdle()
+
+        assertNull(viewModel.perfilEstado.value.nombreUsuario)
+        assertNull(viewModel.perfilEstado.value.nombreUsuarioError)
+        job.cancel()
+    }
 }
 
 private class FakeAuthRepositorioCuenta : AuthRepository {
@@ -221,8 +292,14 @@ private class FakeUsuarioRepositorioCuenta : UsuarioRepository {
     val actualizados = mutableListOf<Usuario>()
     val indicesEmail = mutableListOf<Pair<String, String>>()
     var resultadoRenombrar = true
+    var renombrarLlamado = false
+    var excepcionRenombrar: Throwable? = null
+    var excepcionObtener: Throwable? = null
 
-    override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
+    override suspend fun obtener(usuarioId: String): Usuario? {
+        excepcionObtener?.let { throw it }
+        return usuarios[usuarioId]
+    }
     override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
         usuarioIds.mapNotNull { usuarios[it] }
 
@@ -244,7 +321,11 @@ private class FakeUsuarioRepositorioCuenta : UsuarioRepository {
         usuarioId: String,
         nombreUsuarioAnterior: String,
         nombreUsuarioNuevo: String,
-    ): Boolean = resultadoRenombrar
+    ): Boolean {
+        renombrarLlamado = true
+        excepcionRenombrar?.let { throw it }
+        return resultadoRenombrar
+    }
 
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) {
         indicesEmail.add(emailNormalizado to usuarioId)

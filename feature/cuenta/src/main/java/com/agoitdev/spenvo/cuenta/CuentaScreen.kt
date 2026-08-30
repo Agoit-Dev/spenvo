@@ -216,7 +216,7 @@ private fun CampoNombreUsuario(
     )
     TextButton(
         onClick = { onGuardar(nombreUsuarioEditado) },
-        enabled = nombreUsuarioEditado != nombreUsuario,
+        enabled = nombreUsuarioEditado != nombreUsuario && nombreUsuarioEditado.isNotBlank(),
     ) {
         Text(stringResource(R.string.account_profile_guardar_nombre_usuario))
     }

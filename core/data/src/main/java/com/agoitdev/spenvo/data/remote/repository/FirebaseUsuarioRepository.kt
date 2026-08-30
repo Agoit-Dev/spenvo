@@ -3,6 +3,7 @@ package com.agoitdev.spenvo.data.remote.repository
 import com.agoitdev.spenvo.data.remote.await
 import com.agoitdev.spenvo.data.remote.dto.UsuarioDto
 import com.agoitdev.spenvo.domain.model.Usuario
+import com.agoitdev.spenvo.domain.model.normalizarNombreUsuario
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
@@ -78,14 +79,22 @@ class FirebaseUsuarioRepository @Inject constructor(
         firestore.collection(USUARIOS_COLLECTION).document(usuario.id).set(dto.toMap()).await()
     }
 
+    /**
+     * The `nombres_usuario` index doc IDs are always the normalized (lowercase) form, but the
+     * `usuarios/{uid}.nombreUsuario` display field must keep [nombreUsuarioNuevo]'s original
+     * casing (e.g. `GatoAzul42`, never `gatoazul42`) — see the design doc's "nombreUsuario
+     * generation" section.
+     */
     @Suppress("SwallowedException")
     override suspend fun renombrar(
         usuarioId: String,
         nombreUsuarioAnterior: String,
         nombreUsuarioNuevo: String,
     ): Boolean {
-        val refAnterior = firestore.collection(NOMBRES_USUARIO_COLLECTION).document(nombreUsuarioAnterior)
-        val refNuevo = firestore.collection(NOMBRES_USUARIO_COLLECTION).document(nombreUsuarioNuevo)
+        val refAnterior = firestore.collection(NOMBRES_USUARIO_COLLECTION)
+            .document(normalizarNombreUsuario(nombreUsuarioAnterior))
+        val refNuevo = firestore.collection(NOMBRES_USUARIO_COLLECTION)
+            .document(normalizarNombreUsuario(nombreUsuarioNuevo))
         val refUsuario = firestore.collection(USUARIOS_COLLECTION).document(usuarioId)
         return try {
             firestore.runTransaction { transaction ->
