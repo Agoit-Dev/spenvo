@@ -599,6 +599,17 @@ test('list solo funciona filtrando por el propio email verificado', async () => 
   ));
 });
 
+test('deniega list sin filtrar sobre invitaciones_pendientes_por_email, incluso para el propio email', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(
+    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
+    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
+  );
+  const ana = authed('u2', { email: 'ana@example.com' });
+  await assertFails(getDocs(collection(ana.firestore(), 'invitaciones_pendientes_por_email')));
+});
+
 test('solo el invitado con el email coincidente puede borrar la invitacion pendiente', async () => {
   await limpiarDatos();
   const u1 = authed('u1');

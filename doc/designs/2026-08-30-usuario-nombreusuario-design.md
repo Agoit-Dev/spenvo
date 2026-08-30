@@ -179,9 +179,9 @@ its own, and there's currently no sender-side pending-invite UI at all (see "Out
 to even show a stuck invite if we detected one. Revisit alongside building that UI, if it's ever
 built — until then, worth noting that this bug only bites plans that invite 2+ not-yet-registered
 emails where the second-or-later grant hits a real Firestore error, which should be rare in
-practice (not from this bug when Firestore itself is healthy — see the separate, higher-priority
-`acceso_plan_financiero.create` rule gap in the plan's Task 9, without which EVERY pending-invite
-resolution fails, not just a rare partial one).
+practice now that Firestore itself is healthy for this path: the separate, higher-priority
+`acceso_plan_financiero.create` rule gap that used to make EVERY pending-invite resolution fail
+(not just a rare partial one) was fixed by Task 9's Step 3b — resolved, no longer open.
 
 ## Known gap, deliberately deferred (found during Task 4's review)
 
