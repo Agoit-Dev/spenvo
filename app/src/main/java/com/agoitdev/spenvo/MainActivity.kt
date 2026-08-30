@@ -55,6 +55,27 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Pure state-machine step: decides how [estado] mutates [backStack]. Extracted from
+ * [SpenvoApp]'s `LaunchedEffect` so the gate's navigation branching (the riskiest logic in
+ * the login-gate flow) is directly unit-testable without Compose or Hilt.
+ */
+fun aplicarEstadoGate(estado: EstadoGate, backStack: MutableList<NavKey>) {
+    when (estado) {
+        EstadoGate.MostrarGate -> {
+            backStack.clear()
+            backStack.add(CuentaRoute)
+        }
+        EstadoGate.MostrarApp -> {
+            if (backStack.singleOrNull() == CuentaRoute) {
+                backStack.clear()
+                backStack.add(PlanesRoute)
+            }
+        }
+        EstadoGate.Cargando -> Unit
+    }
+}
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel = hiltViewModel()) {
@@ -62,19 +83,7 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
     val backStack = rememberNavBackStack(PlanesRoute)
 
     LaunchedEffect(estadoGate) {
-        when (estadoGate) {
-            EstadoGate.MostrarGate -> {
-                backStack.clear()
-                backStack.add(CuentaRoute)
-            }
-            EstadoGate.MostrarApp -> {
-                if (backStack.singleOrNull() == CuentaRoute) {
-                    backStack.clear()
-                    backStack.add(PlanesRoute)
-                }
-            }
-            EstadoGate.Cargando -> Unit
-        }
+        aplicarEstadoGate(estadoGate, backStack)
     }
 
     Surface(modifier = modifier.fillMaxSize()) {
