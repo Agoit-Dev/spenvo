@@ -18,6 +18,7 @@
     <string name="account_create">Crear cuenta</string>
     <string name="members_title">Miembros</string>
     <string name="members_empty">Aún no hay miembros.</string>
+    <string name="members_cargando">Cargando…</string>
     <string name="members_invite">Invitar miembro</string>
     <string name="members_invite_uid">UID del usuario</string>
     <string name="members_invite_role">Rol</string>

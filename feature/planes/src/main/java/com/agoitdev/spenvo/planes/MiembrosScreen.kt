@@ -41,8 +41,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.agoitdev.spenvo.domain.model.AccesoPlan
 import com.agoitdev.spenvo.domain.model.InvitacionEstado
+import com.agoitdev.spenvo.domain.model.MiembroResuelto
 import com.agoitdev.spenvo.domain.model.Rol
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,7 +52,7 @@ fun MiembrosScreen(
     viewModel: MiembrosViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
-    val miembrosFlow = remember(planId) { viewModel.observarMiembros(planId) }
+    val miembrosFlow = remember(planId) { viewModel.miembrosResueltos(planId) }
     val miembros by miembrosFlow.collectAsStateWithLifecycle()
     val estadoInvitar by viewModel.estadoInvitar.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -107,7 +107,7 @@ Scaffold(
 
 @Composable
 private fun ListaMiembros(
-    miembros: List<AccesoPlan>,
+    miembros: List<MiembroResuelto>,
     modifier: Modifier = Modifier,
 ) {
     if (miembros.isEmpty()) {
@@ -123,21 +123,24 @@ private fun ListaMiembros(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(miembros, key = { it.usuarioId }) { acceso ->
-                MiembroCard(acceso)
+            items(miembros, key = { it.acceso.usuarioId }) { miembro ->
+                MiembroCard(miembro)
             }
         }
     }
 }
 
 @Composable
-private fun MiembroCard(acceso: AccesoPlan) {
+private fun MiembroCard(miembro: MiembroResuelto) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Text(text = acceso.usuarioId, style = MaterialTheme.typography.titleMedium)
             Text(
-                text = acceso.rol.name.lowercase() + " · " +
-                    acceso.invitacionEstado.name.lowercase(),
+                text = miembro.usuario?.nombreUsuario ?: stringResource(R.string.members_cargando),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = miembro.acceso.rol.name.lowercase() + " · " +
+                    miembro.acceso.invitacionEstado.name.lowercase(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

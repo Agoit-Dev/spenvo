@@ -3,8 +3,10 @@ package com.agoitdev.spenvo.planes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.AccesoPlan
+import com.agoitdev.spenvo.domain.model.MiembroResuelto
 import com.agoitdev.spenvo.domain.model.Rol
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.InvitarMiembroUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -21,10 +24,21 @@ import kotlinx.coroutines.launch
 class MiembrosViewModel @Inject constructor(
     private val accesosRepository: AccesoPlanRepository,
     private val invitarMiembro: InvitarMiembroUseCase,
+    private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
 
 fun observarMiembros(planId: String): StateFlow<List<AccesoPlan>> =
         accesosRepository.observarAccesosDelPlan(planId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS), emptyList())
+
+    fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
+        accesosRepository.observarAccesosDelPlan(planId)
+            .map { accesos ->
+                val usuarios = runCatching { usuarioRepository.obtenerVarios(accesos.map { it.usuarioId }) }
+                    .getOrDefault(emptyList())
+                    .associateBy { it.id }
+                accesos.map { acceso -> MiembroResuelto(acceso, usuarios[acceso.usuarioId]) }
+            }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS), emptyList())
 
     private val _estadoInvitar = MutableStateFlow(InvitarEstado())

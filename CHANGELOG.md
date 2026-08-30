@@ -115,6 +115,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extracted into its own `CampoNombreUsuario` composable to keep `PerfilContenido` under detekt's
   `LongMethod` threshold. The profile `Column` is now vertically scrollable to accommodate the
   extra field on small screens.
+- Usuario entity + nombreUsuario, slice 6/10: Miembros now shows each member's `nombreUsuario`
+  instead of the raw UID. `MiembrosViewModel` gains `miembrosResueltos(planId)`, which combines
+  `AccesoPlanRepository.observarAccesosDelPlan` with a batched `UsuarioRepository.obtenerVarios`
+  lookup into the new `MiembroResuelto(acceso, usuario)` domain model (`:core:domain`); the lookup
+  is wrapped in `runCatching` so a Firestore failure degrades to an unresolved (`usuario = null`)
+  member instead of crashing the collector — `obtenerVarios` already degrades per-item internally,
+  this only guards the call itself. `MiembrosScreen` switches from `observarMiembros` to
+  `miembrosResueltos`, and `MiembroCard` shows `usuario?.nombreUsuario`, falling back to the new
+  `members_cargando` string ("Cargando…"/"Loading…") for a member whose `Usuario` doc hasn't
+  resolved yet, rather than ever showing the raw UID.
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's
