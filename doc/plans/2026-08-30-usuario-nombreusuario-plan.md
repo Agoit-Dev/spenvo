@@ -1821,6 +1821,38 @@ describe("invitaciones_pendientes_por_email", () => {
     );
   });
 });
+
+describe("acceso_plan_financiero create — auto-resolucion de invitacion pendiente", () => {
+  it("el propio invitado puede auto-otorgarse el rol exacto de su invitacion pendiente", async () => {
+    // seed as admin: planes_financieros/p1, invitaciones_pendientes_por_email/ana@example.com_p1
+    // -> { email: "ana@example.com", planId: "p1", rol: "editor", invitadoPor: "u2", createdAt }
+    await assertSucceeds(
+      setDoc(doc(authedDbWithEmail("u1", "ana@example.com"), "acceso_plan_financiero/u1_p1"), {
+        usuarioId: "u1", planId: "p1", rol: "editor", invitacionEstado: "pendiente",
+        createdAt: new Date(), updatedAt: new Date(),
+      })
+    );
+  });
+
+  it("no puede auto-otorgarse un rol distinto al de la invitacion pendiente", async () => {
+    // same seed as above (rol: "editor" pending)
+    await assertFails(
+      setDoc(doc(authedDbWithEmail("u1", "ana@example.com"), "acceso_plan_financiero/u1_p1"), {
+        usuarioId: "u1", planId: "p1", rol: "owner", invitacionEstado: "pendiente",
+        createdAt: new Date(), updatedAt: new Date(),
+      })
+    );
+  });
+
+  it("no puede auto-otorgarse acceso sin una invitacion pendiente para su email verificado", async () => {
+    await assertFails(
+      setDoc(doc(authedDbWithEmail("u1", "otro@example.com"), "acceso_plan_financiero/u1_p1"), {
+        usuarioId: "u1", planId: "p1", rol: "editor", invitacionEstado: "pendiente",
+        createdAt: new Date(), updatedAt: new Date(),
+      })
+    );
+  });
+});
 ```
 
 (`authedDbWithEmail` — a helper providing a Firestore instance whose auth context carries a
@@ -1886,6 +1918,56 @@ against the Firebase docs/current SDK version pinned in this project before trus
 verbatim; if the emulator rejects this exact form, the documented alternative is
 `request.query.limit <= N && ...` combined with a custom claim, but the equality-filter form
 above is the standard documented pattern as of this plan's writing.)
+
+- [ ] **Step 3b: Fix `acceso_plan_financiero.create` — required for pending-invite auto-resolution
+  to work at all**
+
+Found during Task 7's review, not in the original plan: `AsegurarUsuarioUseCase.paraVincularEmail`
+(Task 7) resolves a pending email invite by writing the new `AccesoPlan` **as the newly-registered
+invitee themselves**, client-side, from their own session. The `acceso_plan_financiero.create`
+rule that existed before this plan only allows a `create` when the caller is the plan's `owner`
+(on plan creation) or already has `admin`+ access to that plan — neither is ever true for a
+brand-new invitee. Without this fix, every pending-invite resolution write fails with
+`PERMISSION_DENIED` once rules are enforced, silently breaking the entire "invite by email before
+they've registered" feature this plan built in Task 7 — the write throws inside
+`paraVincularEmail`'s `forEach`, which per Task 7's own known gap (see design doc's "orphaned
+pending invites" note) leaves that invite permanently stuck pending with no retry.
+
+Add a third disjunct to the existing `acceso_plan_financiero` `create` rule in `firestore.rules`
+(read the current full rule first — it has two disjuncts today, `owner`-on-plan-creation and
+`admin`+-invites-a-member; this adds a third, it does not replace either):
+
+```
+      allow create: if isSignedIn() && (
+          (docId == request.auth.uid + '_' + request.resource.data.planId
+            && request.resource.data.usuarioId == request.auth.uid
+            && request.resource.data.rol == 'owner'
+            && get(/databases/$(database)/documents/planes_financieros/$(request.resource.data.planId)).data.createdBy == request.auth.uid)
+          || tieneRolMinimo(
+              get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
+              2
+            )
+          // Self-grant from a pending invite: only the exact role that was invited, only when a
+          // matching invitaciones_pendientes_por_email doc exists for the caller's OWN verified
+          // (Firebase Auth token) email — never a client-supplied one, so this can't be spoofed.
+          || (docId == request.auth.uid + '_' + request.resource.data.planId
+              && request.resource.data.usuarioId == request.auth.uid
+              && request.auth.token.email != null
+              && get(/databases/$(database)/documents/invitaciones_pendientes_por_email/$(request.auth.token.email.lower() + '_' + request.resource.data.planId)).data.rol == request.resource.data.rol)
+        );
+```
+
+This intentionally does NOT also grant `delete` on the now-consumed
+`invitaciones_pendientes_por_email` doc — `AsegurarUsuarioUseCase.paraVincularEmail`'s own
+`pendientesRepository.eliminar(...)` call already needs (and per Step 3 above, already has) a
+`delete` rule scoped to `resource.data.email == request.auth.token.email`, which the newly-granted
+invitee satisfies once they're signed in with that email. No separate change needed there.
+
+Run `cd rules-tests && npm test` after this step alone (before Step 4's broader pass) to confirm
+the three new `acceso_plan_financiero` cases pass without breaking the two pre-existing
+`acceso_plan_financiero` describe blocks already in `rules-tests/rules.test.mjs` from before this
+plan (owner-creates-on-plan-creation, admin-invites-a-member) — this is a shared rule, regression
+risk here is real.
 
 - [ ] **Step 4: Run tests to verify they pass**
 

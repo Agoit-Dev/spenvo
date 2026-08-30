@@ -164,6 +164,25 @@ invite is for, and only by their own already-verified email — not an open quer
 any authenticated user (anyone can invite). `delete`: only by the matching-email caller (cleanup
 after resolving). No `update`.
 
+## Known gap, deliberately deferred (found during Task 7's review)
+
+`AsegurarUsuarioUseCase.paraVincularEmail`'s pending-invite resolution loop
+(`pendientesRepository.obtenerPorEmail(...).forEach { invitarMiembro(...); eliminar(...) }`) runs
+sequentially and uncaught. If granting invite N of several throws (a genuine Firestore error),
+invites before N are already correctly granted-and-removed, but invite N and everything after it
+are never attempted — and since `paraVincularEmail` only ever runs once, at the
+anonymous-to-registered transition, those remaining invites are never retried. They stay
+permanently pending with no automatic resolution and no signal to either the inviter or invitee.
+Not fixed here: correctly recovering (retry-with-backoff, or at minimum surfacing the stuck
+invites somewhere either party can see and re-trigger) is more scope than this bug fix warrants on
+its own, and there's currently no sender-side pending-invite UI at all (see "Out of scope" above)
+to even show a stuck invite if we detected one. Revisit alongside building that UI, if it's ever
+built — until then, worth noting that this bug only bites plans that invite 2+ not-yet-registered
+emails where the second-or-later grant hits a real Firestore error, which should be rare in
+practice (not from this bug when Firestore itself is healthy — see the separate, higher-priority
+`acceso_plan_financiero.create` rule gap in the plan's Task 9, without which EVERY pending-invite
+resolution fails, not just a rare partial one).
+
 ## Known gap, deliberately deferred (found during Task 4's review)
 
 `CuentaViewModel.registrar()` runs `vincularCredencial(...)` (which permanently upgrades the
