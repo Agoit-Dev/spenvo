@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
@@ -48,5 +49,28 @@ class SesionPreferencesTest {
         preferences.limpiarLogout()
 
         assertFalse(preferences.sesionCerradaExplicitamente.first())
+    }
+
+    @Test
+    fun marcarLogoutPersisteEntreInstancias() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val nombreArchivo = "sesion_persistencia_test"
+        fun nuevaInstancia(scope: CoroutineScope) = SesionPreferences(
+            PreferenceDataStoreFactory.create(
+                scope = scope,
+            ) { context.preferencesDataStoreFile(nombreArchivo) },
+        )
+
+        val primerScope = CoroutineScope(SupervisorJob())
+        nuevaInstancia(primerScope).marcarLogout()
+        primerScope.cancel()
+
+        val segundoScope = CoroutineScope(SupervisorJob())
+        val segundaInstancia = nuevaInstancia(segundoScope)
+        val persistido = segundaInstancia.sesionCerradaExplicitamente.first()
+        segundoScope.cancel()
+        context.preferencesDataStoreFile(nombreArchivo).delete()
+
+        assertTrue(persistido)
     }
 }
