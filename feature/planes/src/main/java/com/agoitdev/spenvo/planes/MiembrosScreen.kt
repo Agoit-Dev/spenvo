@@ -97,8 +97,8 @@ Scaffold(
     if (mostrarDialogoInvitar) {
         InvitarDialog(
             cargando = estadoInvitar.cargando,
-            onConfirmar = { usuarioId, rol ->
-                viewModel.invitar(planId = planId, usuarioId = usuarioId, rol = rol)
+            onConfirmar = { identificador, rol ->
+                viewModel.invitar(planId = planId, identificador = identificador, rol = rol)
             },
             onCancelar = { mostrarDialogoInvitar = false },
         )
@@ -155,7 +155,7 @@ private fun InvitarDialog(
     onConfirmar: (String, Rol) -> Unit,
     onCancelar: () -> Unit,
 ) {
-    var usuarioId by rememberSaveable { mutableStateOf("") }
+    var identificador by rememberSaveable { mutableStateOf("") }
     var rol by rememberSaveable { mutableStateOf(Rol.EDITOR) }
 
     AlertDialog(
@@ -164,9 +164,9 @@ private fun InvitarDialog(
         text = {
             Column {
                 OutlinedTextField(
-                    value = usuarioId,
-                    onValueChange = { usuarioId = it },
-                    label = { Text(stringResource(R.string.members_invite_uid)) },
+                    value = identificador,
+                    onValueChange = { identificador = it },
+                    label = { Text(stringResource(R.string.members_invite_identificador)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -181,7 +181,7 @@ private fun InvitarDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirmar(usuarioId.trim(), rol) },
+                onClick = { onConfirmar(identificador.trim(), rol) },
                 enabled = !cargando,
             ) {
                 if (cargando) {

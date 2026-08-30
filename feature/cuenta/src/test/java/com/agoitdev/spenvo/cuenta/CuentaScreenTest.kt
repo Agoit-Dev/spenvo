@@ -8,9 +8,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import com.agoitdev.spenvo.domain.model.AccesoPlan
+import com.agoitdev.spenvo.domain.model.InvitacionPendiente
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.Usuario
+import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.StorageRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
@@ -45,6 +49,8 @@ class CuentaScreenTest {
 
     private val storageRepository = FakeStorageRepositorioPantalla()
     private val usuarioRepository = FakeUsuarioRepositorioPantalla()
+    private val accesosRepository = FakeAccesoPlanRepositorioPantalla()
+    private val pendientesRepository = FakePendientesRepositorioPantalla()
 
     @Before
     fun setUp() {
@@ -64,6 +70,8 @@ class CuentaScreenTest {
         asegurarUsuario = AsegurarUsuarioUseCase(
             usuarioRepository,
             GenerarNombreUsuarioUnicoUseCase(usuarioRepository),
+            accesosRepository,
+            pendientesRepository,
         ),
         renombrarUsuario = RenombrarUsuarioUseCase(usuarioRepository),
     )
@@ -207,4 +215,17 @@ private class FakeUsuarioRepositorioPantalla : UsuarioRepository {
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
     override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
     override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
+}
+
+private class FakeAccesoPlanRepositorioPantalla : AccesoPlanRepository {
+    override fun observarAccesosDelUsuario(usuarioId: String): Flow<List<AccesoPlan>> = MutableStateFlow(emptyList())
+    override fun observarAccesosDelPlan(planId: String): Flow<List<AccesoPlan>> = MutableStateFlow(emptyList())
+    override suspend fun invitarMiembro(acceso: AccesoPlan) = Unit
+    override suspend fun aceptarInvitacion(usuarioId: String, planId: String) = Unit
+}
+
+private class FakePendientesRepositorioPantalla : InvitacionPendienteRepository {
+    override suspend fun crear(invitacion: InvitacionPendiente) = Unit
+    override suspend fun obtenerPorEmail(emailNormalizado: String): List<InvitacionPendiente> = emptyList()
+    override suspend fun eliminar(emailNormalizado: String, planId: String) = Unit
 }

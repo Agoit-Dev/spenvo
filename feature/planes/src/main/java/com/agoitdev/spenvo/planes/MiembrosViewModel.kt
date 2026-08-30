@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.MiembroResuelto
 import com.agoitdev.spenvo.domain.model.Rol
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.InvitarMiembroUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -24,6 +26,7 @@ class MiembrosViewModel @Inject constructor(
     private val accesosRepository: AccesoPlanRepository,
     private val invitarMiembro: InvitarMiembroUseCase,
     private val usuarioRepository: UsuarioRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
 fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
@@ -39,14 +42,25 @@ fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
     private val _estadoInvitar = MutableStateFlow(InvitarEstado())
     val estadoInvitar: StateFlow<InvitarEstado> = _estadoInvitar.asStateFlow()
 
-    fun invitar(planId: String, usuarioId: String, rol: Rol) {
-        if (usuarioId.isBlank()) {
-            _estadoInvitar.value = InvitarEstado(error = "El UID del usuario es obligatorio")
+    fun invitar(planId: String, identificador: String, rol: Rol) {
+        if (identificador.isBlank()) {
+            _estadoInvitar.value = InvitarEstado(error = "El nombre de usuario o email es obligatorio")
             return
         }
         _estadoInvitar.update { it.copy(cargando = true, error = null) }
         viewModelScope.launch {
-            runCatching { invitarMiembro(planId = planId, usuarioId = usuarioId.trim(), rol = rol) }
+            val invitadoPor = authRepository.observeSesion().first().uid.orEmpty()
+            runCatching {
+                invitarMiembro(
+                    planId = planId,
+                    identificador = identificador.trim(),
+                    rol = rol,
+                    invitadoPor = invitadoPor,
+                )
+            }
+                // Generic confirmation regardless of resolution outcome (anti-enumeration): the use
+                // case itself never distinguishes "resolved" from "not resolved" via an exception,
+                // only real Firestore failures land in onFailure below.
                 .onSuccess { _estadoInvitar.value = InvitarEstado(invitado = true) }
                 .onFailure { e -> _estadoInvitar.value = InvitarEstado(error = e.message) }
         }

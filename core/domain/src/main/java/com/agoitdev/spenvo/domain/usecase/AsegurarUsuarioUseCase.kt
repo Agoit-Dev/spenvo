@@ -1,7 +1,11 @@
 package com.agoitdev.spenvo.domain.usecase
 
+import com.agoitdev.spenvo.domain.model.AccesoPlan
+import com.agoitdev.spenvo.domain.model.InvitacionEstado
 import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.model.normalizarEmail
+import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 
 /**
@@ -11,6 +15,8 @@ import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 class AsegurarUsuarioUseCase(
     private val usuarioRepository: UsuarioRepository,
     private val generarNombreUsuarioUnico: GenerarNombreUsuarioUnicoUseCase,
+    private val accesosRepository: AccesoPlanRepository,
+    private val pendientesRepository: InvitacionPendienteRepository,
 ) {
     /** Best-effort bootstrap for a freshly established anonymous session. */
     suspend fun paraSesionAnonima(usuarioId: String) {
@@ -23,11 +29,29 @@ class AsegurarUsuarioUseCase(
      * Called right after linking an email/password credential to the anonymous account.
      * The `?:` fallback is defensive: normally [paraSesionAnonima] already created the doc by the
      * time registration happens, but this keeps the flow correct even if that step was skipped.
+     *
+     * Also resolves any [com.agoitdev.spenvo.domain.model.InvitacionPendiente] that was waiting on
+     * this exact email: each one becomes a real [AccesoPlan] for this now-known [usuarioId], and
+     * is then removed from the pending collection — see the design doc's "Invite by nombreUsuario
+     * or email" section.
      */
     suspend fun paraVincularEmail(usuarioId: String, nombre: String, email: String) {
         val existente = usuarioRepository.obtener(usuarioId)
             ?: Usuario(id = usuarioId, nombreUsuario = generarNombreUsuarioUnico(usuarioId))
         usuarioRepository.actualizar(existente.copy(nombre = nombre, email = email))
-        usuarioRepository.registrarIndiceEmail(usuarioId, normalizarEmail(email))
+        val emailNormalizado = normalizarEmail(email)
+        usuarioRepository.registrarIndiceEmail(usuarioId, emailNormalizado)
+
+        pendientesRepository.obtenerPorEmail(emailNormalizado).forEach { pendiente ->
+            accesosRepository.invitarMiembro(
+                AccesoPlan(
+                    usuarioId = usuarioId,
+                    planId = pendiente.planId,
+                    rol = pendiente.rol,
+                    invitacionEstado = InvitacionEstado.PENDIENTE,
+                ),
+            )
+            pendientesRepository.eliminar(emailNormalizado, pendiente.planId)
+        }
     }
 }

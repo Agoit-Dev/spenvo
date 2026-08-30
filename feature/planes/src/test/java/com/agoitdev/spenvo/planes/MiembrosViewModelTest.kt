@@ -1,14 +1,19 @@
 package com.agoitdev.spenvo.planes
 
 import com.agoitdev.spenvo.domain.model.AccesoPlan
+import com.agoitdev.spenvo.domain.model.InvitacionPendiente
 import com.agoitdev.spenvo.domain.model.Rol
+import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
+import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.InvitarMiembroUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -19,6 +24,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -27,6 +33,8 @@ class MiembrosViewModelTest {
 
     private val accesosRepo = FakeAccesoPlanRepositorioMiembros()
     private val usuarioRepo = FakeUsuarioRepositorioMiembros()
+    private val pendientesRepo = FakePendientesRepositorioMiembros()
+    private val authRepo = FakeAuthRepositorioMiembros()
 
     @Before
     fun setUp() {
@@ -41,10 +49,13 @@ class MiembrosViewModelTest {
     private fun crearViewModel(
         accesosRepo: AccesoPlanRepository = this.accesosRepo,
         usuarioRepo: UsuarioRepository = this.usuarioRepo,
+        pendientesRepo: InvitacionPendienteRepository = this.pendientesRepo,
+        authRepo: AuthRepository = this.authRepo,
     ) = MiembrosViewModel(
         accesosRepository = accesosRepo,
-        invitarMiembro = InvitarMiembroUseCase(accesosRepo),
+        invitarMiembro = InvitarMiembroUseCase(accesosRepo, usuarioRepo, pendientesRepo),
         usuarioRepository = usuarioRepo,
+        authRepository = authRepo,
     )
 
     @Test
@@ -82,24 +93,85 @@ class MiembrosViewModelTest {
         assertNull(resuelto.usuario)
         job.cancel()
     }
+
+    @Test
+    fun `invitar por nombreUsuario resuelto crea el acceso y marca invitado`() = runTest {
+        val usuarioRepo = FakeUsuarioRepositorioMiembros(resolucionesNombreUsuario = mapOf("gatoazul1" to "u1"))
+        val viewModel = crearViewModel(usuarioRepo = usuarioRepo)
+
+        viewModel.invitar(planId = "p1", identificador = "GatoAzul1", rol = Rol.EDITOR)
+        advanceUntilIdle()
+
+        assertEquals(listOf("u1"), accesosRepo.invitados.map { it.usuarioId })
+        assertTrue(viewModel.estadoInvitar.value.invitado)
+        assertNull(viewModel.estadoInvitar.value.error)
+    }
+
+    @Test
+    fun `invitar con un identificador que no resuelve a ninguna cuenta igual marca invitado sin error`() = runTest {
+        // This is the anti-enumeration guarantee: the UI must show the exact same confirmation
+        // whether or not a real account was found. A broken implementation that branched the
+        // outcome on resolution success would leave `invitado` false or `error` non-null here.
+        val viewModel = crearViewModel()
+
+        viewModel.invitar(planId = "p1", identificador = "NoExisteNadie99", rol = Rol.VIEWER)
+        advanceUntilIdle()
+
+        assertTrue(accesosRepo.invitados.isEmpty())
+        assertTrue(pendientesRepo.creadas.isEmpty())
+        assertTrue(viewModel.estadoInvitar.value.invitado)
+        assertNull(viewModel.estadoInvitar.value.error)
+    }
+
+    @Test
+    fun `invitar por email no resuelto crea invitacion pendiente y tambien marca invitado`() = runTest {
+        val viewModel = crearViewModel()
+
+        viewModel.invitar(planId = "p1", identificador = "familia@example.com", rol = Rol.VIEWER)
+        advanceUntilIdle()
+
+        assertEquals(listOf("familia@example.com"), pendientesRepo.creadas.map { it.email })
+        assertEquals(listOf("user-1"), pendientesRepo.creadas.map { it.invitadoPor })
+        assertTrue(viewModel.estadoInvitar.value.invitado)
+        assertNull(viewModel.estadoInvitar.value.error)
+    }
+
+    @Test
+    fun `invitar con identificador en blanco expone un error de validacion sin llamar al caso de uso`() = runTest {
+        val viewModel = crearViewModel()
+
+        viewModel.invitar(planId = "p1", identificador = "   ", rol = Rol.VIEWER)
+        advanceUntilIdle()
+
+        assertTrue(accesosRepo.invitados.isEmpty())
+        assertTrue(pendientesRepo.creadas.isEmpty())
+        assertEquals(false, viewModel.estadoInvitar.value.invitado)
+        assertEquals("El nombre de usuario o email es obligatorio", viewModel.estadoInvitar.value.error)
+    }
 }
 
 private class FakeAccesoPlanRepositorioMiembros(
     private val accesos: List<AccesoPlan> = emptyList(),
 ) : AccesoPlanRepository {
+    val invitados = mutableListOf<AccesoPlan>()
+
     override fun observarAccesosDelUsuario(usuarioId: String): Flow<List<AccesoPlan>> =
         flowOf(accesos.filter { it.usuarioId == usuarioId })
 
     override fun observarAccesosDelPlan(planId: String): Flow<List<AccesoPlan>> =
         flowOf(accesos.filter { it.planId == planId })
 
-    override suspend fun invitarMiembro(acceso: AccesoPlan) = Unit
+    override suspend fun invitarMiembro(acceso: AccesoPlan) {
+        invitados.add(acceso)
+    }
 
     override suspend fun aceptarInvitacion(usuarioId: String, planId: String) = Unit
 }
 
 private class FakeUsuarioRepositorioMiembros(
     private val existentes: List<Usuario> = emptyList(),
+    private val resolucionesNombreUsuario: Map<String, String> = emptyMap(),
+    private val resolucionesEmail: Map<String, String> = emptyMap(),
 ) : UsuarioRepository {
     override suspend fun obtener(usuarioId: String): Usuario? = existentes.find { it.id == usuarioId }
 
@@ -123,7 +195,29 @@ private class FakeUsuarioRepositorioMiembros(
 
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
 
-    override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
+    override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? =
+        resolucionesNombreUsuario[nombreUsuarioNormalizado]
 
-    override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
+    override suspend fun resolverPorEmail(emailNormalizado: String): String? = resolucionesEmail[emailNormalizado]
+}
+
+private class FakePendientesRepositorioMiembros : InvitacionPendienteRepository {
+    val creadas = mutableListOf<InvitacionPendiente>()
+
+    override suspend fun crear(invitacion: InvitacionPendiente) {
+        creadas.add(invitacion)
+    }
+
+    override suspend fun obtenerPorEmail(emailNormalizado: String): List<InvitacionPendiente> = emptyList()
+    override suspend fun eliminar(emailNormalizado: String, planId: String) = Unit
+}
+
+private class FakeAuthRepositorioMiembros : AuthRepository {
+    private val sesionFlow = MutableStateFlow(Sesion(uid = "user-1", esAnonima = false))
+
+    override fun observeSesion(): Flow<Sesion> = sesionFlow
+    override suspend fun iniciarSesionAnonima() = Unit
+    override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
+    override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
+    override suspend fun cerrarSesion() = Unit
 }

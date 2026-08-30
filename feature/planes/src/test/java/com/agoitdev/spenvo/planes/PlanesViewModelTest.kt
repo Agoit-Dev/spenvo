@@ -10,9 +10,11 @@ import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.model.Usuario
+import com.agoitdev.spenvo.domain.model.InvitacionPendiente
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
+import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
@@ -57,6 +59,7 @@ class PlanesViewModelTest {
     private val sincronizador = FakePlanSincronizacion()
     private val authRepository = FakeAuthRepository(sesionFlow)
     private val usuarioRepo = FakeUsuarioRepository()
+    private val pendientesRepo = FakePendientesRepository()
 
     @Before
     fun setUp() {
@@ -73,6 +76,8 @@ class PlanesViewModelTest {
         asegurarUsuario: AsegurarUsuarioUseCase = AsegurarUsuarioUseCase(
             usuarioRepo,
             GenerarNombreUsuarioUnicoUseCase(usuarioRepo),
+            accesosRepo,
+            pendientesRepo,
         ),
     ) = PlanesViewModel(
         crearPlan = CrearPlanUseCase(
@@ -348,4 +353,10 @@ private class FakeUsuarioRepository : UsuarioRepository {
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
     override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
     override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
+}
+
+private class FakePendientesRepository : InvitacionPendienteRepository {
+    override suspend fun crear(invitacion: InvitacionPendiente) = Unit
+    override suspend fun obtenerPorEmail(emailNormalizado: String): List<InvitacionPendiente> = emptyList()
+    override suspend fun eliminar(emailNormalizado: String, planId: String) = Unit
 }

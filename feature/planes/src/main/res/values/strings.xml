@@ -20,7 +20,7 @@
     <string name="members_empty">Aún no hay miembros.</string>
     <string name="members_loading">Cargando…</string>
     <string name="members_invite">Invitar miembro</string>
-    <string name="members_invite_uid">UID del usuario</string>
+    <string name="members_invite_identificador">Nombre de usuario o email</string>
     <string name="members_invite_role">Rol</string>
     <string name="members_invite_confirm">Invitar</string>
     <string name="members_invite_cancel">Cancelar</string>

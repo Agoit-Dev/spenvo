@@ -16,9 +16,11 @@ import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.model.Usuario
+import com.agoitdev.spenvo.domain.model.InvitacionPendiente
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
+import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
@@ -109,6 +111,8 @@ class PlanesScreenTest {
         asegurarUsuario = AsegurarUsuarioUseCase(
             FakeUsuarioRepositorioScreen(),
             GenerarNombreUsuarioUnicoUseCase(FakeUsuarioRepositorioScreen()),
+            accesoPlanRepo,
+            FakePendientesRepositorioScreen(),
         ),
         authRepository = authRepository,
     )
@@ -287,4 +291,10 @@ private class FakeUsuarioRepositorioScreen : UsuarioRepository {
     override suspend fun registrarIndiceEmail(usuarioId: String, emailNormalizado: String) = Unit
     override suspend fun resolverPorNombreUsuario(nombreUsuarioNormalizado: String): String? = null
     override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
+}
+
+private class FakePendientesRepositorioScreen : InvitacionPendienteRepository {
+    override suspend fun crear(invitacion: InvitacionPendiente) = Unit
+    override suspend fun obtenerPorEmail(emailNormalizado: String): List<InvitacionPendiente> = emptyList()
+    override suspend fun eliminar(emailNormalizado: String, planId: String) = Unit
 }

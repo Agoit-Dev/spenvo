@@ -2,7 +2,9 @@ package com.agoitdev.spenvo.data.di
 
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
+import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
+import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AceptarInvitacionUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarCategoriaUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarPlanUseCase
@@ -20,6 +22,7 @@ import com.agoitdev.spenvo.domain.usecase.SembrarCategoriasPorDefectoUseCase
 import com.agoitdev.spenvo.domain.usecase.SembrarPlanEjemploUseCase
 import com.agoitdev.spenvo.data.remote.repository.FirebaseAccesoPlanRepository
 import com.agoitdev.spenvo.data.remote.repository.FirebaseCategoriaRepository
+import com.agoitdev.spenvo.data.remote.repository.FirebaseInvitacionPendienteRepository
 import com.agoitdev.spenvo.data.remote.repository.FirebasePlanFinancieroRepository
 import com.agoitdev.spenvo.data.remote.sync.CategoriaSincronizacion
 import com.agoitdev.spenvo.data.remote.sync.CategoriaSincronizador
@@ -53,6 +56,12 @@ abstract class PlanModule {
     abstract fun bindCategoriaRepository(
         impl: FirebaseCategoriaRepository,
     ): CategoriaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindInvitacionPendienteRepository(
+        impl: FirebaseInvitacionPendienteRepository,
+    ): InvitacionPendienteRepository
 
     @Binds
     @Singleton
@@ -96,7 +105,9 @@ object PlanUseCaseModule {
     @Provides
     fun provideInvitarMiembro(
         accesosRepository: AccesoPlanRepository,
-    ): InvitarMiembroUseCase = InvitarMiembroUseCase(accesosRepository)
+        usuarioRepository: UsuarioRepository,
+        pendientesRepository: InvitacionPendienteRepository,
+    ): InvitarMiembroUseCase = InvitarMiembroUseCase(accesosRepository, usuarioRepository, pendientesRepository)
 
     @Provides
     fun provideAceptarInvitacion(

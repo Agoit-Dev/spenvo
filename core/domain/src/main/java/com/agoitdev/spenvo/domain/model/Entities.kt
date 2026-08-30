@@ -34,6 +34,14 @@ data class AccesoPlan(
     val updatedAt: Instant = Instant.now(),
 )
 
+data class InvitacionPendiente(
+    val email: String,
+    val planId: String,
+    val rol: Rol,
+    val invitadoPor: String,
+    val createdAt: Instant = Instant.now(),
+)
+
 data class Categoria(
     val id: String,
     val planId: String,

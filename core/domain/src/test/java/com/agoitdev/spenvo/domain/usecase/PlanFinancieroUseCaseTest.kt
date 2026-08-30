@@ -70,23 +70,8 @@ class ObservarPlanesDelUsuarioUseCaseTest {
     }
 }
 
-class InvitarMiembroUseCaseTest {
-
-    private val accesosRepo = FakeAccesoRepository()
-
-    @Test
-    fun `invita miembro con rol y estado pendiente`() = runTest {
-        val useCase = InvitarMiembroUseCase(accesosRepo)
-
-        useCase(planId = "p1", usuarioId = "user-2", rol = Rol.EDITOR)
-
-        val acceso = accesosRepo.invitados.single()
-        assertEquals("p1", acceso.planId)
-        assertEquals("user-2", acceso.usuarioId)
-        assertEquals(Rol.EDITOR, acceso.rol)
-        assertEquals(InvitacionEstado.PENDIENTE, acceso.invitacionEstado)
-    }
-}
+// InvitarMiembroUseCase's own tests now live in InvitarMiembroUseCaseTest.kt — this use case's
+// constructor/behavior changed materially (nombreUsuario/email resolution) as of Task 7.
 
 class AceptarInvitacionUseCaseTest {
 

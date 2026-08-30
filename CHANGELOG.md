@@ -125,6 +125,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `miembrosResueltos`, and `MiembroCard` shows `usuario?.nombreUsuario`, falling back to the new
   `members_cargando` string ("Cargando…"/"Loading…") for a member whose `Usuario` doc hasn't
   resolved yet, rather than ever showing the raw UID.
+- Usuario entity + nombreUsuario, slice 7/10 (anti-enumeration invite): Miembros' invite dialog now
+  accepts a `nombreUsuario` or an email instead of a raw UID (`members_invite_identificador`,
+  replacing `members_invite_uid`). `InvitarMiembroUseCase` resolves the identifier itself (email via
+  `emails_usuario`, otherwise via `nombres_usuario`) and creates the `AccesoPlan` directly when it
+  resolves to a real account; an unresolved email becomes a pending invite in the new
+  `invitaciones_pendientes_por_email` collection (`InvitacionPendienteRepository`/
+  `FirebaseInvitacionPendienteRepository`), later auto-resolved into a real `AccesoPlan` once that
+  email registers (`AsegurarUsuarioUseCase.paraVincularEmail` now looks up and consumes any pending
+  invites for the newly-linked email); an unresolved `nombreUsuario` is silently discarded, since
+  unlike an email it can't identify a "future" account. `MiembrosViewModel.invitar()` always reports
+  the same generic success regardless of resolution outcome — the use case never surfaces "not
+  found" as an error, only a genuine Firestore failure does — so the UI never confirms or denies
+  whether a given identifier belongs to a real account.
 - Home screen: opening a plan now lands on a per-plan dashboard (`HomeScreen`/`HomeViewModel`,
   `:feature:movimientos`) instead of going straight to the Movimientos list — cumulative balance
   across all of the plan's movimientos (new `ObservarBalanceAcumuladoPlanUseCase`), this month's

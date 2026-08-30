@@ -1,6 +1,6 @@
 # Data Schema — Spenvo
 
-Document version: **1.1** (M1). Status: baseline draft, versioned with every change.
+Document version: **1.2** (M1 + Usuario/nombreUsuario slice 7/10). Status: baseline draft, versioned with every change.
 
 ## 1. Source of truth and model
 
@@ -40,6 +40,22 @@ erDiagram
 | avatar_url | string? | M7 (Storage) |
 | createdAt | timestamp | |
 | updatedAt | timestamp | |
+
+#### `invitaciones_pendientes_por_email/{emailNormalizado}_{planId}` (added Usuario/nombreUsuario slice 7/10)
+| Field | Type | Notes |
+|---|---|---|
+| email | string | normalized (lowercase/trimmed) |
+| planId | string | |
+| rol | enum | `owner` \| `admin` \| `editor` \| `viewer` |
+| invitadoPor | string | inviter's uid |
+| createdAt | timestamp | |
+
+Written when `InvitarMiembroUseCase` resolves an email that has no matching `usuarioId` yet;
+consumed (converted to a real `acceso_plan_financiero` doc, then deleted) by
+`AsegurarUsuarioUseCase.paraVincularEmail` once that email registers. No `nombres_usuario`-miss
+equivalent — see the design doc's "Invite by nombreUsuario or email" section for why. `list` is
+restricted to the caller's own verified email (rules land in a later slice); `get` is never used
+against this collection, only `list`/`create`/`delete`.
 
 #### `planes_financieros/{planId}`
 | Field | Type | Notes |
@@ -199,3 +215,4 @@ See `firestore.indexes.json`. Rules:
 |---|---|---|---|
 | 2026-08-19 | 1.0 | Room v1 / Firestore draft | M0 baseline |
 | 2026-08-20 | 1.1 | Room v2 | M1 — local entities as cache (migration v1→v2, validated) |
+| 2026-08-30 | 1.2 | Firestore | Usuario/nombreUsuario slice 7/10 — added `invitaciones_pendientes_por_email` collection (anti-enumeration invite-by-email pending state) |
