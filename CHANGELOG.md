@@ -63,6 +63,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Login real + logout sin recreación anónima automática (front 2/3): real email/password
+  sign-in and password recovery replace the placeholder registration-only flow. New
+  `AuthRepository.iniciarSesionConEmail`/`enviarRecuperacionPassword`, backed by
+  `IniciarSesionConEmailUseCase`/`EnviarRecuperacionPasswordUseCase` (`:core:domain`) and
+  `FirebaseAuthRepository`; `CuentaViewModel.iniciarSesion`/`recuperarPassword` map every
+  failure — wrong password, unknown email, malformed email — to the same generic
+  `errorRes` (`mapearErrorAuth`), so the UI never confirms or denies whether a given
+  email is registered, the same anti-enumeration property the Usuario/nombreUsuario work
+  established for Miembros invites. `recuperarPassword` reports success unconditionally,
+  regardless of whether `enviarRecuperacionPassword` actually found the account.
+  Previously, logging out via `AuthRepository.cerrarSesion()` always silently re-created a
+  new anonymous session, so a signed-out user could never see a real sign-in screen — the
+  gate closes that: a new `SesionPreferences` (`:core:data`, DataStore Preferences,
+  `sesion_cerrada_explicitamente` key) persists an explicit-logout flag across process
+  restarts, and root-level `SesionGateViewModel` (new `EstadoGate` — `Cargando`/
+  `MostrarApp`/`MostrarGate`) combines that flag with the live session to decide whether
+  to show the app or block on `CuentaScreen` until the user explicitly signs in or chooses
+  to continue as guest, only then re-establishing anonymous auth. This replaces
+  `PlanesViewModel`'s previous auto-anonymous-login retry loop, which used to fire on
+  every collector restart regardless of an explicit logout. `CuentaScreen` gains a "Crear
+  cuenta"/"Iniciar sesión" toggle (`AuthTab`) and a password-recovery dialog; all new
+  strings ship in both `values/` and `values-en/` per AGENTS.md's i18n rule.
 - Usuario entity + nombreUsuario, slice 1/10 (foundation only, no user-visible behavior yet): the
   `Usuario` domain model and Room entity gain a `nombreUsuario` field (the unique public handle
   that will replace raw UID display in Miembros), and `nombre`/`email` become nullable to
