@@ -9,9 +9,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -54,12 +57,30 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun SpenvoApp(modifier: Modifier = Modifier) {
+fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel = hiltViewModel()) {
+    val estadoGate by gateViewModel.estado.collectAsStateWithLifecycle()
     val backStack = rememberNavBackStack(PlanesRoute)
+
+    LaunchedEffect(estadoGate) {
+        when (estadoGate) {
+            EstadoGate.MostrarGate -> {
+                backStack.clear()
+                backStack.add(CuentaRoute)
+            }
+            EstadoGate.MostrarApp -> {
+                if (backStack.singleOrNull() == CuentaRoute) {
+                    backStack.clear()
+                    backStack.add(PlanesRoute)
+                }
+            }
+            EstadoGate.Cargando -> Unit
+        }
+    }
+
     Surface(modifier = modifier.fillMaxSize()) {
         NavDisplay(
             backStack = backStack,
-            onBack = { backStack.removeLastOrNull() },
+            onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
             entryDecorators = listOf(
                 rememberSaveableStateHolderNavEntryDecorator(),
                 rememberViewModelStoreNavEntryDecorator(),
@@ -90,7 +111,7 @@ fun SpenvoApp(modifier: Modifier = Modifier) {
                 }
                 entry<CuentaRoute> {
                     CuentaScreen(
-                        onRegistroCompletado = { backStack.removeLastOrNull() },
+                        onRegistroCompletado = { if (backStack.size > 1) backStack.removeLastOrNull() },
                     )
                 }
             },

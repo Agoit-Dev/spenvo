@@ -20,7 +20,6 @@ import com.agoitdev.spenvo.domain.usecase.SembrarPlanEjemploUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -99,13 +98,6 @@ class PlanesViewModel @Suppress("LongParameterList") @Inject constructor(
 
 init {
         viewModelScope.launch {
-            while (true) {
-                runCatching { authRepository.iniciarSesionAnonima() }
-                    .onSuccess { break }
-                delay(RETRY_DELAY_MS)
-            }
-        }
-        viewModelScope.launch {
             sesion.filter { it.uid != null }.flatMapLatest { s ->
                 val uid = s.uid
                 if (uid == null) flowOf(Unit) else sincronizador.sincronizar(uid)
@@ -156,7 +148,6 @@ init {
     }
 
     private companion object {
-        const val RETRY_DELAY_MS = 30_000L
         const val WHILE_SUBSCRIBED_TIMEOUT_MS = 5_000L
     }
 }
