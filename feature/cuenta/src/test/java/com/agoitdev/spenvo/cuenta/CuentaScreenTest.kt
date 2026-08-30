@@ -162,16 +162,83 @@ class CuentaScreenTest {
         composeTestRule.onAllNodesWithText("Privacy", substring = true).assertCountEquals(0)
         composeTestRule.onAllNodesWithText("Export Data", substring = true).assertCountEquals(0)
     }
+
+    @Test
+    fun `sesion anonima con tabInicial CREAR_CUENTA muestra el formulario de registro por defecto`() {
+        val viewModel = crearViewModel(FakeAuthRepositorioPantalla(Sesion.Anonima))
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.CREAR_CUENTA)
+        }
+
+        composeTestRule.onNodeWithText("Tus datos de invitado", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `sesion anonima con tabInicial INICIAR_SESION muestra el formulario de login por defecto`() {
+        val viewModel = crearViewModel(FakeAuthRepositorioPantalla(Sesion.Anonima))
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.INICIAR_SESION)
+        }
+
+        composeTestRule.onNodeWithText("¿Olvidaste tu contraseña?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Tus datos de invitado", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `tocar iniciar sesion invoca iniciarSesion del viewmodel con email y password`() {
+        val authRepository = FakeAuthRepositorioPantalla(Sesion.Anonima)
+        val viewModel = crearViewModel(authRepository)
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.INICIAR_SESION)
+        }
+
+        composeTestRule.onNodeWithText("Correo").performTextReplacement("ana@example.com")
+        composeTestRule.onNodeWithText("Contraseña").performTextReplacement("secret123")
+        composeTestRule.onNodeWithText("Iniciar sesión").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals("ana@example.com", authRepository.ultimoEmailLogin)
+        assertEquals("secret123", authRepository.ultimaPasswordLogin)
+    }
+
+    @Test
+    fun `abrir y confirmar el dialogo de recuperacion invoca recuperarPassword`() {
+        val authRepository = FakeAuthRepositorioPantalla(Sesion.Anonima)
+        val viewModel = crearViewModel(authRepository)
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.INICIAR_SESION)
+        }
+
+        composeTestRule.onNodeWithText("¿Olvidaste tu contraseña?").performClick()
+        composeTestRule.onNodeWithText("Correo").performTextReplacement("ana@example.com")
+        composeTestRule.onNodeWithText("Enviar").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals("ana@example.com", authRepository.ultimoEmailRecovery)
+    }
 }
 
 private class FakeAuthRepositorioPantalla(sesionInicial: Sesion) : AuthRepository {
     private val sesionFlow = MutableStateFlow(sesionInicial)
     var cerrarSesionLlamado = false
+    var ultimoEmailLogin: String? = null
+    var ultimaPasswordLogin: String? = null
+    var ultimoEmailRecovery: String? = null
 
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
-    override suspend fun iniciarSesionConEmail(email: String, password: String) = Unit
-    override suspend fun enviarRecuperacionPassword(email: String) = Unit
+    override suspend fun iniciarSesionConEmail(email: String, password: String) {
+        ultimoEmailLogin = email
+        ultimaPasswordLogin = password
+        sesionFlow.value = Sesion(uid = "user-1", esAnonima = false, email = email)
+    }
+    override suspend fun enviarRecuperacionPassword(email: String) {
+        ultimoEmailRecovery = email
+    }
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
     override suspend fun cerrarSesion() {
