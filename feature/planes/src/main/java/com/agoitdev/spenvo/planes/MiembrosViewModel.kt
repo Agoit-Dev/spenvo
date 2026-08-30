@@ -2,7 +2,6 @@ package com.agoitdev.spenvo.planes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.agoitdev.spenvo.domain.model.AccesoPlan
 import com.agoitdev.spenvo.domain.model.MiembroResuelto
 import com.agoitdev.spenvo.domain.model.Rol
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
@@ -27,11 +26,7 @@ class MiembrosViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
 
-fun observarMiembros(planId: String): StateFlow<List<AccesoPlan>> =
-        accesosRepository.observarAccesosDelPlan(planId)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS), emptyList())
-
-    fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
+fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
         accesosRepository.observarAccesosDelPlan(planId)
             .map { accesos ->
                 val usuarios = runCatching { usuarioRepository.obtenerVarios(accesos.map { it.usuarioId }) }

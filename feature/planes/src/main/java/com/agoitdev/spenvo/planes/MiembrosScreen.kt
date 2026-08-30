@@ -135,7 +135,7 @@ private fun MiembroCard(miembro: MiembroResuelto) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(
-                text = miembro.usuario?.nombreUsuario ?: stringResource(R.string.members_cargando),
+                text = miembro.usuario?.nombreUsuario ?: stringResource(R.string.members_loading),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(

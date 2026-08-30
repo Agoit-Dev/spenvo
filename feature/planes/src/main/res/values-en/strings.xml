@@ -18,7 +18,7 @@
     <string name="account_create">Create account</string>
     <string name="members_title">Members</string>
     <string name="members_empty">No members yet.</string>
-    <string name="members_cargando">Loading…</string>
+    <string name="members_loading">Loading…</string>
     <string name="members_invite">Invite member</string>
     <string name="members_invite_uid">User UID</string>
     <string name="members_invite_role">Role</string>
