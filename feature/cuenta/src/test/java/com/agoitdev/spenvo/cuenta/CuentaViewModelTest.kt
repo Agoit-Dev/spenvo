@@ -173,7 +173,8 @@ class CuentaViewModelTest {
     @Test
     fun `iniciarSesion con credenciales invalidas expone el mismo mensaje que usuario inexistente`() = runTest {
         authRepository.sesionFlow.value = Sesion.Anonima
-        authRepository.excepcionLogin = FirebaseAuthInvalidCredentialsException("ERROR_WRONG_PASSWORD", "wrong password")
+        authRepository.excepcionLogin =
+            FirebaseAuthInvalidCredentialsException("ERROR_WRONG_PASSWORD", "wrong password")
         val viewModel = crearViewModel()
         val job = launch { viewModel.sesion.collect {} }
         advanceUntilIdle()

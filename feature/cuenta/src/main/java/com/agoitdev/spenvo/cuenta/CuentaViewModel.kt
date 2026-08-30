@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class CuentaViewModel @Inject constructor(
+class CuentaViewModel @Suppress("LongParameterList") @Inject constructor(
     private val vincularCredencial: VincularCredencialUseCase,
     private val iniciarSesionConEmail: IniciarSesionConEmailUseCase,
     private val enviarRecuperacionPassword: EnviarRecuperacionPasswordUseCase,
