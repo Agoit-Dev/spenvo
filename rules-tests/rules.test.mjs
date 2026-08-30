@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -27,8 +27,8 @@ async function limpiarDatos() {
   await testEnv.clearFirestore();
 }
 
-function authed(uid) {
-  return testEnv.authenticatedContext(uid);
+function authed(uid, claims = {}) {
+  return testEnv.authenticatedContext(uid, claims);
 }
 
 const UID_OWNER = 'owner-1';
@@ -440,4 +440,216 @@ test('nadie puede borrar un ingreso directamente', async () => {
   await crearIngresoBase();
   const editor = authed(UID_EDITOR);
   await assertFails(deleteDoc(doc(editor.firestore(), 'ingresos', 'ing-1')));
+});
+
+// ---------------- usuarios ----------------
+test('cualquier autenticado puede hacer get de un usuario conocido', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'usuarios', 'u1'), {
+    uid: 'u1', nombreUsuario: 'gatoazul1', createdAt: new Date(), updatedAt: new Date(),
+  });
+  const u2 = authed('u2');
+  await assertSucceeds(getDoc(doc(u2.firestore(), 'usuarios', 'u1')));
+});
+
+test('deniega list sobre la coleccion usuarios', async () => {
+  await limpiarDatos();
+  const u2 = authed('u2');
+  await assertFails(getDocs(collection(u2.firestore(), 'usuarios')));
+});
+
+test('el dueno puede crear su propio doc de usuarios', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await assertSucceeds(setDoc(doc(u1.firestore(), 'usuarios', 'u1'), {
+    uid: 'u1', nombreUsuario: 'gatoazul1', createdAt: new Date(), updatedAt: new Date(),
+  }));
+});
+
+test('no se puede crear un doc de usuarios apuntando a otro uid', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await assertFails(setDoc(doc(u1.firestore(), 'usuarios', 'u2'), {
+    uid: 'u2', nombreUsuario: 'gatoazul1', createdAt: new Date(), updatedAt: new Date(),
+  }));
+});
+
+// ---------------- nombres_usuario ----------------
+test('cualquier autenticado puede hacer get de un nombreUsuario conocido', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u1' });
+  const u2 = authed('u2');
+  await assertSucceeds(getDoc(doc(u2.firestore(), 'nombres_usuario', 'gatoazul1')));
+});
+
+test('deniega list sobre la coleccion nombres_usuario', async () => {
+  await limpiarDatos();
+  const u2 = authed('u2');
+  await assertFails(getDocs(collection(u2.firestore(), 'nombres_usuario')));
+});
+
+test('el dueno puede reservar un nombreUsuario para si mismo', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await assertSucceeds(setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u1' }));
+});
+
+test('no se puede reservar un nombreUsuario apuntando a otro uid', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await assertFails(setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u2' }));
+});
+
+test('no se puede sobrescribir una reserva de nombreUsuario existente', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u1' });
+  await assertFails(setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u1' }));
+});
+
+test('solo el dueno puede borrar su propia reserva de nombreUsuario', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1'), { usuarioId: 'u1' });
+  const u2 = authed('u2');
+  await assertFails(deleteDoc(doc(u2.firestore(), 'nombres_usuario', 'gatoazul1')));
+  await assertSucceeds(deleteDoc(doc(u1.firestore(), 'nombres_usuario', 'gatoazul1')));
+});
+
+// ---------------- emails_usuario ----------------
+test('cualquier autenticado puede hacer get de un email conocido', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'emails_usuario', 'ana@example.com'), { usuarioId: 'u1' });
+  const u2 = authed('u2');
+  await assertSucceeds(getDoc(doc(u2.firestore(), 'emails_usuario', 'ana@example.com')));
+});
+
+test('deniega list sobre la coleccion emails_usuario', async () => {
+  await limpiarDatos();
+  const u2 = authed('u2');
+  await assertFails(getDocs(collection(u2.firestore(), 'emails_usuario')));
+});
+
+test('el dueno puede indexar su propio email', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await assertSucceeds(setDoc(doc(u1.firestore(), 'emails_usuario', 'ana@example.com'), { usuarioId: 'u1' }));
+});
+
+test('no se puede indexar un email apuntando a otro uid', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await assertFails(setDoc(doc(u1.firestore(), 'emails_usuario', 'ana@example.com'), { usuarioId: 'u2' }));
+});
+
+test('no se puede sobrescribir un email ya indexado', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'emails_usuario', 'ana@example.com'), { usuarioId: 'u1' });
+  await assertFails(setDoc(doc(u1.firestore(), 'emails_usuario', 'ana@example.com'), { usuarioId: 'u1' }));
+});
+
+test('solo el dueno puede borrar su propio indice de email', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(doc(u1.firestore(), 'emails_usuario', 'ana@example.com'), { usuarioId: 'u1' });
+  const u2 = authed('u2');
+  await assertFails(deleteDoc(doc(u2.firestore(), 'emails_usuario', 'ana@example.com')));
+  await assertSucceeds(deleteDoc(doc(u1.firestore(), 'emails_usuario', 'ana@example.com')));
+});
+
+// ---------------- invitaciones_pendientes_por_email ----------------
+test('cualquier autenticado puede crear una invitacion pendiente', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await assertSucceeds(setDoc(
+    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
+    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
+  ));
+});
+
+test('get directo sobre invitaciones_pendientes_por_email es denegado', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(
+    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
+    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
+  );
+  const ana = authed('u2', { email: 'ana@example.com' });
+  await assertFails(getDoc(doc(ana.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1')));
+});
+
+test('list solo funciona filtrando por el propio email verificado', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(
+    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
+    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
+  );
+  const ana = authed('u2', { email: 'ana@example.com' });
+  await assertSucceeds(getDocs(
+    query(collection(ana.firestore(), 'invitaciones_pendientes_por_email'), where('email', '==', 'ana@example.com')),
+  ));
+  const u3 = authed('u3');
+  await assertFails(getDocs(
+    query(collection(u3.firestore(), 'invitaciones_pendientes_por_email'), where('email', '==', 'ana@example.com')),
+  ));
+});
+
+test('solo el invitado con el email coincidente puede borrar la invitacion pendiente', async () => {
+  await limpiarDatos();
+  const u1 = authed('u1');
+  await setDoc(
+    doc(u1.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
+    { email: 'ana@example.com', planId: 'p1', rol: 'editor', invitadoPor: 'u1', createdAt: new Date() },
+  );
+  const otro = authed('u3', { email: 'otro@example.com' });
+  await assertFails(deleteDoc(doc(otro.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1')));
+  const ana = authed('u2', { email: 'ana@example.com' });
+  await assertSucceeds(deleteDoc(doc(ana.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1')));
+});
+
+// ---------------- acceso_plan_financiero create: auto-resolucion de invitacion pendiente ----------------
+async function seedInvitacionPendiente(rol) {
+  const seeder = authed('owner-seed');
+  await setDoc(doc(seeder.firestore(), 'planes_financieros', 'p1'), {
+    id: 'p1', nombre: 'Casa', moneda: 'ARS', createdBy: 'owner-seed',
+  });
+  await setDoc(
+    doc(seeder.firestore(), 'invitaciones_pendientes_por_email', 'ana@example.com_p1'),
+    { email: 'ana@example.com', planId: 'p1', rol, invitadoPor: 'owner-seed', createdAt: new Date() },
+  );
+}
+
+test('el propio invitado puede auto-otorgarse el rol exacto de su invitacion pendiente', async () => {
+  await limpiarDatos();
+  await seedInvitacionPendiente('editor');
+  const ana = authed('u1', { email: 'ana@example.com' });
+  await assertSucceeds(setDoc(doc(ana.firestore(), 'acceso_plan_financiero', 'u1_p1'), {
+    usuarioId: 'u1', planId: 'p1', rol: 'editor', invitacionEstado: 'pendiente',
+    createdAt: new Date(), updatedAt: new Date(),
+  }));
+});
+
+test('no puede auto-otorgarse un rol distinto al de la invitacion pendiente', async () => {
+  await limpiarDatos();
+  await seedInvitacionPendiente('editor');
+  const ana = authed('u1', { email: 'ana@example.com' });
+  await assertFails(setDoc(doc(ana.firestore(), 'acceso_plan_financiero', 'u1_p1'), {
+    usuarioId: 'u1', planId: 'p1', rol: 'owner', invitacionEstado: 'pendiente',
+    createdAt: new Date(), updatedAt: new Date(),
+  }));
+});
+
+test('no puede auto-otorgarse acceso sin una invitacion pendiente para su email verificado', async () => {
+  await limpiarDatos();
+  await seedInvitacionPendiente('editor');
+  const otro = authed('u1', { email: 'otro@example.com' });
+  await assertFails(setDoc(doc(otro.firestore(), 'acceso_plan_financiero', 'u1_p1'), {
+    usuarioId: 'u1', planId: 'p1', rol: 'editor', invitacionEstado: 'pendiente',
+    createdAt: new Date(), updatedAt: new Date(),
+  }));
 });

@@ -64,12 +64,64 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---------- usuarios ----------
+    // get: cualquier autenticado (co-miembros de plan resuelven nombreUsuario/avatar
+    // de otros uids). list: false — evita volcar email/nombre de toda la coleccion
+    // via orderBy/limit; toda resolucion de identidad pasa por get() de un id conocido.
     match /usuarios/{usuarioId} {
-      allow read: if isSignedIn() && request.auth.uid == usuarioId;
+      allow get: if isSignedIn();
+      allow list: if false;
       allow create: if isSignedIn() && request.auth.uid == usuarioId
         && request.resource.data.uid == usuarioId;
       allow update: if isSignedIn() && request.auth.uid == usuarioId;
       allow delete: if false;
+    }
+
+    // ---------- nombres_usuario (indice de unicidad de nombreUsuario) ----------
+    // Doc id = nombreUsuario normalizado; su existencia ES la reserva. get abierto,
+    // list denegado (misma razon anti-enumeracion que usuarios). create: solo el
+    // propio uid, y solo si el doc no existe ya (create no dispara sobre un doc
+    // existente; ese caso cae en update, que esta deshabilitado). delete: solo el
+    // uid dueno de la reserva (un rename es delete-old + create-new en una transaccion
+    // client-side).
+    match /nombres_usuario/{nombreUsuarioNormalizado} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.usuarioId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.usuarioId == request.auth.uid;
+    }
+
+    // ---------- emails_usuario (indice de resolucion de invitaciones por email) ----------
+    // Mismo esquema que nombres_usuario. Firebase Auth ya garantiza unicidad de email
+    // a nivel de identidad, asi que aqui no hace falta retry de colision, solo el
+    // mismo indice get-only.
+    match /emails_usuario/{emailNormalizado} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.usuarioId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.usuarioId == request.auth.uid;
+    }
+
+    // ---------- invitaciones_pendientes_por_email ----------
+    // Doc id = {emailNormalizado}_{planId}. get: false — el id es compuesto y no es
+    // algo que el invitado conozca de antemano, asi que la unica via de lectura es un
+    // list acotado (ver abajo). list: solo permitido cuando la query trae un filtro de
+    // igualdad "email == request.auth.token.email" — Firestore exige que la query
+    // ya incluya la misma restriccion que la regla para poder probar que todo
+    // resultado posible la satisface, asi que esto NO abre una query general sobre
+    // la coleccion (patron documentado en
+    // https://firebase.google.com/docs/firestore/security/rules-query, usando
+    // resource.data en vez del no soportado request.query.where). create: cualquier
+    // autenticado (invitar a alguien no requiere tener ya acceso al plan mas alla de
+    // lo que ya exige InvitarMiembroUseCase del lado app). delete: solo quien
+    // verifico ese email (limpieza tras resolver la invitacion). No update.
+    match /invitaciones_pendientes_por_email/{invitacionId} {
+      allow get: if false;
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow create: if isSignedIn();
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.email == request.auth.token.email;
     }
 
     // ---------- planes_financieros ----------
@@ -97,7 +149,8 @@ service cloud.firestore {
       // planes propios e invitaciones). El pivote solo contiene uid/planId/rol/estado.
       allow read: if isSignedIn();
       // Un usuario crea su propio acceso OWNER al crear el plan (debe ser el
-      // createdBy del plan), o un admin(2+) del plan invita a un miembro.
+      // createdBy del plan), un admin(2+) del plan invita a un miembro, o el propio
+      // invitado se auto-otorga el acceso de su invitacion pendiente por email.
       allow create: if isSignedIn() && (
           (docId == request.auth.uid + '_' + request.resource.data.planId
             && request.resource.data.usuarioId == request.auth.uid
@@ -107,6 +160,17 @@ service cloud.firestore {
               get(/databases/$(database)/documents/acceso_plan_financiero/$(request.auth.uid + '_' + request.resource.data.planId)),
               2
             )
+          // Self-grant desde una invitacion pendiente: solo el rol exacto que fue
+          // invitado, solo cuando existe un doc invitaciones_pendientes_por_email que
+          // coincide con el email VERIFICADO del propio token de Firebase Auth del
+          // caller (nunca uno provisto por el cliente, asi que esto no se puede
+          // falsificar). Sin este disjunto, AsegurarUsuarioUseCase.paraVincularEmail
+          // falla con PERMISSION_DENIED en cada resolucion de invitacion pendiente
+          // (ver Task 9 del plan / design doc "Known gap" de Task 7).
+          || (docId == request.auth.uid + '_' + request.resource.data.planId
+              && request.resource.data.usuarioId == request.auth.uid
+              && request.auth.token.email != null
+              && get(/databases/$(database)/documents/invitaciones_pendientes_por_email/$(request.auth.token.email.lower() + '_' + request.resource.data.planId)).data.rol == request.resource.data.rol)
         );
       // admin(2)+ gestiona roles, o el propio usuario acepta su invitación pendiente.
       allow update: if tieneRolMinimo(
