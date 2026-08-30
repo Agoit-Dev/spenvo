@@ -5,6 +5,7 @@ import com.agoitdev.spenvo.domain.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -89,16 +90,39 @@ class SesionGateViewModelTest {
         assertEquals(EstadoGate.MostrarGate, viewModel.estado.value)
         job.cancel()
     }
+
+    @Test
+    fun `combine repetido con el mismo par sesion-flag solo dispara login anonimo una vez`() = runTest {
+        // Reproduces a repeated AuthStateListener-style callback that re-emits the identical
+        // (Sesion, Boolean) pair: without distinctUntilChanged() after combine(), flatMapLatest
+        // (and its iniciarSesionAnonima() side-effect launch) would re-run on every re-emission
+        // even though the combined state is structurally unchanged.
+        val flagFlow = MutableSharedFlow<Boolean>(replay = 1, extraBufferCapacity = 1)
+        authRepository.sesionFlow.value = Sesion.Anonima
+        flagFlow.tryEmit(false)
+        val viewModel = SesionGateViewModel(authRepository, flagFlow)
+        val job = launch { viewModel.estado.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(1, authRepository.anonimaLlamadaCount)
+
+        flagFlow.tryEmit(false) // same value re-emitted, unchanged (Sesion, Boolean) pair
+        advanceUntilIdle()
+
+        assertEquals(1, authRepository.anonimaLlamadaCount)
+        job.cancel()
+    }
 }
 
 private class FakeAuthRepositoryGate : AuthRepository {
     val sesionFlow = MutableStateFlow(Sesion.Anonima)
     var anonimaLlamada = false
+    var anonimaLlamadaCount = 0
 
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() {
         anonimaLlamada = true
-        sesionFlow.value = Sesion(uid = "anon-1", esAnonima = true)
+        anonimaLlamadaCount++
     }
     override suspend fun iniciarSesionConEmail(email: String, password: String) = Unit
     override suspend fun enviarRecuperacionPassword(email: String) = Unit

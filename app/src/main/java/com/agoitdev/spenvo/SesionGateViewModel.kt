@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -28,6 +29,7 @@ class SesionGateViewModel @Inject constructor(
         authRepository.observeSesion(),
         flagLogoutExplicito,
     ) { sesion, flagPendiente -> sesion to flagPendiente }
+        .distinctUntilChanged()
         .flatMapLatest { (sesion, flagPendiente) ->
             when {
                 sesion.uid != null -> flowOf(EstadoGate.MostrarApp)
