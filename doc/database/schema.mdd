@@ -1,6 +1,6 @@
 # Data Schema — Spenvo
 
-Document version: **1.2** (M1 + Usuario/nombreUsuario slice 7/10). Status: baseline draft, versioned with every change.
+Document version: **1.3** (M1 + Usuario/nombreUsuario, slices 1-9/10). Status: baseline draft, versioned with every change.
 
 ## 1. Source of truth and model
 
@@ -32,16 +32,41 @@ erDiagram
 
 ### Collections
 
-#### `usuarios/{usuarioId}`
+#### `usuarios/{usuarioId}` (`uid`/`nombreUsuario` added, `nombre`/`email` made nullable in
+Usuario/nombreUsuario slice 1/10; rules revised in slice 9/10)
 | Field | Type | Notes |
 |---|---|---|
-| nombre | string | |
-| email | string | (server rules: owner-only read) |
-| avatar_url | string? | M7 (Storage) |
+| uid | string | same value as the doc ID; rules check `request.resource.data.uid == usuarioId` |
+| nombreUsuario | string | unique public handle, display-cased (e.g. `GatoAzul42`) |
+| nombre | string? | null for an anonymous session |
+| email | string? | null for an anonymous session; never null once registered (enforced by construction — the only write path that sets it is `vincularEmail`, which requires it) |
+| avatarUrl | string? | M7 (Storage) |
 | createdAt | timestamp | |
 | updatedAt | timestamp | |
 
-#### `invitaciones_pendientes_por_email/{emailNormalizado}_{planId}` (added Usuario/nombreUsuario slice 7/10)
+Rules: `get` open to any authenticated user (plan co-members need to resolve each other's
+`nombreUsuario`); `list` always denied — an open `list` would let anyone dump every user's
+`email`/`nombre` via `orderBy`/`limit`, defeating `emails_usuario`'s whole purpose below.
+`create`/`update` owner-only.
+
+#### `nombres_usuario/{nombreUsuarioNormalizado}` and `emails_usuario/{emailNormalizado}`
+(added Usuario/nombreUsuario slice 3/10, rules in slice 9/10)
+| Field | Type | Notes |
+|---|---|---|
+| usuarioId | string | the uid that reserved this normalized nombreUsuario/email |
+
+Lookup indexes, not user-facing data — the doc ID *is* the normalized (lowercase/trimmed) key,
+and its existence *is* the uniqueness guarantee. `nombres_usuario` entries are created/deleted via
+a client transaction (`intentarReservarNombreUsuario`/`renombrar`); `emails_usuario` entries are
+written once alongside `vincularEmail` (no reservation transaction needed — Firebase Auth already
+guarantees email uniqueness at the identity level). Rules: `get` open to any authenticated user,
+`list` always denied (same enumeration risk as `usuarios` above), `create`/`delete` owner-only,
+`update` always denied (an overwrite attempt on an existing doc is classified by Firestore as
+`update`, not `create`, so this is what actually blocks reservation hijacking, not just client
+transaction discipline).
+
+#### `invitaciones_pendientes_por_email/{emailNormalizado}_{planId}` (added Usuario/nombreUsuario
+slice 7/10, rules in slice 9/10)
 | Field | Type | Notes |
 |---|---|---|
 | email | string | normalized (lowercase/trimmed) |
@@ -51,11 +76,15 @@ erDiagram
 | createdAt | timestamp | |
 
 Written when `InvitarMiembroUseCase` resolves an email that has no matching `usuarioId` yet;
-consumed (converted to a real `acceso_plan_financiero` doc, then deleted) by
-`AsegurarUsuarioUseCase.paraVincularEmail` once that email registers. No `nombres_usuario`-miss
-equivalent — see the design doc's "Invite by nombreUsuario or email" section for why. `list` is
-restricted to the caller's own verified email (rules land in a later slice); `get` is never used
-against this collection, only `list`/`create`/`delete`.
+consumed (converted to a real `acceso_plan_financiero` doc via the self-grant rule below, then
+deleted) by `AsegurarUsuarioUseCase.paraVincularEmail` once that email registers. No
+`nombres_usuario`-miss equivalent — see the design doc's "Invite by nombreUsuario or email"
+section for why. Rules: `get` always denied (never looked up by ID directly); `list` restricted to
+a query whose `email` equality filter matches the caller's own verified `request.auth.token.email`
+— Firestore denies any `list`/`getDocs` call that doesn't include that matching filter, so this
+can't be used to enumerate other people's pending invites; `create` open to any authenticated
+user (anyone can invite); `delete` restricted to the matching-email caller (cleanup after
+resolving); no `update`.
 
 #### `planes_financieros/{planId}`
 | Field | Type | Notes |
@@ -79,6 +108,12 @@ against this collection, only `list`/`create`/`delete`.
 | invitacionEstado | enum | `pendiente` \| `aceptada` (M3) |
 | createdAt | timestamp | |
 | updatedAt | timestamp | |
+
+`create` rules (as of Usuario/nombreUsuario slice 9/10): the plan's `owner` on plan creation, an
+existing `admin`+ inviting a member, or — new in slice 9/10 — the caller self-granting exactly the
+`rol` named in a matching `invitaciones_pendientes_por_email` doc for their own verified email
+(how a pending-by-email invite from slice 7/10 actually gets consumed; without this third case
+that resolution path always failed with `PERMISSION_DENIED` once rules were enforced).
 
 #### `categorias/{categoriaId}`
 | Field | Type | Notes |
