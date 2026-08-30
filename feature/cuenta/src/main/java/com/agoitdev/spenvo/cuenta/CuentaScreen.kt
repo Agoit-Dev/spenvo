@@ -387,7 +387,7 @@ private fun LoginForm(
             value = email,
             onValueChange = { email = it },
             label = { Text(stringResource(R.string.account_login_email)) },
-            isError = errorRes != null,
+            isError = false,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

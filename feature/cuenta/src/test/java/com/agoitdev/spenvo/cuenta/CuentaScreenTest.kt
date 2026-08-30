@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -192,6 +193,20 @@ class CuentaScreenTest {
         composeTestRule.setContent {
             CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.INICIAR_SESION)
         }
+
+        composeTestRule.onNodeWithText("¿Olvidaste tu contraseña?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Tus datos de invitado", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `tocar la pestana de iniciar sesion cambia del formulario de registro al de login`() {
+        val viewModel = crearViewModel(FakeAuthRepositorioPantalla(Sesion.Anonima))
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.CREAR_CUENTA)
+        }
+
+        composeTestRule.onNodeWithContentDescription("Iniciar sesión").performClick()
 
         composeTestRule.onNodeWithText("¿Olvidaste tu contraseña?").assertIsDisplayed()
         composeTestRule.onNodeWithText("Tus datos de invitado", substring = true).assertDoesNotExist()
