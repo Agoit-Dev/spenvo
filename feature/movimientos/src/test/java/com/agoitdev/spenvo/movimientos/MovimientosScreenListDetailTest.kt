@@ -7,8 +7,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizacion
+import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_PLACEHOLDER
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
@@ -46,6 +49,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -116,7 +120,11 @@ class MovimientosScreenListDetailTest {
         onMovimientoClick = onClick,
     )
 
-    private val acciones = MovimientosAcciones(onNuevoMovimiento = {})
+    private val acciones = MovimientosAcciones(
+        onNuevoMovimiento = {},
+        avatarUrl = null,
+        onAbrirCuenta = {},
+    )
     private val filtro = MovimientosFiltro(
         busqueda = "", onBusquedaChange = {}, tipoSeleccionado = null, onTipoChange = {},
     )
@@ -169,6 +177,31 @@ class MovimientosScreenListDetailTest {
 
         composeTestRule.onNodeWithContentDescription("Categorías").assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription("Miembros").assertDoesNotExist()
+    }
+
+    @Test
+    fun `la topbar del layout compacto muestra el avatar y navega al tocarlo`() {
+        val viewModel = crearViewModel()
+        var invocado = false
+
+        composeTestRule.setContent {
+            MovimientosPantallaCompacta(
+                modifier = Modifier,
+                acciones = MovimientosAcciones(
+                    onNuevoMovimiento = {},
+                    avatarUrl = null,
+                    onAbrirCuenta = { invocado = true },
+                ),
+                filtro = filtro,
+                snackbarHostState = remember { SnackbarHostState() },
+                lista = listaEstado(),
+                formularioParametros = formularioParametros(FormularioMovimiento.Cerrado, viewModel),
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+
+        assertEquals(true, invocado)
     }
 
     @Test
