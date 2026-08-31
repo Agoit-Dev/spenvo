@@ -41,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.agoitdev.spenvo.designsystem.components.AvatarTopBarAction
 import com.agoitdev.spenvo.domain.model.InvitacionEstado
 import com.agoitdev.spenvo.domain.model.MiembroResuelto
 import com.agoitdev.spenvo.domain.model.Rol
@@ -49,6 +50,8 @@ import com.agoitdev.spenvo.domain.model.Rol
 @Composable
 fun MiembrosScreen(
     planId: String,
+    avatarUrl: String?,
+    onAbrirCuenta: () -> Unit,
     viewModel: MiembrosViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -80,6 +83,11 @@ Scaffold(
             TopAppBar(
                 title = { Text(stringResource(R.string.members_title)) },
                 actions = {
+                    AvatarTopBarAction(
+                        photoUrl = avatarUrl,
+                        contentDescription = stringResource(R.string.account_menu_description),
+                        onClick = onAbrirCuenta,
+                    )
                     IconButton(onClick = { mostrarDialogoInvitar = true }) {
                         Icon(
                             imageVector = Icons.Filled.Add,
