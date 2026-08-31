@@ -27,6 +27,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,6 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,15 +56,27 @@ import com.agoitdev.spenvo.domain.model.Sesion
 fun CuentaScreen(
     onRegistroCompletado: () -> Unit,
     viewModel: CuentaViewModel = hiltViewModel(),
+    tabInicial: AuthTab = AuthTab.CREAR_CUENTA,
     modifier: Modifier = Modifier,
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val sesion by viewModel.sesion.collectAsStateWithLifecycle()
     val perfilEstado by viewModel.perfilEstado.collectAsStateWithLifecycle()
+    val recoveryEstado by viewModel.recoveryEstado.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var tabSeleccionado by rememberSaveable { mutableStateOf(tabInicial) }
+    var mostrarRecoveryDialog by rememberSaveable { mutableStateOf(false) }
 
     CuentaSideEffects(estado, perfilEstado, snackbarHostState, onRegistroCompletado, viewModel)
     val seleccionarImagen = rememberSeleccionarImagenLauncher(onImagenSeleccionada = viewModel::subirAvatar)
+
+    RecuperacionPassword(
+        recoveryEstado = recoveryEstado,
+        visible = mostrarRecoveryDialog,
+        snackbarHostState = snackbarHostState,
+        onCerrar = { mostrarRecoveryDialog = false },
+        viewModel = viewModel,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -72,7 +88,19 @@ fun CuentaScreen(
             .padding(innerPadding)
             .padding(horizontal = 24.dp)
         if (sesion.esAnonima) {
-            RegistroForm(cargando = estado.cargando, onRegistrar = viewModel::registrar, modifier = contentModifier)
+            AuthContenido(
+                estado = estado,
+                tabSeleccionado = tabSeleccionado,
+                onTabSeleccionado = {
+                    tabSeleccionado = it
+                    viewModel.limpiarEstadoFormulario()
+                },
+                mostrarRecoveryDialog = mostrarRecoveryDialog,
+                onRegistrar = viewModel::registrar,
+                onIniciarSesion = viewModel::iniciarSesion,
+                onOlvidoPassword = { mostrarRecoveryDialog = true },
+                modifier = contentModifier,
+            )
         } else {
             PerfilContenido(
                 sesion = sesion,
@@ -81,6 +109,62 @@ fun CuentaScreen(
                 onLogout = viewModel::logout,
                 onEditarNombreUsuario = viewModel::editarNombreUsuario,
                 modifier = contentModifier,
+            )
+        }
+    }
+}
+
+@Suppress("LongParameterList")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AuthContenido(
+    estado: RegistroEstado,
+    tabSeleccionado: AuthTab,
+    onTabSeleccionado: (AuthTab) -> Unit,
+    mostrarRecoveryDialog: Boolean,
+    onRegistrar: (String, String, String) -> Unit,
+    onIniciarSesion: (String, String) -> Unit,
+    onOlvidoPassword: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // While the recovery dialog is open, the form behind it is hidden from the semantics tree:
+    // it stays visible but out of accessibility/testing focus, and its "Correo" field no longer
+    // collides with the dialog's own email field for text-based queries.
+    val formModifier = if (mostrarRecoveryDialog) modifier.clearAndSetSemantics {} else modifier
+    Column(modifier = formModifier) {
+        TabRow(selectedTabIndex = tabSeleccionado.ordinal) {
+            val etiquetaRegistro = stringResource(R.string.account_registration_tab)
+            val etiquetaLogin = stringResource(R.string.account_login_tab)
+            Tab(
+                selected = tabSeleccionado == AuthTab.CREAR_CUENTA,
+                onClick = { onTabSeleccionado(AuthTab.CREAR_CUENTA) },
+                text = {
+                    // Cleared and replaced by an equivalent contentDescription: the tab label
+                    // ("Crear cuenta"/"Iniciar sesión") otherwise duplicates the matching submit
+                    // button's text and breaks text-based lookups; a contentDescription keeps it
+                    // announced by screen readers.
+                    Text(etiquetaRegistro, modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = etiquetaRegistro
+                    })
+                },
+            )
+            Tab(
+                selected = tabSeleccionado == AuthTab.INICIAR_SESION,
+                onClick = { onTabSeleccionado(AuthTab.INICIAR_SESION) },
+                text = {
+                    Text(etiquetaLogin, modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = etiquetaLogin
+                    })
+                },
+            )
+        }
+        when (tabSeleccionado) {
+            AuthTab.CREAR_CUENTA -> RegistroForm(cargando = estado.cargando, onRegistrar = onRegistrar)
+            AuthTab.INICIAR_SESION -> LoginForm(
+                cargando = estado.cargando,
+                errorRes = estado.errorRes,
+                onIniciarSesion = onIniciarSesion,
+                onOlvidoPassword = onOlvidoPassword,
             )
         }
     }
@@ -276,6 +360,54 @@ private fun RegistroForm(
                 CircularProgressIndicator(modifier = Modifier.height(20.dp))
             } else {
                 Text(stringResource(R.string.account_registration_create))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoginForm(
+    cargando: Boolean,
+    @StringRes errorRes: Int?,
+    onIniciarSesion: (String, String) -> Unit,
+    onOlvidoPassword: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.Center) {
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text(stringResource(R.string.account_login_email)) },
+            isError = false,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text(stringResource(R.string.account_login_password)) },
+            isError = errorRes != null,
+            supportingText = errorRes?.let { { Text(stringResource(it)) } },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        TextButton(onClick = onOlvidoPassword) {
+            Text(stringResource(R.string.account_login_forgot_password))
+        }
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = { onIniciarSesion(email, password) },
+            enabled = !cargando && email.isNotBlank() && password.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (cargando) {
+                CircularProgressIndicator(modifier = Modifier.height(20.dp))
+            } else {
+                Text(stringResource(R.string.account_login_submit))
             }
         }
     }

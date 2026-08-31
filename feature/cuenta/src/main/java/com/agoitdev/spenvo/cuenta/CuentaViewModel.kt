@@ -7,6 +7,8 @@ import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.EnviarRecuperacionPasswordUseCase
+import com.agoitdev.spenvo.domain.usecase.IniciarSesionConEmailUseCase
 import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
@@ -21,8 +23,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class CuentaViewModel @Inject constructor(
+class CuentaViewModel @Suppress("LongParameterList") @Inject constructor(
     private val vincularCredencial: VincularCredencialUseCase,
+    private val iniciarSesionConEmail: IniciarSesionConEmailUseCase,
+    private val enviarRecuperacionPassword: EnviarRecuperacionPasswordUseCase,
     private val authRepository: AuthRepository,
     private val usuarioRepository: UsuarioRepository,
     private val subirAvatarUseCase: SubirAvatarUseCase,
@@ -38,6 +42,9 @@ class CuentaViewModel @Inject constructor(
 
     private val _perfilEstado = MutableStateFlow(PerfilEstado())
     val perfilEstado: StateFlow<PerfilEstado> = _perfilEstado.asStateFlow()
+
+    private val _recoveryEstado = MutableStateFlow(RecoveryEstado())
+    val recoveryEstado: StateFlow<RecoveryEstado> = _recoveryEstado.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -74,7 +81,44 @@ class CuentaViewModel @Inject constructor(
     }
 
     fun consumirError() {
-        _estado.update { it.copy(error = null) }
+        _estado.update { it.copy(error = null, errorRes = null) }
+    }
+
+    /**
+     * "Crear cuenta" and "Iniciar sesión" share one [RegistroEstado]; without this, a failed
+     * sign-in's `errorRes` (or an in-flight `cargando`) would still be showing after switching
+     * to the other tab, attached to a form that never produced it.
+     */
+    fun limpiarEstadoFormulario() {
+        _estado.value = RegistroEstado()
+    }
+
+    fun iniciarSesion(email: String, password: String) {
+        _estado.update { it.copy(cargando = true, error = null, errorRes = null) }
+        viewModelScope.launch {
+            runCatching { iniciarSesionConEmail(email, password) }
+                .onSuccess { _estado.value = RegistroEstado(completado = true) }
+                .onFailure { error ->
+                    _estado.value = RegistroEstado(errorRes = mapearErrorAuth(error))
+                }
+        }
+    }
+
+    /**
+     * El mismo resultado visible tanto si el email existe como si no — evita que la UI
+     * permita enumerar cuentas registradas probando direcciones.
+     */
+    fun recuperarPassword(email: String) {
+        if (_recoveryEstado.value.cargando) return
+        _recoveryEstado.value = RecoveryEstado(cargando = true)
+        viewModelScope.launch {
+            runCatching { enviarRecuperacionPassword(email) }
+            _recoveryEstado.value = RecoveryEstado(exito = true)
+        }
+    }
+
+    fun consumirRecoveryEstado() {
+        _recoveryEstado.value = RecoveryEstado()
     }
 
     /** Uploads the linked user's avatar; bytes/contentType are read by the caller. */
@@ -97,7 +141,11 @@ class CuentaViewModel @Inject constructor(
         _perfilEstado.update { it.copy(avatarError = null) }
     }
 
-    /** [AuthRepository.cerrarSesion] already re-establishes an anonymous session. */
+    /**
+     * [AuthRepository.cerrarSesion] marks the persisted explicit-logout flag and signs out without
+     * re-establishing anything: the root `SesionGateViewModel` then shows the sign-in gate, and
+     * only an explicit sign-in or "continuar como invitado" creates a session again.
+     */
     fun logout() {
         viewModelScope.launch { authRepository.cerrarSesion() }
     }
@@ -143,6 +191,12 @@ data class RegistroEstado(
     val cargando: Boolean = false,
     val completado: Boolean = false,
     val error: String? = null,
+    @param:StringRes val errorRes: Int? = null,
+)
+
+data class RecoveryEstado(
+    val cargando: Boolean = false,
+    val exito: Boolean = false,
 )
 
 data class PerfilEstado(

@@ -26,6 +26,10 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            // Real FirebaseAuthException subclasses call android.text.TextUtils.isEmpty in their
+            // constructor (via Preconditions.checkNotEmpty); plain JVM unit tests need the stub
+            // to return a default instead of throwing "not mocked".
+            isReturnDefaultValues = true
         }
     }
 }
@@ -60,6 +64,9 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
     implementation(libs.kotlinx.coroutines.core)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

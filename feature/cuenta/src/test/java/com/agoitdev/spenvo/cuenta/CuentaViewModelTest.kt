@@ -10,10 +10,14 @@ import com.agoitdev.spenvo.domain.repository.InvitacionPendienteRepository
 import com.agoitdev.spenvo.domain.repository.StorageRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
 import com.agoitdev.spenvo.domain.usecase.AsegurarUsuarioUseCase
+import com.agoitdev.spenvo.domain.usecase.EnviarRecuperacionPasswordUseCase
 import com.agoitdev.spenvo.domain.usecase.GenerarNombreUsuarioUnicoUseCase
+import com.agoitdev.spenvo.domain.usecase.IniciarSesionConEmailUseCase
 import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -54,6 +58,8 @@ class CuentaViewModelTest {
 
     private fun crearViewModel() = CuentaViewModel(
         vincularCredencial = VincularCredencialUseCase(authRepository),
+        iniciarSesionConEmail = IniciarSesionConEmailUseCase(authRepository),
+        enviarRecuperacionPassword = EnviarRecuperacionPasswordUseCase(authRepository),
         authRepository = authRepository,
         usuarioRepository = usuarioRepository,
         subirAvatarUseCase = SubirAvatarUseCase(storageRepository),
@@ -146,6 +152,129 @@ class CuentaViewModelTest {
         assertEquals("Ana", actualizado.nombre)
         assertEquals("ana@example.com", actualizado.email)
         assertTrue(viewModel.estado.value.completado)
+        job.cancel()
+    }
+
+    @Test
+    fun `iniciarSesion exitoso marca el estado como completado`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.iniciarSesion(email = "ana@example.com", password = "secret123")
+        advanceUntilIdle()
+
+        assertEquals("ana@example.com", authRepository.ultimoEmailLogin)
+        assertEquals("secret123", authRepository.ultimaPasswordLogin)
+        assertTrue(viewModel.estado.value.completado)
+        job.cancel()
+    }
+
+    @Test
+    fun `iniciarSesion con credenciales invalidas expone el mismo mensaje que usuario inexistente`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        authRepository.excepcionLogin =
+            FirebaseAuthInvalidCredentialsException("ERROR_WRONG_PASSWORD", "wrong password")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.iniciarSesion(email = "ana@example.com", password = "wrong")
+        advanceUntilIdle()
+
+        assertEquals(R.string.account_error_credenciales_invalidas, viewModel.estado.value.errorRes)
+        job.cancel()
+    }
+
+    @Test
+    fun `iniciarSesion con un usuario inexistente expone el mismo mensaje que una password erronea`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        authRepository.excepcionLogin =
+            FirebaseAuthInvalidUserException("ERROR_USER_NOT_FOUND", "no such user")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.iniciarSesion(email = "nadie@example.com", password = "secret123")
+        advanceUntilIdle()
+
+        // Byte-identical to the wrong-password case above: the UI must never let a caller tell
+        // "this email isn't registered" apart from "that password is wrong".
+        assertEquals(R.string.account_error_credenciales_invalidas, viewModel.estado.value.errorRes)
+        job.cancel()
+    }
+
+    @Test
+    fun `recuperarPassword siempre marca exito visible sin importar si el email existe`() = runTest {
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.recuperarPassword(email = "quien-sea@example.com")
+        advanceUntilIdle()
+
+        assertEquals("quien-sea@example.com", authRepository.ultimoEmailRecovery)
+        assertTrue(viewModel.recoveryEstado.value.exito)
+        job.cancel()
+    }
+
+    @Test
+    fun `recuperarPassword marca exito aunque el envio falle`() = runTest {
+        // The anti-enumeration guarantee only holds if a *failure* is indistinguishable from a
+        // success too — without this the UI could leak "that email doesn't exist" via an error.
+        authRepository.excepcionRecovery =
+            FirebaseAuthInvalidUserException("ERROR_USER_NOT_FOUND", "no such user")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.recuperarPassword(email = "quien-sea@example.com")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.recoveryEstado.value.exito)
+        assertFalse(viewModel.recoveryEstado.value.cargando)
+        job.cancel()
+    }
+
+    @Test
+    fun `recuperarPassword marca cargando mientras el envio esta en vuelo`() = runTest {
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.recuperarPassword(email = "ana@example.com")
+
+        // Not advanced yet: the send is still queued, so the dialog must keep its button disabled
+        // instead of letting the user fire sendPasswordResetEmail again.
+        assertTrue(viewModel.recoveryEstado.value.cargando)
+        assertFalse(viewModel.recoveryEstado.value.exito)
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.recoveryEstado.value.cargando)
+        assertTrue(viewModel.recoveryEstado.value.exito)
+        job.cancel()
+    }
+
+    @Test
+    fun `limpiarEstadoFormulario borra el error y el cargando compartidos entre pestanas`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        authRepository.excepcionLogin =
+            FirebaseAuthInvalidCredentialsException("ERROR_WRONG_PASSWORD", "wrong password")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.iniciarSesion(email = "ana@example.com", password = "wrong")
+        advanceUntilIdle()
+        assertNotNull(viewModel.estado.value.errorRes)
+
+        viewModel.limpiarEstadoFormulario()
+
+        assertNull(viewModel.estado.value.errorRes)
+        assertNull(viewModel.estado.value.error)
+        assertFalse(viewModel.estado.value.cargando)
         job.cancel()
     }
 
@@ -271,9 +400,24 @@ private class FakeAuthRepositorioCuenta : AuthRepository {
     val sesionFlow = MutableStateFlow(Sesion.Anonima)
     var ultimoPhotoUrlActualizado: String? = null
     var cerrarSesionLlamado = false
+    var ultimoEmailLogin: String? = null
+    var ultimaPasswordLogin: String? = null
+    var excepcionLogin: Throwable? = null
+    var ultimoEmailRecovery: String? = null
+    var excepcionRecovery: Throwable? = null
 
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
+    override suspend fun iniciarSesionConEmail(email: String, password: String) {
+        ultimoEmailLogin = email
+        ultimaPasswordLogin = password
+        excepcionLogin?.let { throw it }
+        sesionFlow.value = Sesion(uid = "user-1", esAnonima = false, email = email)
+    }
+    override suspend fun enviarRecuperacionPassword(email: String) {
+        ultimoEmailRecovery = email
+        excepcionRecovery?.let { throw it }
+    }
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) {
         ultimoPhotoUrlActualizado = photoUrl

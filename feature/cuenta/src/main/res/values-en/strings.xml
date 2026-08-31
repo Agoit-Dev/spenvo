@@ -18,4 +18,18 @@
     <string name="account_profile_nombre_usuario_vacio">Username cannot be empty</string>
     <string name="account_profile_nombre_usuario_en_uso">That username is already taken</string>
     <string name="account_profile_nombre_usuario_error">Couldn\'t update the username</string>
+    <string name="account_login_tab">Log in</string>
+    <string name="account_registration_tab">Create account</string>
+    <string name="account_login_email">Email</string>
+    <string name="account_login_password">Password</string>
+    <string name="account_login_submit">Log in</string>
+    <string name="account_login_forgot_password">Forgot your password?</string>
+    <string name="account_recovery_title">Recover password</string>
+    <string name="account_recovery_email_label">Email</string>
+    <string name="account_recovery_submit">Send</string>
+    <string name="account_recovery_cancel">Cancel</string>
+    <string name="account_recovery_success">If that email exists, we sent instructions to recover your password.</string>
+    <string name="account_error_credenciales_invalidas">Incorrect email or password</string>
+    <string name="account_error_sin_red">Check your connection and try again</string>
+    <string name="account_error_generico">Something went wrong. Try again</string>
 </resources>

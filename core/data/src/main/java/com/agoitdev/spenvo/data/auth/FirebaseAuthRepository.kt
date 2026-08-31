@@ -20,6 +20,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 @Singleton
 class FirebaseAuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
+    private val sesionPreferences: SesionPreferences,
 ) : AuthRepository {
 
     override fun observeSesion(): Flow<Sesion> = callbackFlow {
@@ -35,6 +36,23 @@ class FirebaseAuthRepository @Inject constructor(
         if (auth.currentUser != null) return
         suspendCancellableCoroutine { cont ->
             auth.signInAnonymously()
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resumeWithException(it) }
+        }
+    }
+
+    override suspend fun iniciarSesionConEmail(email: String, password: String) {
+        suspendCancellableCoroutine { cont ->
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resumeWithException(it) }
+        }
+        sesionPreferences.limpiarLogout()
+    }
+
+    override suspend fun enviarRecuperacionPassword(email: String) {
+        suspendCancellableCoroutine { cont ->
+            auth.sendPasswordResetEmail(email)
                 .addOnSuccessListener { cont.resume(Unit) }
                 .addOnFailureListener { cont.resumeWithException(it) }
         }
@@ -76,8 +94,8 @@ class FirebaseAuthRepository @Inject constructor(
     }
 
     override suspend fun cerrarSesion() {
+        sesionPreferences.marcarLogout()
         auth.signOut()
-        iniciarSesionAnonima()
     }
 }
 
@@ -90,4 +108,3 @@ private fun FirebaseUser?.toSesion(): Sesion = this?.let {
         photoUrl = it.photoUrl?.toString(),
     )
 } ?: Sesion.Anonima
-

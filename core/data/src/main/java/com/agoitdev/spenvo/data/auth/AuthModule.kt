@@ -1,7 +1,9 @@
 package com.agoitdev.spenvo.data.auth
 
 import com.agoitdev.spenvo.domain.repository.AuthRepository
+import com.agoitdev.spenvo.domain.usecase.EnviarRecuperacionPasswordUseCase
 import com.agoitdev.spenvo.domain.usecase.IniciarSesionAnonimaUseCase
+import com.agoitdev.spenvo.domain.usecase.IniciarSesionConEmailUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
 import com.google.firebase.auth.FirebaseAuth
 import dagger.Binds
@@ -32,6 +34,16 @@ object FirebaseModule {
     fun provideIniciarSesionAnonima(
         authRepository: AuthRepository,
     ): IniciarSesionAnonimaUseCase = IniciarSesionAnonimaUseCase(authRepository)
+
+    @Provides
+    fun provideIniciarSesionConEmail(
+        authRepository: AuthRepository,
+    ): IniciarSesionConEmailUseCase = IniciarSesionConEmailUseCase(authRepository)
+
+    @Provides
+    fun provideEnviarRecuperacionPassword(
+        authRepository: AuthRepository,
+    ): EnviarRecuperacionPasswordUseCase = EnviarRecuperacionPasswordUseCase(authRepository)
 
     @Provides
     fun provideVincularCredencial(

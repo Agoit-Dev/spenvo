@@ -243,4 +243,6 @@ private class FakeAuthRepository(private val uid: String = "user-1") : AuthRepos
     override suspend fun cerrarSesion() = Unit
 
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
+    override suspend fun iniciarSesionConEmail(email: String, password: String) = Unit
+    override suspend fun enviarRecuperacionPassword(email: String) = Unit
 }

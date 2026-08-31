@@ -234,6 +234,8 @@ private class FakeAuthRepositorioMiembros : AuthRepository {
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
     override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
+    override suspend fun iniciarSesionConEmail(email: String, password: String) = Unit
+    override suspend fun enviarRecuperacionPassword(email: String) = Unit
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) = Unit
     override suspend fun cerrarSesion() = Unit
 }
