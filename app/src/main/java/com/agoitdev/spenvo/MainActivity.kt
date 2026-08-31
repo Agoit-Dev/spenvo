@@ -168,6 +168,7 @@ fun GateInvitado(
 fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel = hiltViewModel()) {
     val estadoGate by gateViewModel.estado.collectAsStateWithLifecycle()
     val backStack = rememberNavBackStack(PlanesRoute)
+    val avatarUrl by gateViewModel.avatarUrl.collectAsStateWithLifecycle()
 
     LaunchedEffect(estadoGate) {
         aplicarEstadoGate(estadoGate, backStack)
@@ -197,16 +198,10 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
                     )
                 }
                 entry<PlanRoute> { route ->
-                    val movimientosViewModel: MovimientosViewModel = hiltViewModel()
-                    PlanScaffold(
-                        contenidoHome = {
-                            HomeScreen(planId = route.planId, movimientosViewModel = movimientosViewModel)
-                        },
-                        contenidoMovimientos = {
-                            MovimientosScreen(planId = route.planId, viewModel = movimientosViewModel)
-                        },
-                        contenidoCategorias = { CategoriasScreen(planId = route.planId) },
-                        contenidoMiembros = { MiembrosScreen(planId = route.planId) },
+                    ContenidoPlanRoute(
+                        route = route,
+                        avatarUrl = avatarUrl,
+                        onAbrirCuenta = { backStack.add(CuentaRoute) },
                     )
                 }
                 entry<CuentaRoute> {
@@ -219,4 +214,50 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
             },
         )
     }
+}
+
+/**
+ * [PlanRoute]'s tab content: extracted out of [SpenvoApp] so the four tab screens' shared
+ * [avatarUrl]/[onAbrirCuenta] wiring doesn't grow `SpenvoApp` past the project's `LongMethod`
+ * detekt threshold.
+ */
+@Composable
+private fun ContenidoPlanRoute(
+    route: PlanRoute,
+    avatarUrl: String?,
+    onAbrirCuenta: () -> Unit,
+) {
+    val movimientosViewModel: MovimientosViewModel = hiltViewModel()
+    PlanScaffold(
+        contenidoHome = {
+            HomeScreen(
+                planId = route.planId,
+                movimientosViewModel = movimientosViewModel,
+                avatarUrl = avatarUrl,
+                onAbrirCuenta = onAbrirCuenta,
+            )
+        },
+        contenidoMovimientos = {
+            MovimientosScreen(
+                planId = route.planId,
+                avatarUrl = avatarUrl,
+                onAbrirCuenta = onAbrirCuenta,
+                viewModel = movimientosViewModel,
+            )
+        },
+        contenidoCategorias = {
+            CategoriasScreen(
+                planId = route.planId,
+                avatarUrl = avatarUrl,
+                onAbrirCuenta = onAbrirCuenta,
+            )
+        },
+        contenidoMiembros = {
+            MiembrosScreen(
+                planId = route.planId,
+                avatarUrl = avatarUrl,
+                onAbrirCuenta = onAbrirCuenta,
+            )
+        },
+    )
 }
