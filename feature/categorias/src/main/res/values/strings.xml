@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="categories_title">Categorías</string>
+    <string name="account_menu_description">Cuenta</string>
     <string name="categories_empty">Todavía no hay categorías de este tipo.</string>
     <string name="categories_add">Nueva categoría</string>
     <string name="categories_edit">Editar categoría</string>

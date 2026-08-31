@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="categories_title">Categories</string>
+    <string name="account_menu_description">Account</string>
     <string name="categories_empty">No categories of this type yet.</string>
     <string name="categories_add">New category</string>
     <string name="categories_edit">Edit category</string>

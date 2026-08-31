@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.agoitdev.spenvo.designsystem.components.AvatarTopBarAction
 import com.agoitdev.spenvo.designsystem.components.ConfirmarEliminarDialog
 import com.agoitdev.spenvo.designsystem.components.ConfirmarEliminarTextos
 import com.agoitdev.spenvo.domain.model.Categoria
@@ -60,6 +61,8 @@ private sealed interface FormularioCategoria {
 @Composable
 fun CategoriasScreen(
     planId: String,
+    avatarUrl: String?,
+    onAbrirCuenta: () -> Unit,
     viewModel: CategoriasViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -88,7 +91,7 @@ fun CategoriasScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.categories_title)) }) },
+        topBar = { CategoriasTopBar(avatarUrl = avatarUrl, onAbrirCuenta = onAbrirCuenta) },
         floatingActionButton = {
             FloatingActionButton(onClick = { formulario = FormularioCategoria.Nueva }) {
                 Icon(
@@ -119,6 +122,21 @@ fun CategoriasScreen(
         formulario = formulario,
         viewModel = viewModel,
         onCerrar = { formulario = FormularioCategoria.Cerrado },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoriasTopBar(avatarUrl: String?, onAbrirCuenta: () -> Unit) {
+    TopAppBar(
+        title = { Text(stringResource(R.string.categories_title)) },
+        actions = {
+            AvatarTopBarAction(
+                photoUrl = avatarUrl,
+                contentDescription = stringResource(R.string.account_menu_description),
+                onClick = onAbrirCuenta,
+            )
+        },
     )
 }
 

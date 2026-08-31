@@ -73,7 +73,12 @@ class CategoriaFormularioSheetTest {
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
-            CategoriasScreen(planId = "p1", viewModel = viewModel)
+            CategoriasScreen(
+                planId = "p1",
+                avatarUrl = null,
+                onAbrirCuenta = {},
+                viewModel = viewModel,
+            )
         }
 
         composeTestRule.onNodeWithText("Comida").performClick()
