@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -66,5 +67,50 @@ class AvatarTest {
         composeTestRule.onNodeWithTag(TAG_AVATAR_BADGE).performClick()
 
         assert(clics == 1)
+    }
+
+    @Test
+    fun `boton de topbar muestra la imagen cuando hay foto`() {
+        composeTestRule.setContent {
+            AvatarTopBarAction(
+                photoUrl = "https://example.com/avatar.jpg",
+                contentDescription = "Cuenta",
+                onClick = {},
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_IMAGEN, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `boton de topbar muestra un placeholder cuando no hay foto`() {
+        composeTestRule.setContent {
+            AvatarTopBarAction(
+                photoUrl = null,
+                contentDescription = "Cuenta",
+                onClick = {},
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag(TAG_AVATAR_TOPBAR_IMAGEN, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `boton de topbar invoca onClick al tocarlo`() {
+        var clics = 0
+
+        composeTestRule.setContent {
+            AvatarTopBarAction(
+                photoUrl = null,
+                contentDescription = "Cuenta",
+                onClick = { clics++ },
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+
+        assertEquals(1, clics)
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,8 +24,11 @@ import coil3.compose.AsyncImage
 const val TAG_AVATAR_IMAGEN = "avatar_imagen"
 const val TAG_AVATAR_PLACEHOLDER = "avatar_placeholder"
 const val TAG_AVATAR_BADGE = "avatar_badge"
+const val TAG_AVATAR_TOPBAR_IMAGEN = "avatar_topbar_imagen"
+const val TAG_AVATAR_TOPBAR_PLACEHOLDER = "avatar_topbar_placeholder"
 
 private val TamanoAvatarPorDefecto = 96.dp
+private val TamanoAvatarTopBar = 32.dp
 private val TamanoBadge = 28.dp
 private val TamanoIconoBadge = 16.dp
 
@@ -86,6 +90,52 @@ fun AvatarConBadge(
                 tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(TamanoIconoBadge),
             )
+        }
+    }
+}
+
+/**
+ * Compact, badge-less avatar for a [androidx.compose.material3.TopAppBar]'s `actions` slot — the
+ * "open my account" entry point reachable from every screen (front 3 of the auth/identity series).
+ * Same photoUrl-or-placeholder shape as [AvatarConBadge], without the edit badge: this button only
+ * navigates, it never edits the photo directly.
+ */
+@Composable
+fun AvatarTopBarAction(
+    photoUrl: String?,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        Box(modifier = Modifier.size(TamanoAvatarTopBar)) {
+            if (photoUrl != null) {
+                AsyncImage(
+                    model = photoUrl,
+                    contentDescription = contentDescription,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .testTag(TAG_AVATAR_TOPBAR_IMAGEN),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .testTag(TAG_AVATAR_TOPBAR_PLACEHOLDER),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = contentDescription,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
         }
     }
 }
