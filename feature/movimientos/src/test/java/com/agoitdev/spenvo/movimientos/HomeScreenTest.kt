@@ -4,11 +4,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizacion
+import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_PLACEHOLDER
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
@@ -113,22 +115,39 @@ class HomeScreenTest {
         conflictosPendientes = ConflictosPendientes(),
     )
 
-    private fun montarHome() {
+    private fun montarHome(avatarUrl: String? = null, onAbrirCuenta: () -> Unit = {}) {
         movimientosViewModel = crearMovimientosViewModel()
         composeTestRule.setContent {
             HomeScreen(
                 planId = "p1",
                 movimientosViewModel = movimientosViewModel,
                 viewModel = crearHomeViewModel(),
+                avatarUrl = avatarUrl,
+                onAbrirCuenta = onAbrirCuenta,
             )
         }
+    }
+
+    @Test
+    fun `tocar el avatar de la topbar invoca onAbrirCuenta`() {
+        var invocado = false
+        montarHome(onAbrirCuenta = { invocado = true })
+
+        // The placeholder's testTag lives on the IconButton's content, which TopAppBar's actions
+        // Row merges into a single accessibility node -- performClick() needs the unmerged tree to
+        // still address it by its own tag.
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+
+        assertEquals(true, invocado)
     }
 
     @Test
     fun `muestra el nombre del plan y el titulo de balance acumulado`() {
         montarHome()
 
-        composeTestRule.onNodeWithText("Casa").assertIsDisplayed()
+        // "Casa" now renders twice by design (Task 3: TopAppBar title + HomeContenido's own
+        // heading) -- assert the first match is displayed rather than requiring exactly one node.
+        composeTestRule.onAllNodesWithText("Casa")[0].assertIsDisplayed()
         composeTestRule.onNodeWithText("Balance acumulado").assertIsDisplayed()
     }
 

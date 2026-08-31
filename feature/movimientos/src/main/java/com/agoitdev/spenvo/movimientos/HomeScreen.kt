@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -20,6 +21,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.agoitdev.spenvo.designsystem.components.AvatarTopBarAction
 import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.TipoCategoria
@@ -46,10 +49,13 @@ const val TAG_HOME_INGRESOS_MES = "home_ingresos_mes"
 const val TAG_HOME_GASTOS_MES = "home_gastos_mes"
 const val TAG_HOME_BALANCE_ACUMULADO = "home_balance_acumulado"
 
+@Suppress("LongParameterList")
 @Composable
 fun HomeScreen(
     planId: String,
     movimientosViewModel: MovimientosViewModel,
+    avatarUrl: String?,
+    onAbrirCuenta: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -79,6 +85,9 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier,
+        topBar = {
+            HomeTopBar(nombrePlan = plan?.nombre.orEmpty(), avatarUrl = avatarUrl, onAbrirCuenta = onAbrirCuenta)
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         HomeContenido(
@@ -105,6 +114,21 @@ fun HomeScreen(
             ),
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeTopBar(nombrePlan: String, avatarUrl: String?, onAbrirCuenta: () -> Unit) {
+    TopAppBar(
+        title = { Text(text = nombrePlan) },
+        actions = {
+            AvatarTopBarAction(
+                photoUrl = avatarUrl,
+                contentDescription = stringResource(R.string.account_menu_description),
+                onClick = onAbrirCuenta,
+            )
+        },
+    )
 }
 
 @Suppress("LongParameterList")
