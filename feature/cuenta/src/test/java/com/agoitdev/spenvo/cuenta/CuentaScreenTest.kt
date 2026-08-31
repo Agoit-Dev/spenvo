@@ -25,6 +25,7 @@ import com.agoitdev.spenvo.domain.usecase.IniciarSesionConEmailUseCase
 import com.agoitdev.spenvo.domain.usecase.RenombrarUsuarioUseCase
 import com.agoitdev.spenvo.domain.usecase.SubirAvatarUseCase
 import com.agoitdev.spenvo.domain.usecase.VincularCredencialUseCase
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -231,6 +232,30 @@ class CuentaScreenTest {
     }
 
     @Test
+    fun `cambiar de pestana limpia el error del formulario anterior`() {
+        val authRepository = FakeAuthRepositorioPantalla(Sesion.Anonima)
+        authRepository.excepcionLogin =
+            FirebaseAuthInvalidCredentialsException("ERROR_WRONG_PASSWORD", "wrong password")
+        val viewModel = crearViewModel(authRepository)
+
+        composeTestRule.setContent {
+            CuentaScreen(onRegistroCompletado = {}, viewModel = viewModel, tabInicial = AuthTab.INICIAR_SESION)
+        }
+
+        composeTestRule.onNodeWithText("Correo").performTextReplacement("ana@example.com")
+        composeTestRule.onNodeWithText("Contraseña").performTextReplacement("wrong")
+        composeTestRule.onNodeWithText("Iniciar sesión").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Email o contraseña incorrectos").assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription("Crear cuenta").performClick()
+        composeTestRule.onNodeWithContentDescription("Iniciar sesión").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Email o contraseña incorrectos").assertDoesNotExist()
+    }
+
+    @Test
     fun `abrir y confirmar el dialogo de recuperacion invoca recuperarPassword`() {
         val authRepository = FakeAuthRepositorioPantalla(Sesion.Anonima)
         val viewModel = crearViewModel(authRepository)
@@ -254,12 +279,14 @@ private class FakeAuthRepositorioPantalla(sesionInicial: Sesion) : AuthRepositor
     var ultimoEmailLogin: String? = null
     var ultimaPasswordLogin: String? = null
     var ultimoEmailRecovery: String? = null
+    var excepcionLogin: Throwable? = null
 
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
     override suspend fun iniciarSesionConEmail(email: String, password: String) {
         ultimoEmailLogin = email
         ultimaPasswordLogin = password
+        excepcionLogin?.let { throw it }
         sesionFlow.value = Sesion(uid = "user-1", esAnonima = false, email = email)
     }
     override suspend fun enviarRecuperacionPassword(email: String) {

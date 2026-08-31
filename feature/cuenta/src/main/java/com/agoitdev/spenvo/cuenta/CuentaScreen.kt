@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,21 +70,13 @@ fun CuentaScreen(
     CuentaSideEffects(estado, perfilEstado, snackbarHostState, onRegistroCompletado, viewModel)
     val seleccionarImagen = rememberSeleccionarImagenLauncher(onImagenSeleccionada = viewModel::subirAvatar)
 
-    val mensajeRecoveryExito = stringResource(R.string.account_recovery_success)
-    LaunchedEffect(recoveryEstado.exito) {
-        if (recoveryEstado.exito) {
-            mostrarRecoveryDialog = false
-            snackbarHostState.showSnackbar(mensajeRecoveryExito)
-            viewModel.consumirRecoveryEstado()
-        }
-    }
-
-    if (mostrarRecoveryDialog) {
-        RecoveryDialog(
-            onConfirmar = viewModel::recuperarPassword,
-            onCancelar = { mostrarRecoveryDialog = false },
-        )
-    }
+    RecuperacionPassword(
+        recoveryEstado = recoveryEstado,
+        visible = mostrarRecoveryDialog,
+        snackbarHostState = snackbarHostState,
+        onCerrar = { mostrarRecoveryDialog = false },
+        viewModel = viewModel,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -100,7 +91,10 @@ fun CuentaScreen(
             AuthContenido(
                 estado = estado,
                 tabSeleccionado = tabSeleccionado,
-                onTabSeleccionado = { tabSeleccionado = it },
+                onTabSeleccionado = {
+                    tabSeleccionado = it
+                    viewModel.limpiarEstadoFormulario()
+                },
                 mostrarRecoveryDialog = mostrarRecoveryDialog,
                 onRegistrar = viewModel::registrar,
                 onIniciarSesion = viewModel::iniciarSesion,
@@ -417,33 +411,4 @@ private fun LoginForm(
             }
         }
     }
-}
-
-@Composable
-private fun RecoveryDialog(
-    onConfirmar: (String) -> Unit,
-    onCancelar: () -> Unit,
-) {
-    var email by rememberSaveable { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        title = { Text(stringResource(R.string.account_recovery_title)) },
-        text = {
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text(stringResource(R.string.account_recovery_email_label)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirmar(email) }, enabled = email.isNotBlank()) {
-                Text(stringResource(R.string.account_recovery_submit))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) { Text(stringResource(R.string.account_recovery_cancel)) }
-        },
-    )
 }

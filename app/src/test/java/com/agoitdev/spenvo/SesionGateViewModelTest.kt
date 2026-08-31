@@ -24,6 +24,7 @@ class SesionGateViewModelTest {
 
     private val authRepository = FakeAuthRepositoryGate()
     private val flagLogoutExplicito = MutableStateFlow(false)
+    private val limpiarLogout = FakeLimpiarLogoutExplicito()
 
     @Before
     fun setUp() {
@@ -35,7 +36,8 @@ class SesionGateViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun crearViewModel() = SesionGateViewModel(authRepository, flagLogoutExplicito)
+    private fun crearViewModel() =
+        SesionGateViewModel(authRepository, flagLogoutExplicito, limpiarLogout)
 
     @Test
     fun `uid nulo y flag false dispara login anonimo y muestra MostrarApp`() = runTest {
@@ -77,17 +79,23 @@ class SesionGateViewModelTest {
     }
 
     @Test
-    fun `REGRESION cold start con flag true nunca llama iniciarSesionAnonima`() = runTest {
-        // Simulates: process was killed right after an explicit logout (flag persisted true),
-        // then relaunched — this is the exact scenario a merely in-memory flag would have failed.
-        authRepository.sesionFlow.value = Sesion.Anonima
-        flagLogoutExplicito.value = true
+    fun `al cerrar sesion el estado pasa de MostrarApp a MostrarGate sin recrear anonimo`() = runTest {
+        // The transition this ViewModel actually owns: a live session drops to uid == null while
+        // the logout flag flips true. Persistence across process death is not observable here (the
+        // flag is a plain in-memory flow in this test) — that is SesionPreferencesTest's job.
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = false)
+        flagLogoutExplicito.value = false
         val viewModel = crearViewModel()
         val job = launch { viewModel.estado.collect {} }
         advanceUntilIdle()
+        assertEquals(EstadoGate.MostrarApp, viewModel.estado.value)
 
-        assertEquals(false, authRepository.anonimaLlamada)
+        flagLogoutExplicito.value = true
+        authRepository.sesionFlow.value = Sesion.Anonima
+        advanceUntilIdle()
+
         assertEquals(EstadoGate.MostrarGate, viewModel.estado.value)
+        assertEquals(0, authRepository.anonimaLlamadaCount)
         job.cancel()
     }
 
@@ -100,7 +108,7 @@ class SesionGateViewModelTest {
         val flagFlow = MutableSharedFlow<Boolean>(replay = 1, extraBufferCapacity = 1)
         authRepository.sesionFlow.value = Sesion.Anonima
         flagFlow.tryEmit(false)
-        val viewModel = SesionGateViewModel(authRepository, flagFlow)
+        val viewModel = SesionGateViewModel(authRepository, flagFlow, limpiarLogout)
         val job = launch { viewModel.estado.collect {} }
         advanceUntilIdle()
 
@@ -112,6 +120,76 @@ class SesionGateViewModelTest {
         assertEquals(1, authRepository.anonimaLlamadaCount)
         job.cancel()
     }
+
+    @Test
+    fun `un fallo de iniciarSesionAnonima no propaga la excepcion y se reintenta`() = runTest {
+        // Fresh install with a flaky network / App Check exchange: the bootstrap used to run
+        // uncaught inside viewModelScope.launch, so the first failure crashed the app.
+        authRepository.fallosAnonimaPendientes = 1
+        authRepository.sesionFlow.value = Sesion.Anonima
+        flagLogoutExplicito.value = false
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.estado.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(2, authRepository.anonimaLlamadaCount)
+        assertEquals(EstadoGate.MostrarApp, viewModel.estado.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `si iniciarSesionAnonima falla siempre el reintento esta acotado y no crashea`() = runTest {
+        authRepository.fallosAnonimaPendientes = Int.MAX_VALUE
+        authRepository.sesionFlow.value = Sesion.Anonima
+        flagLogoutExplicito.value = false
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.estado.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(SesionGateViewModel.MAX_INTENTOS_ANONIMO, authRepository.anonimaLlamadaCount)
+        job.cancel()
+    }
+
+    @Test
+    fun `continuarComoInvitado limpia el flag de logout y establece una sesion anonima`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        flagLogoutExplicito.value = true
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.estado.collect {} }
+        advanceUntilIdle()
+        assertEquals(EstadoGate.MostrarGate, viewModel.estado.value)
+
+        viewModel.continuarComoInvitado()
+        advanceUntilIdle()
+
+        assertEquals(1, limpiarLogout.llamadas)
+        assertEquals(1, authRepository.anonimaLlamadaCount)
+        job.cancel()
+    }
+
+    @Test
+    fun `continuarComoInvitado con un login anonimo fallido reintenta sin crashear`() = runTest {
+        authRepository.fallosAnonimaPendientes = 1
+        authRepository.sesionFlow.value = Sesion.Anonima
+        flagLogoutExplicito.value = true
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.estado.collect {} }
+        advanceUntilIdle()
+
+        viewModel.continuarComoInvitado()
+        advanceUntilIdle()
+
+        assertEquals(1, limpiarLogout.llamadas)
+        assertEquals(2, authRepository.anonimaLlamadaCount)
+        job.cancel()
+    }
+}
+
+private class FakeLimpiarLogoutExplicito : LimpiarLogoutExplicito {
+    var llamadas = 0
+    override suspend fun invoke() {
+        llamadas++
+    }
 }
 
 private class FakeAuthRepositoryGate : AuthRepository {
@@ -119,10 +197,17 @@ private class FakeAuthRepositoryGate : AuthRepository {
     var anonimaLlamada = false
     var anonimaLlamadaCount = 0
 
+    /** How many upcoming [iniciarSesionAnonima] calls should throw before one succeeds. */
+    var fallosAnonimaPendientes = 0
+
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() {
         anonimaLlamada = true
         anonimaLlamadaCount++
+        if (fallosAnonimaPendientes > 0) {
+            fallosAnonimaPendientes--
+            error("no se pudo establecer la sesión anónima")
+        }
     }
     override suspend fun iniciarSesionConEmail(email: String, password: String) = Unit
     override suspend fun enviarRecuperacionPassword(email: String) = Unit

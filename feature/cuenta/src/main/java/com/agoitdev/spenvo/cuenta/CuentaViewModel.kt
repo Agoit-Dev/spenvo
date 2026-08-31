@@ -84,6 +84,15 @@ class CuentaViewModel @Suppress("LongParameterList") @Inject constructor(
         _estado.update { it.copy(error = null, errorRes = null) }
     }
 
+    /**
+     * "Crear cuenta" and "Iniciar sesión" share one [RegistroEstado]; without this, a failed
+     * sign-in's `errorRes` (or an in-flight `cargando`) would still be showing after switching
+     * to the other tab, attached to a form that never produced it.
+     */
+    fun limpiarEstadoFormulario() {
+        _estado.value = RegistroEstado()
+    }
+
     fun iniciarSesion(email: String, password: String) {
         _estado.update { it.copy(cargando = true, error = null, errorRes = null) }
         viewModelScope.launch {
@@ -100,6 +109,8 @@ class CuentaViewModel @Suppress("LongParameterList") @Inject constructor(
      * permita enumerar cuentas registradas probando direcciones.
      */
     fun recuperarPassword(email: String) {
+        if (_recoveryEstado.value.cargando) return
+        _recoveryEstado.value = RecoveryEstado(cargando = true)
         viewModelScope.launch {
             runCatching { enviarRecuperacionPassword(email) }
             _recoveryEstado.value = RecoveryEstado(exito = true)
@@ -130,7 +141,11 @@ class CuentaViewModel @Suppress("LongParameterList") @Inject constructor(
         _perfilEstado.update { it.copy(avatarError = null) }
     }
 
-    /** [AuthRepository.cerrarSesion] already re-establishes an anonymous session. */
+    /**
+     * [AuthRepository.cerrarSesion] marks the persisted explicit-logout flag and signs out without
+     * re-establishing anything: the root `SesionGateViewModel` then shows the sign-in gate, and
+     * only an explicit sign-in or "continuar como invitado" creates a session again.
+     */
     fun logout() {
         viewModelScope.launch { authRepository.cerrarSesion() }
     }
@@ -180,6 +195,7 @@ data class RegistroEstado(
 )
 
 data class RecoveryEstado(
+    val cargando: Boolean = false,
     val exito: Boolean = false,
 )
 
