@@ -83,17 +83,17 @@ Scaffold(
             TopAppBar(
                 title = { Text(stringResource(R.string.members_title)) },
                 actions = {
-                    AvatarTopBarAction(
-                        photoUrl = avatarUrl,
-                        contentDescription = stringResource(R.string.account_menu_description),
-                        onClick = onAbrirCuenta,
-                    )
                     IconButton(onClick = { mostrarDialogoInvitar = true }) {
                         Icon(
                             imageVector = Icons.Filled.Add,
                             contentDescription = stringResource(R.string.members_invite),
                         )
                     }
+                    AvatarTopBarAction(
+                        photoUrl = avatarUrl,
+                        contentDescription = stringResource(R.string.account_menu_description),
+                        onClick = onAbrirCuenta,
+                    )
                 },
             )
         },
