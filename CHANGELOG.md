@@ -334,6 +334,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   session — guest-first re-entry). `Sesion` gains `photoUrl`, mapped from
   `FirebaseUser.photoUrl`. Nothing in the UI calls these yet — that lands in a
   later Profile screen slice.
+- Perfil accesible desde todas las pantallas (front 3/3): the account/profile entry point, previously
+  reachable only from the Planes list, now appears in every tab's `TopAppBar` inside an open plan
+  (Home, Movimientos, Categorías, Miembros) via a new `AvatarTopBarAction` (`:core:designsystem`),
+  showing the user's real avatar photo instead of a generic icon. `SesionGateViewModel.avatarUrl`
+  reads `Sesion.photoUrl` (already kept live by `CuentaViewModel.subirAvatar`) once at the app root
+  and passes it down alongside a shared `onAbrirCuenta` callback — no new data plumbing, no feature
+  ViewModel changes beyond the screens' own composable parameters. Navigation-only: `CuentaScreen`'s
+  profile UI itself is unchanged.
 
 ## [0.7.0] - 2026-08-23
 
