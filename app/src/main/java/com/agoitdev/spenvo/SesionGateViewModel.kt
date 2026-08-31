@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -49,6 +50,17 @@ class SesionGateViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoGate.Cargando)
+
+    /**
+     * The current session's avatar photo, for the "open my account" action every screen exposes
+     * (front 3 of the auth/identity series). `null` covers both an anonymous session and a
+     * registered user who never uploaded a photo — [AvatarTopBarAction] falls back to a generic
+     * icon either way.
+     */
+    val avatarUrl: StateFlow<String?> = authRepository.observeSesion()
+        .map { it.photoUrl }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
      * "Continuar como invitado" from the post-logout gate: clears the persisted logout flag and

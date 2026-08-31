@@ -183,6 +183,29 @@ class SesionGateViewModelTest {
         assertEquals(2, authRepository.anonimaLlamadaCount)
         job.cancel()
     }
+
+    @Test
+    fun `avatarUrl refleja el photoUrl de la sesion actual`() = runTest {
+        authRepository.sesionFlow.value =
+            Sesion(uid = "user-1", esAnonima = false, photoUrl = "https://example.com/avatar.jpg")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.avatarUrl.collect {} }
+        advanceUntilIdle()
+
+        assertEquals("https://example.com/avatar.jpg", viewModel.avatarUrl.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `avatarUrl es null para una sesion sin foto`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = true)
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.avatarUrl.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.avatarUrl.value)
+        job.cancel()
+    }
 }
 
 private class FakeLimpiarLogoutExplicito : LimpiarLogoutExplicito {
