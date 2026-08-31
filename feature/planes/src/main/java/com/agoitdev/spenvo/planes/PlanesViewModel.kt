@@ -1,5 +1,6 @@
 package com.agoitdev.spenvo.planes
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.data.remote.sync.PlanSincronizacion
@@ -116,7 +117,10 @@ init {
         viewModelScope.launch {
             val uid = sesion.filter { it.uid != null }.first().uid ?: return@launch
             // Best-effort bootstrap: ensures the Usuario doc (nombreUsuario) exists for this uid.
+            // Logged, not surfaced in the UI: a Firestore/rules failure here must not be invisible
+            // (see the 2026-08-31 usuarios-collection-never-created investigation).
             runCatching { asegurarUsuario.paraSesionAnonima(uid) }
+                .onFailure { e -> Log.e(TAG, "No se pudo asegurar el Usuario en el bootstrap anonimo", e) }
         }
         viewModelScope.launch {
             val uid = sesion.filter { it.uid != null }.first().uid ?: return@launch
@@ -156,6 +160,7 @@ init {
     }
 
     private companion object {
+        const val TAG = "PlanesViewModel"
         const val RETRY_DELAY_MS = 30_000L
         const val WHILE_SUBSCRIBED_TIMEOUT_MS = 5_000L
     }

@@ -45,8 +45,14 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowLog
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class PlanesViewModelTest {
 
     private val sesionFlow = MutableStateFlow(Sesion(uid = "user-1", esAnonima = true))
@@ -231,6 +237,29 @@ class PlanesViewModelTest {
     }
 
     @Test
+    fun `fallo en asegurarUsuario durante el bootstrap se loguea y no bloquea el resto del init`() = runTest {
+        ShadowLog.reset()
+        val usuarioRepoQueFalla = FakeUsuarioRepository(excepcionAlObtener = IllegalStateException("PERMISSION_DENIED"))
+        val asegurarUsuarioQueFalla = AsegurarUsuarioUseCase(
+            usuarioRepoQueFalla,
+            GenerarNombreUsuarioUnicoUseCase(usuarioRepoQueFalla),
+            accesoPlanRepo,
+            pendientesRepo,
+        )
+        val viewModel = crearViewModel(asegurarUsuario = asegurarUsuarioQueFalla)
+
+        val job = launch { viewModel.cargandoLista.collect {} }
+        advanceUntilIdle()
+
+        // No debe crashear ni bloquear el resto del bootstrap del init (M5/asegurarUsuario es
+        // best-effort), pero el fallo tampoco puede quedar invisible como antes de este fix.
+        assertFalse(viewModel.cargandoLista.value)
+        val logueado = ShadowLog.getLogs().any { it.type == android.util.Log.ERROR && it.tag == "PlanesViewModel" }
+        assertTrue("esperaba un Log.e con tag PlanesViewModel tras el fallo de asegurarUsuario", logueado)
+        job.cancel()
+    }
+
+    @Test
     fun `cargandoLista sigue en true si invitaciones no resolvio aunque planes ya lo hizo`() = runTest {
         val accesosSinResolver = MutableSharedFlow<List<AccesoPlan>>()
         val accesoPlanRepoSinResolver = FakeAccesoPlanRepository(accesosSinResolver)
@@ -322,11 +351,16 @@ private class FakeAuthRepository(
     override suspend fun cerrarSesion() = Unit
 }
 
-private class FakeUsuarioRepository : UsuarioRepository {
+private class FakeUsuarioRepository(
+    private val excepcionAlObtener: Throwable? = null,
+) : UsuarioRepository {
     private val usuarios = mutableMapOf<String, Usuario>()
     val creados = mutableListOf<Usuario>()
 
-    override suspend fun obtener(usuarioId: String): Usuario? = usuarios[usuarioId]
+    override suspend fun obtener(usuarioId: String): Usuario? {
+        excepcionAlObtener?.let { throw it }
+        return usuarios[usuarioId]
+    }
     override suspend fun obtenerVarios(usuarioIds: List<String>): List<Usuario> =
         usuarioIds.mapNotNull { usuarios[it] }
 

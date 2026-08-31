@@ -52,6 +52,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the list area shows a centered, accessibly-labeled spinner while loading — covering both the
   anonymous-session-establishment window and the initial Room query — instead of flashing the
   empty state. The top bar and "create plan" FAB are unaffected.
+- The `usuarios` collection was never actually appearing in Firestore: the security rules built
+  across the Usuario/nombreUsuario slices had only ever been validated against the local emulator,
+  never deployed to the live project — deployed now. Separately, `PlanesViewModel`'s anonymous-uid
+  bootstrap (`asegurarUsuario.paraSesionAnonima`) swallowed any failure with a bare `runCatching { }`
+  and no `.onFailure`, so a denied write would have been invisible either way; it now logs the
+  exception (`Log.e`, tag `PlanesViewModel`) without surfacing it in the UI, since the bootstrap
+  stays best-effort by design.
 
 ### Changed
 
