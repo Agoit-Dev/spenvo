@@ -4,8 +4,9 @@
 Nothing is integrated without review and without explicit user OK.
 
 ## Rules
-1. **Do not push or open a PR without explicit OK.** "Push", "commit", "merge", "PR"
-   always require confirming with the user first.
+1. **Do not commit, push, or open a PR without explicit OK.** "Commit", "push",
+   "merge", "PR" always require confirming with the user first — commit and
+   push/PR are separate confirmations, not one.
 2. Before a local commit: `git status`, `git diff`, `git log --oneline -10`.
 3. Stage ONLY intentional files. Never upload secrets, `local.properties`,
    `google-services.json`, `.env`, build files or `.idea/`.

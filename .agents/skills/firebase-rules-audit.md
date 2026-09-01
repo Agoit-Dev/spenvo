@@ -11,8 +11,11 @@
    - `planes_financieros/{id}`: member = exists `acceso_plan_financiero/{uid}_{planId}`.
    - `acceso_plan_financiero/{uid}_{planId}`: owner/editor/admin of that plan.
    - `categorias`, `gastos`, `ingresos`: scoped to the plan and the role.
-4. `editedBy`/`editedAt`: set server-side with `request.auth.uid` and `request.time`
-   (never trust client fields).
+4. `editedBy`/`editedAt`: `editedBy` is strictly enforced server-side against
+   `request.auth.uid`. `editedAt` is only validated as `is timestamp`, NOT pinned to
+   `request.time` — `FieldValue.serverTimestamp()` resolves to `null` in offline
+   cache and would break optimistic writes + the conflict predicate, so the client
+   clock value is trusted for `editedAt` (never trust `editedBy`).
 5. Indexes: every real query has an index; no unnecessary wildcard indexes.
 
 ## Storage — steps
@@ -30,7 +33,8 @@
 
 ## Definitions
 - `updatedAt`: local write timestamp.
-- `editedAt`: timestamp of the actual last editing author (server-set).
+- `editedAt`: timestamp of the actual last editing author (client clock, only
+  type-checked as `is timestamp` server-side — see step 4).
 - Visible conflict: badge/notice in the row with a "keep mine / use theirs" option.
 
 ## Scope note (revisit if this grows)

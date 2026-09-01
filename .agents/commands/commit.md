@@ -16,8 +16,10 @@ Safe local commit with automatic gate and docs verification.
    - lockfiles up to date (if `libs.versions.toml` changed).
 3. Review `git status` + `git diff`; make sure there are NO secrets or build files.
 4. Stage only intentional files.
-5. Local commit with a brief message (repo style). Do NOT push or PR.
-6. Tell the user the local commit is ready and ask for OK to push/PR.
+5. Show the user the staged diff and the proposed commit message; ask for explicit
+   OK before committing (`AGENTS.md`: "Push/PR/commit only with explicit user OK").
+6. Once approved, commit locally with a brief message (repo style). Do NOT push or
+   PR — that needs its own, separate explicit OK.
 
 ## Rules
 - Any red gate aborts the commit and reports the failure.

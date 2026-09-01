@@ -17,8 +17,9 @@ Integrate Engram (persistent memory) and MobiAI (mobile toolbox) without conflic
 1. No MobiAI skill fires automatically. It is invoked explicitly by the user or
    by the approved plan.
 2. When invoked, use the correct skill: `mobiai-mobile-tdd` before implementing,
-   `mobiai-mobile-debugging` before proposing a fix, `mobiai-mobile-testing` for
-   tests, `mobiai-mobile-verification` before declaring done, etc.
+   `mobiai-mobile-debugging` before proposing a fix, `mobiai-android-testing` /
+   `mobiai-write-tests` for tests, `mobiai-mobile-verification` before declaring
+   done, etc.
 3. If there is a conflict between a `.agents/` rule and a MobiAI suggestion, `.agents/`
    wins (and note the divergence for review).
 4. **Mechanical/tooling skills carry no architecture risk and may be reached for
