@@ -91,6 +91,16 @@ fun aplicarEstadoGate(estado: EstadoGate, backStack: MutableList<NavKey>) {
 const val TAG_GATE_CARGANDO = "gate_cargando"
 
 /**
+ * UX-H902: a fast double tap on a nav-triggering action (an avatar, a plan card) fires its click
+ * callback twice before the first navigation's recomposition lands, which used to push the same
+ * route onto the backstack twice in a row. `NavKey`s here are all `data object`/`data class`, so
+ * structural equality is enough to detect "already there."
+ */
+fun MutableList<NavKey>.pushUnlessTop(destino: NavKey) {
+    if (lastOrNull() != destino) add(destino)
+}
+
+/**
  * The backstack starts at [PlanesRoute], so rendering [NavDisplay] before the gate has decided
  * would flash [PlanesScreen] at a user who just logged out, until [aplicarEstadoGate] clears it.
  * The native splash window ([installSplashScreen]) covers the window before this.
@@ -193,15 +203,15 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
             entryProvider = entryProvider {
                 entry<PlanesRoute> {
                     PlanesScreen(
-                        onCrearCuenta = { backStack.add(CuentaRoute) },
-                        onAbrirPlan = { planId -> backStack.add(PlanRoute(planId)) },
+                        onCrearCuenta = { backStack.pushUnlessTop(CuentaRoute) },
+                        onAbrirPlan = { planId -> backStack.pushUnlessTop(PlanRoute(planId)) },
                     )
                 }
                 entry<PlanRoute> { route ->
                     ContenidoPlanRoute(
                         route = route,
                         avatarUrl = avatarUrl,
-                        onAbrirCuenta = { backStack.add(CuentaRoute) },
+                        onAbrirCuenta = { backStack.pushUnlessTop(CuentaRoute) },
                     )
                 }
                 entry<CuentaRoute> {

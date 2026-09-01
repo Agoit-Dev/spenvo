@@ -90,4 +90,43 @@ class MainActivityTest {
         assertTrue(debeMostrarNavegacion(EstadoGate.MostrarApp))
         assertTrue(debeMostrarNavegacion(EstadoGate.MostrarGate))
     }
+
+    @Test
+    fun `pushUnlessTop appends a destination that is not already on top`() {
+        val backStack = mutableListOf<NavKey>(PlanesRoute)
+
+        backStack.pushUnlessTop(CuentaRoute)
+
+        assertEquals(listOf(PlanesRoute, CuentaRoute), backStack.toList())
+    }
+
+    @Test
+    fun `pushUnlessTop is a no-op when the destination is already on top`() {
+        // UX-H902: a fast double tap on an avatar/plan-card action fires the click callback twice
+        // before the first navigation recomposes the backstack, which used to push the same route
+        // twice in a row.
+        val backStack = mutableListOf<NavKey>(PlanesRoute, CuentaRoute)
+
+        backStack.pushUnlessTop(CuentaRoute)
+
+        assertEquals(listOf(PlanesRoute, CuentaRoute), backStack.toList())
+    }
+
+    @Test
+    fun `pushUnlessTop treats two PlanRoute with different planId as different destinations`() {
+        val backStack = mutableListOf<NavKey>(PlanesRoute, PlanRoute("p1"))
+
+        backStack.pushUnlessTop(PlanRoute("p2"))
+
+        assertEquals(listOf(PlanesRoute, PlanRoute("p1"), PlanRoute("p2")), backStack.toList())
+    }
+
+    @Test
+    fun `pushUnlessTop is a no-op for the same PlanRoute planId already on top`() {
+        val backStack = mutableListOf<NavKey>(PlanesRoute, PlanRoute("p1"))
+
+        backStack.pushUnlessTop(PlanRoute("p1"))
+
+        assertEquals(listOf(PlanesRoute, PlanRoute("p1")), backStack.toList())
+    }
 }

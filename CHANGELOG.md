@@ -65,6 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `firestore.rules`' `roleLevel`/`tieneRolMinimo` ordering) backs `MiembrosViewModel.puedeInvitar`,
   which derives the current session's own role from the same member list already fetched for
   display — the button is now hidden outright for anyone below admin, not just disabled.
+- `MainActivity.kt`'s `onCrearCuenta`/`onAbrirCuenta`/`onAbrirPlan` pushed straight onto the
+  Navigation 3 backstack with no double-tap guard, so a fast double tap on an avatar or a plan card
+  could push the same route twice. New `MutableList<NavKey>.pushUnlessTop(destino)` no-ops instead
+  of pushing when the destination is already on top.
 
 ### Changed
 

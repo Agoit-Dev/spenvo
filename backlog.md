@@ -37,10 +37,6 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **UX-H901:** `HomeScreen` shows the plan name twice (the new `TopAppBar` title + `HomeContenido`'s
   own heading). The design allowed this on purpose, but it's worth evaluating whether to drop the
   duplicate heading.
-- [ ] **UX-H902:** `onAbrirCuenta = { backStack.add(CuentaRoute) }` (in `MainActivity.kt`, a pattern
-  inherited from `onCrearCuenta`/`onAbrirPlan`) has no double-tap guard — a fast double tap could
-  push `CuentaRoute` onto the backstack twice. Previously this only mattered from 1 entry point
-  (Plans); with front 3 it's now 5.
 - [ ] **UX-H903:** `PlanesScreen`'s account menu (`CuentaMenu`) still shows a generic icon instead of
   the user's real photo, unlike the 4 new tabs that already use `AvatarTopBarAction`. Left out of
   front 3's scope on purpose.
@@ -88,3 +84,8 @@ task's implementation departed from what its plan/design doc specified, note it 
   behavior), and the test's movimientos were hardcoded to August 2026; once the wall clock rolled
   into September the filter excluded everything, summing to 0. Would have broken again every month
   regardless of any code change — a test-fixture staleness bug, not a product bug.
+- [x] **UX-H902:** New `MutableList<NavKey>.pushUnlessTop(destino)` extension in `MainActivity.kt`
+  — no-ops instead of pushing when `destino` already sits on top of the backstack.
+  **Deviation:** the item only named `onAbrirCuenta`, but `onCrearCuenta` and `onAbrirPlan` in the
+  same file have the exact same latent double-tap bug — fixed all three with one shared helper
+  rather than leaving 2 of 3 identical call sites unprotected.
