@@ -131,6 +131,8 @@ A change is ready only if **all** apply:
 - `./gradlew lintDebug` green (HardcodedText and MissingTranslation = error).
 - detekt without findings (`./gradlew detekt`).
 - `CHANGELOG.md` updated.
+- `backlog.md` updated (task moved to the right status section, checked off if done) and
+  `ROADMAP.md` updated if the change closes or opens a phase-level item.
 - `doc/database/schema.mdd` versioned if the schema changed.
 - `doc/` living docs updated if applicable.
 - Dependency locks updated (`--write-locks`) if `libs.versions.toml` changed.
@@ -139,6 +141,10 @@ A change is ready only if **all** apply:
 
 ## Working with agents
 
+- **`ROADMAP.md`** and **`backlog.md`** (repo root): mandatory reading before proposing an
+  architectural change or starting a new feature. `ROADMAP.md` is the strategic phase map;
+  `backlog.md` is the atomic task list, moved between its status sections (and checked off) as work
+  lands — keep both current as part of finishing a change, the same way `CHANGELOG.md` already is.
 - **`.agents/`** is the project's source of truth (rules/skills/commands). Read before acting.
 - **Engram**: persistent session memory (`mem_save`/`mem_search`/`mem_session_summary`).
 - **MobiAI**: mobile toolbox skills, only invoked **explicitly** when they apply
