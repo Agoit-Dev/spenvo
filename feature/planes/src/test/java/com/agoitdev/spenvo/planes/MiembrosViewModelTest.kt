@@ -154,6 +154,79 @@ class MiembrosViewModelTest {
     }
 
     @Test
+    fun `puedeInvitar es true cuando el usuario actual es OWNER`() = runTest {
+        val accesosRepo = FakeAccesoPlanRepositorioMiembros(
+            accesos = listOf(AccesoPlan(usuarioId = "user-1", planId = "p1", rol = Rol.OWNER)),
+        )
+        val viewModel = crearViewModel(accesosRepo = accesosRepo)
+        val puedeInvitar = viewModel.puedeInvitar("p1")
+
+        val job = launch { puedeInvitar.collect {} }
+        advanceUntilIdle()
+
+        assertTrue(puedeInvitar.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `puedeInvitar es true cuando el usuario actual es ADMIN`() = runTest {
+        val accesosRepo = FakeAccesoPlanRepositorioMiembros(
+            accesos = listOf(AccesoPlan(usuarioId = "user-1", planId = "p1", rol = Rol.ADMIN)),
+        )
+        val viewModel = crearViewModel(accesosRepo = accesosRepo)
+        val puedeInvitar = viewModel.puedeInvitar("p1")
+
+        val job = launch { puedeInvitar.collect {} }
+        advanceUntilIdle()
+
+        assertTrue(puedeInvitar.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `puedeInvitar es false cuando el usuario actual es EDITOR`() = runTest {
+        val accesosRepo = FakeAccesoPlanRepositorioMiembros(
+            accesos = listOf(AccesoPlan(usuarioId = "user-1", planId = "p1", rol = Rol.EDITOR)),
+        )
+        val viewModel = crearViewModel(accesosRepo = accesosRepo)
+        val puedeInvitar = viewModel.puedeInvitar("p1")
+
+        val job = launch { puedeInvitar.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(false, puedeInvitar.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `puedeInvitar es false cuando el usuario actual es VIEWER`() = runTest {
+        val accesosRepo = FakeAccesoPlanRepositorioMiembros(
+            accesos = listOf(AccesoPlan(usuarioId = "user-1", planId = "p1", rol = Rol.VIEWER)),
+        )
+        val viewModel = crearViewModel(accesosRepo = accesosRepo)
+        val puedeInvitar = viewModel.puedeInvitar("p1")
+
+        val job = launch { puedeInvitar.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(false, puedeInvitar.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `puedeInvitar es false mientras el usuario actual no aparece todavia en la lista de miembros`() = runTest {
+        val accesosRepo = FakeAccesoPlanRepositorioMiembros(accesos = emptyList())
+        val viewModel = crearViewModel(accesosRepo = accesosRepo)
+        val puedeInvitar = viewModel.puedeInvitar("p1")
+
+        val job = launch { puedeInvitar.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(false, puedeInvitar.value)
+        job.cancel()
+    }
+
+    @Test
     fun `consumirError limpia tanto el mensaje de fallo como el error de validacion`() = runTest {
         val viewModel = crearViewModel()
 

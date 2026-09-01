@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agoitdev.spenvo.domain.model.MiembroResuelto
 import com.agoitdev.spenvo.domain.model.Rol
+import com.agoitdev.spenvo.domain.model.esAlMenos
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
 import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.UsuarioRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -39,6 +41,19 @@ fun miembrosResueltos(planId: String): StateFlow<List<MiembroResuelto>> =
                 accesos.map { acceso -> MiembroResuelto(acceso, usuarios[acceso.usuarioId]) }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS), emptyList())
+
+    /**
+     * FEAT-U701: whether the current session's own role in this plan is admin+ — gates the
+     * "Invite" action in the UI. Server-side, `firestore.rules` already rejects the write for
+     * anyone below admin; this only controls whether the button is offered at all. Reuses the
+     * same `observarAccesosDelPlan` list `miembrosResueltos` already collects, no extra query.
+     * Defaults to `false` (hidden) until the current uid resolves in that list — deny-by-default,
+     * matching this app's general security posture.
+     */
+    fun puedeInvitar(planId: String): StateFlow<Boolean> =
+        combine(accesosRepository.observarAccesosDelPlan(planId), authRepository.observeSesion()) { accesos, sesion ->
+            accesos.firstOrNull { it.usuarioId == sesion.uid }?.rol?.esAlMenos(Rol.ADMIN) == true
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS), false)
 
     private val _estadoInvitar = MutableStateFlow(InvitarEstado())
     val estadoInvitar: StateFlow<InvitarEstado> = _estadoInvitar.asStateFlow()

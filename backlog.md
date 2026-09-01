@@ -15,11 +15,13 @@ task's implementation departed from what its plan/design doc specified, note it 
 
 ## 📋 To Do
 
-### 🔒 Security & UX (High Priority)
-- [ ] **FEAT-U701:** UI gating on invitations. Visually restrict the "Invite" button/action in
-  `MiembrosScreen` so it's only enabled when the current user holds `Admin` role or above in the
-  plan, aligning the UI with the already-enforced Firestore security rules (server-side already
-  blocks the attempt; only the UI is missing today).
+### 🐞 Bugs (High Priority)
+- [ ] **BUG-H603:** `PlanesViewModelTest` — `` `resumenesPorPlan combina un resumen por cada plan
+  del usuario` `` and `` `resumenesPorPlan se recombina cuando cambia la lista de planes` `` fail on
+  a clean `main` checkout (confirmed via `git stash` + isolated rerun while implementing
+  `FEAT-U701`, unrelated to that change): `AssertionError: expected:<2000> but was:<0>`. Looks like
+  a `StandardTestDispatcher`/`combine` timing issue in how the test collects `resumenesPorPlan`, not
+  a real product bug — needs investigation before it can be trusted as a regression signal.
 
 ### 🔒 Architecture & Robustness (Medium Priority)
 - [ ] **ARCH-M501:** Design a prototype to persist `EdicionesPendientes` and `ConflictosPendientes`
@@ -80,3 +82,10 @@ task's implementation departed from what its plan/design doc specified, note it 
   persist explicit logout. Merged to `main` (`53f493e..0f4cccb`).
 - [x] **FEAT-U704:** Profile accessible from every screen (front 3/3). `AvatarTopBarAction` on all 4
   tabs of an open plan. Merged to `main` (`0f4cccb..da423ab`).
+- [x] **FEAT-U701:** UI gating on invitations. `MiembrosViewModel.puedeInvitar(planId)` derives the
+  current session's own role from the same `observarAccesosDelPlan` list already used for the
+  member list (no extra query), gated on a new `Rol.esAlMenos(minimo)` domain extension mirroring
+  `firestore.rules`' `roleLevel`/`tieneRolMinimo`.
+  **Deviation:** the item said "only enabled when..."; implemented as fully hidden instead of
+  shown-but-disabled, matching this app's existing convention of not rendering conditional actions
+  at all rather than greying them out (e.g. `CuentaMenu`, `EntradaCuenta`/`GateInvitado`).

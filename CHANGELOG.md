@@ -59,6 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and no `.onFailure`, so a denied write would have been invisible either way; it now logs the
   exception (`Log.e`, tag `PlanesViewModel`) without surfacing it in the UI, since the bootstrap
   stays best-effort by design.
+- `MiembrosScreen`'s "Invite" button was reachable by any plan member, viewers included, even
+  though `firestore.rules` already rejected the write server-side for anyone below admin — the UI
+  didn't reflect that. New `Rol.esAlMenos(minimo)` domain extension (`:core:domain`, mirrors
+  `firestore.rules`' `roleLevel`/`tieneRolMinimo` ordering) backs `MiembrosViewModel.puedeInvitar`,
+  which derives the current session's own role from the same member list already fetched for
+  display — the button is now hidden outright for anyone below admin, not just disabled.
 
 ### Changed
 

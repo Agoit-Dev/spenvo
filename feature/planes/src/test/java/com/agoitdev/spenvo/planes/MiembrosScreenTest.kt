@@ -1,11 +1,13 @@
 package com.agoitdev.spenvo.planes
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_PLACEHOLDER
 import com.agoitdev.spenvo.domain.model.AccesoPlan
 import com.agoitdev.spenvo.domain.model.InvitacionPendiente
+import com.agoitdev.spenvo.domain.model.Rol
 import com.agoitdev.spenvo.domain.model.Sesion
 import com.agoitdev.spenvo.domain.model.Usuario
 import com.agoitdev.spenvo.domain.repository.AccesoPlanRepository
@@ -80,11 +82,63 @@ class MiembrosScreenTest {
 
         assertEquals(true, invocado)
     }
+
+    @Test
+    fun `el boton Invitar se muestra cuando el usuario actual es admin o superior`() {
+        val accesosRepo = FakeAccesoPlanRepositorioMiembrosScreen(
+            accesos = listOf(AccesoPlan(usuarioId = "user-1", planId = "p1", rol = Rol.ADMIN)),
+        )
+        montarMiembros(accesosRepo)
+
+        composeTestRule.onNodeWithContentDescription("Invitar miembro").assertExists()
+    }
+
+    @Test
+    fun `el boton Invitar no se muestra cuando el usuario actual es editor`() {
+        val accesosRepo = FakeAccesoPlanRepositorioMiembrosScreen(
+            accesos = listOf(AccesoPlan(usuarioId = "user-1", planId = "p1", rol = Rol.EDITOR)),
+        )
+        montarMiembros(accesosRepo)
+
+        composeTestRule.onNodeWithContentDescription("Invitar miembro").assertDoesNotExist()
+    }
+
+    @Test
+    fun `el boton Invitar no se muestra cuando el usuario actual todavia no aparece en la lista`() {
+        montarMiembros(FakeAccesoPlanRepositorioMiembrosScreen(accesos = emptyList()))
+
+        composeTestRule.onNodeWithContentDescription("Invitar miembro").assertDoesNotExist()
+    }
+
+    private fun montarMiembros(accesosRepo: FakeAccesoPlanRepositorioMiembrosScreen) {
+        val usuarioRepo = FakeUsuarioRepositorioMiembrosScreen()
+        val viewModel = MiembrosViewModel(
+            accesosRepository = accesosRepo,
+            invitarMiembro = InvitarMiembroUseCase(
+                accesosRepository = accesosRepo,
+                usuarioRepository = usuarioRepo,
+                pendientesRepository = FakePendientesRepositorioMiembrosScreen(),
+                analyticsRepository = FakeAnalyticsRepositorioMiembrosScreen(),
+            ),
+            usuarioRepository = usuarioRepo,
+            authRepository = FakeAuthRepositorioMiembrosScreen(),
+        )
+        composeTestRule.setContent {
+            MiembrosScreen(
+                planId = "p1",
+                avatarUrl = null,
+                onAbrirCuenta = {},
+                viewModel = viewModel,
+            )
+        }
+    }
 }
 
-private class FakeAccesoPlanRepositorioMiembrosScreen : AccesoPlanRepository {
+private class FakeAccesoPlanRepositorioMiembrosScreen(
+    private val accesos: List<AccesoPlan> = emptyList(),
+) : AccesoPlanRepository {
     override fun observarAccesosDelUsuario(usuarioId: String): Flow<List<AccesoPlan>> = flowOf(emptyList())
-    override fun observarAccesosDelPlan(planId: String): Flow<List<AccesoPlan>> = flowOf(emptyList())
+    override fun observarAccesosDelPlan(planId: String): Flow<List<AccesoPlan>> = flowOf(accesos)
     override suspend fun invitarMiembro(acceso: AccesoPlan) = Unit
     override suspend fun aceptarInvitacion(usuarioId: String, planId: String) = Unit
 }

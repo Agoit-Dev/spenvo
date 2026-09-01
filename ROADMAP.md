@@ -38,9 +38,9 @@ profile reachable from the whole app.*
 - [x] **Front 3 — Profile accessible from every screen:** `AvatarTopBarAction`
   (`:core:designsystem`) on all 4 tabs of a plan (Home/Movimientos/Categorías/Miembros), not just
   the Plans list.
-- [ ] **Remaining security item:** role gating on the "Invite" button in `MiembrosScreen` (see
-  `FEAT-U701` in the backlog) — the UI doesn't visually restrict that action yet, even though
-  Firestore rules already block it server-side for anyone below admin.
+- [x] **Invite UI gating:** the "Invite" button in `MiembrosScreen` is now hidden unless the current
+  user's role in the plan is admin+ (`FEAT-U701`), matching what Firestore rules already enforced
+  server-side.
 
 ### 🔵 Phase 8: Next Milestones and Technical Debt (Upcoming)
 *Critical improvements found in code reviews across milestones M4 to M7.*
@@ -50,6 +50,9 @@ profile reachable from the whole app.*
   request).
 - [ ] **Phase 7 robustness (minor debt):** see `ARCH-U801`/`ARCH-U802`/`UX-H901`-`UX-H903` in the
   backlog — gaps documented and deliberately deferred during fronts 1-3, none blocking.
+- [ ] **Test suite health:** `PlanesViewModelTest` has 2 pre-existing failing tests unrelated to any
+  Phase 7 work (see `BUG-H603` in the backlog) — needs investigation before other `:feature:planes`
+  changes can trust a green `testDebugUnitTest` run at face value.
 - [ ] **M8:** osv-scanner in CI + optional MFA. Not started.
 
 ### ⚪ Phase 9: Future Ideas Backlog (Under Review)

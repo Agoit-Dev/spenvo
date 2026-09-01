@@ -57,6 +57,8 @@ fun MiembrosScreen(
 ) {
     val miembrosFlow = remember(planId) { viewModel.miembrosResueltos(planId) }
     val miembros by miembrosFlow.collectAsStateWithLifecycle()
+    val puedeInvitarFlow = remember(planId) { viewModel.puedeInvitar(planId) }
+    val puedeInvitar by puedeInvitarFlow.collectAsStateWithLifecycle()
     val estadoInvitar by viewModel.estadoInvitar.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var mostrarDialogoInvitar by rememberSaveable { mutableStateOf(false) }
@@ -80,21 +82,11 @@ fun MiembrosScreen(
 Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.members_title)) },
-                actions = {
-                    IconButton(onClick = { mostrarDialogoInvitar = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.members_invite),
-                        )
-                    }
-                    AvatarTopBarAction(
-                        photoUrl = avatarUrl,
-                        contentDescription = stringResource(R.string.account_menu_description),
-                        onClick = onAbrirCuenta,
-                    )
-                },
+            MiembrosTopBar(
+                puedeInvitar = puedeInvitar,
+                avatarUrl = avatarUrl,
+                onInvitarClick = { mostrarDialogoInvitar = true },
+                onAbrirCuenta = onAbrirCuenta,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -114,6 +106,34 @@ Scaffold(
             onCancelar = { mostrarDialogoInvitar = false },
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MiembrosTopBar(
+    puedeInvitar: Boolean,
+    avatarUrl: String?,
+    onInvitarClick: () -> Unit,
+    onAbrirCuenta: () -> Unit,
+) {
+    TopAppBar(
+        title = { Text(stringResource(R.string.members_title)) },
+        actions = {
+            if (puedeInvitar) {
+                IconButton(onClick = onInvitarClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.members_invite),
+                    )
+                }
+            }
+            AvatarTopBarAction(
+                photoUrl = avatarUrl,
+                contentDescription = stringResource(R.string.account_menu_description),
+                onClick = onAbrirCuenta,
+            )
+        },
+    )
 }
 
 @Composable
