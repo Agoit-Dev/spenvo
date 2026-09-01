@@ -90,6 +90,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dependency bump: `composeBom` 2026.02.01 → 2026.08.00 (Compose 1.12), `nav3`
+  (`navigation3-runtime`/`navigation3-ui`) 1.1.4 → 1.1.7, `robolectric` 4.15.1 → 4.16.1.
+  `agp`/`firebaseBom` were already the latest stable release. `kotlin`/`ksp`/`coil` intentionally
+  held back — they're a tightly-coupled trio (Coil 3.5.0+ requires Kotlin 2.2+, 3.6.0+ requires
+  Kotlin 2.4.10) and warrant their own dedicated upgrade and test pass, not a drive-by bump.
+  `./gradlew dependencies --write-locks` re-run per module (the root-level invocation only covers
+  the root project's own, dependency-free configurations).
 - Movimientos edit modal now opens read-only for an existing movimiento, with an explicit "Editar"
   action to enable fields; Cancelar reverts unsaved changes and returns to the read-only view
   instead of dismissing the sheet; Eliminar is now only reachable after Editar. The category

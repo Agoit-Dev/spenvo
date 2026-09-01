@@ -38,8 +38,9 @@ reimplements it with Clean Architecture, security and tests from the first commi
 
 All versions live in `gradle/libs.versions.toml` — never inline a version in a module
 `build.gradle.kts`. Gradle dependency locking is enforced repo-wide (`dependencyLocking` in root +
-`subprojects{}`); any `libs.versions.toml` change requires `./gradlew dependencies --write-locks`
-before the change is done. Kotlin/KSP compatibility is tight — KSP is pinned to match the Kotlin
+`subprojects{}`); any `libs.versions.toml` change requires regenerating every module's lockfile
+(see "Useful commands" below — the bare root-level invocation doesn't cover the modules) before the
+change is done. Kotlin/KSP compatibility is tight — KSP is pinned to match the Kotlin
 version (`2.2.10-2.0.2`), and libraries requiring a newer Kotlin (e.g. Coil ≥3.5.0 needs Kotlin 2.4)
 must be held back to a compatible version instead (Coil is pinned at 3.4.0 for this reason).
 
@@ -157,7 +158,10 @@ See `.agents/commands/` for custom commands. The most used:
 
 - `./gradlew :app:assembleDebug` — builds.
 - `./gradlew testDebugUnitTest lintDebug detekt` — checks.
-- `./gradlew dependencies --write-locks` — regenerates lockfiles.
+- `./gradlew :app:dependencies :core:domain:dependencies :core:data:dependencies :core:security:dependencies :core:designsystem:dependencies :feature:cuenta:dependencies :feature:planes:dependencies :feature:movimientos:dependencies :feature:categorias:dependencies --write-locks`
+  — regenerates every module's `gradle.lockfile`. The bare root-level `./gradlew dependencies
+  --write-locks` only touches the root project's own (dependency-free) configurations and silently
+  leaves every module's lockfile stale — always target modules explicitly.
 - `mobiai status` — toolbox status.
 
 A single test class/method: use the standard Gradle `--tests` filter, e.g.
