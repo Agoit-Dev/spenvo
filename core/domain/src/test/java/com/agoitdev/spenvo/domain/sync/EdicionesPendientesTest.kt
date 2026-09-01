@@ -37,6 +37,11 @@ class EdicionesPendientesTest {
     )
 
     @Test
+    fun `claveRegistro combina coleccion e id`() {
+        assertEquals("gastos:g1", claveRegistro("gastos", "g1"))
+    }
+
+    @Test
     fun `clave combina coleccion e id`() {
         assertEquals("gastos:g1", EdicionesPendientes.clave("gastos", "g1"))
     }

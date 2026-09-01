@@ -10,6 +10,9 @@ import java.util.concurrent.ConcurrentHashMap
 /** Which entity family a pending edit or a detected conflict belongs to. */
 enum class TipoRegistro { GASTO, INGRESO, CATEGORIA, PLAN }
 
+/** `"$coleccion:$id"` — the key both pending-edit and conflict registries index by. */
+fun claveRegistro(coleccion: String, id: String): String = "$coleccion:$id"
+
 /**
  * The exact domain snapshot the user tried to persist. A typed alternative to
  * an untyped `Any`: the eventual "usar la mia" resolution (Slice 5b) reads it
