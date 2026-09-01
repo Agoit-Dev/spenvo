@@ -27,6 +27,7 @@ import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.SembrarCategoriasPorDefectoUseCase
 import com.agoitdev.spenvo.domain.usecase.SembrarPlanEjemploUseCase
 import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -158,10 +159,13 @@ class PlanesViewModelTest {
 
     @Test
     fun `resumenesPorPlan combina un resumen por cada plan del usuario`() = runTest {
-        movimientoRepo.gastosPorPlan["p1"] = listOf(gasto("p1", 1000, LocalDate.of(2026, 8, 5)))
-        movimientoRepo.ingresosPorPlan["p1"] = listOf(ingreso("p1", 3000, LocalDate.of(2026, 8, 1)))
-        movimientoRepo.gastosPorPlan["p2"] = listOf(gasto("p2", 500, LocalDate.of(2026, 8, 5)))
-        movimientoRepo.ingresosPorPlan["p2"] = listOf(ingreso("p2", 200, LocalDate.of(2026, 8, 1)))
+        // YearMonth.now(), not a hardcoded month: ObservarResumenMensualPlanUseCase filters by
+        // YearMonth.now() by default (BUG-H603 — a fixed month here breaks every time the wall
+        // clock rolls into a new one).
+        movimientoRepo.gastosPorPlan["p1"] = listOf(gasto("p1", 1000, YearMonth.now().atDay(5)))
+        movimientoRepo.ingresosPorPlan["p1"] = listOf(ingreso("p1", 3000, YearMonth.now().atDay(1)))
+        movimientoRepo.gastosPorPlan["p2"] = listOf(gasto("p2", 500, YearMonth.now().atDay(5)))
+        movimientoRepo.ingresosPorPlan["p2"] = listOf(ingreso("p2", 200, YearMonth.now().atDay(1)))
         planesFlow.value = listOf(plan("p1"), plan("p2"))
         val viewModel = crearViewModel()
 
@@ -177,8 +181,8 @@ class PlanesViewModelTest {
 
     @Test
     fun `resumenesPorPlan se recombina cuando cambia la lista de planes`() = runTest {
-        movimientoRepo.gastosPorPlan["p1"] = listOf(gasto("p1", 1000, LocalDate.of(2026, 8, 5)))
-        movimientoRepo.ingresosPorPlan["p1"] = listOf(ingreso("p1", 3000, LocalDate.of(2026, 8, 1)))
+        movimientoRepo.gastosPorPlan["p1"] = listOf(gasto("p1", 1000, YearMonth.now().atDay(5)))
+        movimientoRepo.ingresosPorPlan["p1"] = listOf(ingreso("p1", 3000, YearMonth.now().atDay(1)))
         planesFlow.value = listOf(plan("p1"))
         val viewModel = crearViewModel()
 
@@ -186,8 +190,8 @@ class PlanesViewModelTest {
         advanceUntilIdle()
         assertEquals(setOf("p1"), viewModel.resumenesPorPlan.value.keys)
 
-        movimientoRepo.gastosPorPlan["p2"] = listOf(gasto("p2", 100, LocalDate.of(2026, 8, 5)))
-        movimientoRepo.ingresosPorPlan["p2"] = listOf(ingreso("p2", 900, LocalDate.of(2026, 8, 1)))
+        movimientoRepo.gastosPorPlan["p2"] = listOf(gasto("p2", 100, YearMonth.now().atDay(5)))
+        movimientoRepo.ingresosPorPlan["p2"] = listOf(ingreso("p2", 900, YearMonth.now().atDay(1)))
         planesFlow.value = listOf(plan("p1"), plan("p2"))
         advanceUntilIdle()
 

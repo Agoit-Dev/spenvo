@@ -15,14 +15,6 @@ task's implementation departed from what its plan/design doc specified, note it 
 
 ## 📋 To Do
 
-### 🐞 Bugs (High Priority)
-- [ ] **BUG-H603:** `PlanesViewModelTest` — `` `resumenesPorPlan combina un resumen por cada plan
-  del usuario` `` and `` `resumenesPorPlan se recombina cuando cambia la lista de planes` `` fail on
-  a clean `main` checkout (confirmed via `git stash` + isolated rerun while implementing
-  `FEAT-U701`, unrelated to that change): `AssertionError: expected:<2000> but was:<0>`. Looks like
-  a `StandardTestDispatcher`/`combine` timing issue in how the test collects `resumenesPorPlan`, not
-  a real product bug — needs investigation before it can be trusted as a regression signal.
-
 ### 🔒 Architecture & Robustness (Medium Priority)
 - [ ] **ARCH-M501:** Design a prototype to persist `EdicionesPendientes` and `ConflictosPendientes`
   in the Room database instead of keeping them in memory only (`process-lifetime`), mitigating the
@@ -89,3 +81,10 @@ task's implementation departed from what its plan/design doc specified, note it 
   **Deviation:** the item said "only enabled when..."; implemented as fully hidden instead of
   shown-but-disabled, matching this app's existing convention of not rendering conditional actions
   at all rather than greying them out (e.g. `CuentaMenu`, `EntradaCuenta`/`GateInvitado`).
+- [x] **BUG-H603:** `PlanesViewModelTest`'s `resumenesPorPlan combina...`/`resumenesPorPlan se
+  recombina...` fixed the 8 `LocalDate.of(2026, 8, ...)` fixtures to `YearMonth.now().atDay(...)`.
+  **Root cause, correcting this item's own original guess:** not a coroutine/`combine` timing issue
+  — `ObservarResumenMensualPlanUseCase` filters by `YearMonth.now()` by default (correct product
+  behavior), and the test's movimientos were hardcoded to August 2026; once the wall clock rolled
+  into September the filter excluded everything, summing to 0. Would have broken again every month
+  regardless of any code change — a test-fixture staleness bug, not a product bug.

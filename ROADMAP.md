@@ -50,9 +50,6 @@ profile reachable from the whole app.*
   request).
 - [ ] **Phase 7 robustness (minor debt):** see `ARCH-U801`/`ARCH-U802`/`UX-H901`-`UX-H903` in the
   backlog — gaps documented and deliberately deferred during fronts 1-3, none blocking.
-- [ ] **Test suite health:** `PlanesViewModelTest` has 2 pre-existing failing tests unrelated to any
-  Phase 7 work (see `BUG-H603` in the backlog) — needs investigation before other `:feature:planes`
-  changes can trust a green `testDebugUnitTest` run at face value.
 - [ ] **M8:** osv-scanner in CI + optional MFA. Not started.
 
 ### ⚪ Phase 9: Future Ideas Backlog (Under Review)
