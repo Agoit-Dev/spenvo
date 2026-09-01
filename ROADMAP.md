@@ -48,8 +48,10 @@ profile reachable from the whole app.*
   `ConflictosPendientes` records to Room, to avoid losing state on process death.
 - [ ] **Product Evolution:** Evaluate adding customizable per-category color palettes (post-M4
   request).
-- [ ] **Phase 7 robustness (minor debt):** see `ARCH-U801`/`ARCH-U802`/`UX-H901`-`UX-H903` in the
-  backlog — gaps documented and deliberately deferred during fronts 1-3, none blocking.
+- [ ] **Phase 7 robustness (minor debt):** `ARCH-U801`, `ARCH-U802`, `UX-H902`, and `UX-H903` —
+  gaps documented and deliberately deferred during fronts 1-3 — are all resolved. Only `UX-H901`
+  (duplicate plan-name heading on Home, a product-design judgment call) remains open in the
+  backlog, none blocking.
 - [ ] **M8:** osv-scanner in CI + optional MFA. Not started.
 
 ### ⚪ Phase 9: Future Ideas Backlog (Under Review)
