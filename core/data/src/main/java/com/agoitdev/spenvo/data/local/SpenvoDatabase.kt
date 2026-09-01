@@ -10,12 +10,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.agoitdev.spenvo.data.local.converter.Converters
 import com.agoitdev.spenvo.data.local.dao.AccesoPlanDao
 import com.agoitdev.spenvo.data.local.dao.CategoriaDao
+import com.agoitdev.spenvo.data.local.dao.ConflictoEdicionDao
+import com.agoitdev.spenvo.data.local.dao.EdicionPendienteDao
 import com.agoitdev.spenvo.data.local.dao.GastoDao
 import com.agoitdev.spenvo.data.local.dao.IngresoDao
 import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
 import com.agoitdev.spenvo.data.local.dao.UsuarioDao
 import com.agoitdev.spenvo.data.local.entity.AccesoPlanEntity
 import com.agoitdev.spenvo.data.local.entity.CategoriaEntity
+import com.agoitdev.spenvo.data.local.entity.ConflictoEdicionEntity
+import com.agoitdev.spenvo.data.local.entity.EdicionPendienteEntity
 import com.agoitdev.spenvo.data.local.entity.GastoEntity
 import com.agoitdev.spenvo.data.local.entity.IngresoEntity
 import com.agoitdev.spenvo.data.local.entity.PlanFinancieroEntity
@@ -32,8 +36,10 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         CategoriaEntity::class,
         GastoEntity::class,
         IngresoEntity::class,
+        EdicionPendienteEntity::class,
+        ConflictoEdicionEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -46,6 +52,8 @@ abstract class SpenvoDatabase : RoomDatabase() {
     abstract fun categoriaDao(): CategoriaDao
     abstract fun gastoDao(): GastoDao
     abstract fun ingresoDao(): IngresoDao
+    abstract fun edicionPendienteDao(): EdicionPendienteDao
+    abstract fun conflictoEdicionDao(): ConflictoEdicionDao
 
     companion object {
         const val DATABASE_NAME = "spenvo.db"
@@ -118,6 +126,21 @@ abstract class SpenvoDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `ediciones_pendientes` (" +
+                        "`clave` TEXT NOT NULL, `tipo` TEXT NOT NULL, `editorId` TEXT NOT NULL, " +
+                        "`base` INTEGER, `miEditedAt` INTEGER, PRIMARY KEY(`clave`))",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `conflictos_pendientes` (" +
+                        "`clave` TEXT NOT NULL, `registroId` TEXT NOT NULL, `tipo` TEXT NOT NULL, " +
+                        "`local` TEXT NOT NULL, `remoto` TEXT NOT NULL, PRIMARY KEY(`clave`))",
+                )
+            }
+        }
+
         fun build(context: Context, passphraseProvider: PassphraseProvider): SpenvoDatabase {
             // SQLCipher 4.x no carga la lib nativa automáticamente; el consumidor
             // debe cargarla explícitamente antes de abrir la DB.
@@ -125,7 +148,7 @@ abstract class SpenvoDatabase : RoomDatabase() {
             val passphrase = passphraseProvider.getOrCreate()
             return Room.databaseBuilder(context, SpenvoDatabase::class.java, DATABASE_NAME)
                 .openHelperFactory(SupportOpenHelperFactory(String(passphrase).toByteArray(Charsets.UTF_8)))
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
     }
