@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -82,6 +83,40 @@ class AsegurarUsuarioUseCaseTest {
     }
 
     @Test
+    fun `al vincular email si falla una invitacion las demas igual se resuelven`() = runTest {
+        val existente = Usuario(id = "u1", nombreUsuario = "GatoAzul1")
+        val usuarioRepo = FakeUsuarioRepositorioAsegurar(existentes = listOf(existente))
+        val accesosRepo = FakeAccesoPlanRepositorioAsegurar(fallarPlanIds = setOf("p1"))
+        val pendientes = listOf(
+            InvitacionPendiente(email = "ana@example.com", planId = "p1", rol = Rol.EDITOR, invitadoPor = "u2"),
+            InvitacionPendiente(email = "ana@example.com", planId = "p2", rol = Rol.VIEWER, invitadoPor = "u2"),
+        )
+        val pendientesRepo = FakePendientesRepositorioAsegurar(existentes = pendientes)
+        val useCase = useCase(usuarioRepo, accesosRepo, pendientesRepo)
+
+        runCatching { useCase.paraVincularEmail(usuarioId = "u1", nombre = "Ana", email = "ana@example.com") }
+
+        assertEquals(listOf("p2"), accesosRepo.invitados.map { it.planId })
+        assertTrue(pendientesRepo.eliminadas.contains("ana@example.com" to "p2"))
+        assertFalse(pendientesRepo.eliminadas.contains("ana@example.com" to "p1"))
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun `al vincular email si falla una invitacion el metodo lanza para permitir reintento`() = runTest {
+        val existente = Usuario(id = "u1", nombreUsuario = "GatoAzul1")
+        val usuarioRepo = FakeUsuarioRepositorioAsegurar(existentes = listOf(existente))
+        val accesosRepo = FakeAccesoPlanRepositorioAsegurar(fallarPlanIds = setOf("p1"))
+        val pendientesRepo = FakePendientesRepositorioAsegurar(
+            existentes = listOf(
+                InvitacionPendiente(email = "ana@example.com", planId = "p1", rol = Rol.EDITOR, invitadoPor = "u2"),
+            ),
+        )
+        val useCase = useCase(usuarioRepo, accesosRepo, pendientesRepo)
+
+        useCase.paraVincularEmail(usuarioId = "u1", nombre = "Ana", email = "ana@example.com")
+    }
+
+    @Test
     fun `al vincular email sin invitaciones pendientes no crea AccesoPlan`() = runTest {
         val existente = Usuario(id = "u1", nombreUsuario = "GatoAzul1")
         val usuarioRepo = FakeUsuarioRepositorioAsegurar(existentes = listOf(existente))
@@ -137,13 +172,16 @@ private class FakeUsuarioRepositorioAsegurar(
     override suspend fun resolverPorEmail(emailNormalizado: String): String? = null
 }
 
-private class FakeAccesoPlanRepositorioAsegurar : AccesoPlanRepository {
+private class FakeAccesoPlanRepositorioAsegurar(
+    private val fallarPlanIds: Set<String> = emptySet(),
+) : AccesoPlanRepository {
     val invitados = mutableListOf<AccesoPlan>()
 
     override fun observarAccesosDelUsuario(usuarioId: String): Flow<List<AccesoPlan>> = flowOf(emptyList())
     override fun observarAccesosDelPlan(planId: String): Flow<List<AccesoPlan>> = flowOf(emptyList())
 
     override suspend fun invitarMiembro(acceso: AccesoPlan) {
+        if (acceso.planId in fallarPlanIds) error("fallo simulado invitando a ${acceso.planId}")
         invitados.add(acceso)
     }
 

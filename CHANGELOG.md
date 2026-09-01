@@ -80,6 +80,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sets a distinct `RegistroEstado.syncPendiente`, surfaced by `CuentaScreen` as an indefinite
   snackbar with a "Reintentar" action that calls the new `reintentarSyncUsuario()` — which retries
   only the sync, never the credential link again.
+- `AsegurarUsuarioUseCase.paraVincularEmail`'s pending-invite resolution loop granted invites with a
+  plain `forEach`: if granting invite N of several threw, invites after N were never attempted at
+  all, not just N itself. Each invite is now resolved independently, so one Firestore failure no
+  longer blocks the rest of the batch. The method still reports overall failure when any invite
+  failed, so the caller's retry (`CuentaViewModel.reintentarSyncUsuario`, see above) gets another
+  chance — safe to re-run in full since `invitarMiembro`/`eliminar` are both keyed by deterministic
+  document ids.
 
 ### Changed
 

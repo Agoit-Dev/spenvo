@@ -22,10 +22,6 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable
   devices.
-- [ ] **ARCH-U802:** `AsegurarUsuarioUseCase.paraVincularEmail` resolves pending email invitations in
-  a sequential `forEach` with no partial-failure handling: if one fails mid-loop, the remaining
-  invitations are orphaned with no retry path. Documented as a deliberately deferred gap in the same
-  design doc.
 
 ### 🎨 Minor UX (Low Priority)
 *Findings from front 3's (profile accessible) final review — not blocking, not yet addressed.*
@@ -90,3 +86,9 @@ task's implementation departed from what its plan/design doc specified, note it 
   `vincularCredencial` again, which would otherwise fail with "credential already linked". New
   `SincronizacionUsuarioVinculado` private helper shares the sync logic between the initial attempt
   and the retry. `CuentaScreen` surfaces it as an indefinite snackbar with a "Reintentar" action.
+- [x] **ARCH-U802:** `AsegurarUsuarioUseCase.paraVincularEmail`'s pending-invite resolution now
+  grants each invite independently instead of a plain `forEach` that aborted the whole batch at the
+  first failure — one bad invite no longer blocks the rest from being attempted. The method still
+  reports overall failure (so `ARCH-U801`'s `reintentarSyncUsuario()` retry gets another chance at
+  whichever invites failed); `invitarMiembro`/`eliminar` are both keyed by deterministic Firestore
+  document ids, so retrying an already-granted invite is a safe no-op.

@@ -210,24 +210,28 @@ checking their role. `delete`: only by the matching-email caller (cleanup after 
 token email is lowercased before comparison so a mixed-case token still resolves the
 lowercase-stored doc. No `update`.
 
-## Known gap, deliberately deferred (found during Task 7's review)
+## Known gap, deliberately deferred (found during Task 7's review) — resolved, `ARCH-U802`
 
 `AsegurarUsuarioUseCase.paraVincularEmail`'s pending-invite resolution loop
-(`pendientesRepository.obtenerPorEmail(...).forEach { invitarMiembro(...); eliminar(...) }`) runs
-sequentially and uncaught. If granting invite N of several throws (a genuine Firestore error),
-invites before N are already correctly granted-and-removed, but invite N and everything after it
-are never attempted — and since `paraVincularEmail` only ever runs once, at the
-anonymous-to-registered transition, those remaining invites are never retried. They stay
-permanently pending with no automatic resolution and no signal to either the inviter or invitee.
-Not fixed here: correctly recovering (retry-with-backoff, or at minimum surfacing the stuck
-invites somewhere either party can see and re-trigger) is more scope than this bug fix warrants on
-its own, and there's currently no sender-side pending-invite UI at all (see "Out of scope" above)
-to even show a stuck invite if we detected one. Revisit alongside building that UI, if it's ever
-built — until then, worth noting that this bug only bites plans that invite 2+ not-yet-registered
-emails where the second-or-later grant hits a real Firestore error, which should be rare in
-practice now that Firestore itself is healthy for this path: the separate, higher-priority
-`acceso_plan_financiero.create` rule gap that used to make EVERY pending-invite resolution fail
-(not just a rare partial one) was fixed by Task 9's Step 3b — resolved, no longer open.
+(`pendientesRepository.obtenerPorEmail(...).forEach { invitarMiembro(...); eliminar(...) }`) ran
+sequentially and uncaught. If granting invite N of several threw (a genuine Firestore error),
+invites before N were already correctly granted-and-removed, but invite N and everything after it
+were never attempted. The original note that "`paraVincularEmail` only ever runs once, at the
+anonymous-to-registered transition" is now stale — `ARCH-U801` gave `CuentaViewModel` a
+`reintentarSyncUsuario()` retry path that re-runs the whole method — but that alone didn't fix
+invites N+1 onward never being *attempted* in the first place, only that a retry could eventually
+reach them.
+
+Resolved as `ARCH-U802`: each invite is now granted independently (its own `runCatching`), so one
+Firestore failure no longer blocks the rest of the batch from being attempted in the same pass.
+`paraVincularEmail` still reports overall failure when any invite failed, so `ARCH-U801`'s retry
+path is what eventually resolves a stuck one — safe to re-run in full since `invitarMiembro`
+(`.set()` on `accesoDocId(usuarioId, planId)`) and `eliminar` (`.delete()` on
+`docId(emailNormalizado, planId)`) are both keyed by deterministic Firestore document ids.
+A user who never revisits the retry snackbar (dismisses it, or the app is killed before retrying)
+still has no automatic resolution and no sender-side visibility — that part of the original gap
+(no retry-with-backoff, no stuck-invite UI) remains genuinely out of scope, same reasoning as
+before: there's still no sender-side pending-invite UI to show a stuck invite even if detected.
 
 ## Known gap, deliberately deferred (found during Task 4's review) — resolved, `ARCH-U801`
 
