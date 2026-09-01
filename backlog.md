@@ -1,7 +1,9 @@
 # Spenvo Technical Backlog 🗂️
 
 List of atomic tasks for daily coding sessions. AI agents must move tasks between status sections
-and check them off `[x]` while respecting the repo's i18n and quality rules (`AGENTS.md`).
+and check them off `[x]` while respecting the repo's i18n and quality rules (`AGENTS.md`). If a
+task's implementation departed from what its plan/design doc specified, note it with a one-line
+`Deviation:` under the checked-off item — see `.agents/rules/deviation-logging.md`.
 
 ---
 
@@ -65,12 +67,14 @@ and check them off `[x]` while respecting the repo's i18n and quality rules (`AG
 - [x] **FEAT-U700:** Implemented the full 10-slice flow for transactional `nombreUsuario`
   handling/reservation and secure email account linking without data enumeration.
 - [x] **TEST-C401:** Set up UI test infrastructure (Robolectric + `ui-test-junit4`) in the
-  `:feature:categorias` module — landed alongside `FEAT-U704` (`CategoriasScreenTest.kt`, commit
-  `2183bde`), not as a separate task.
+  `:feature:categorias` module (`CategoriasScreenTest.kt`, commit `2183bde`).
+  **Deviation:** landed as a byproduct of `FEAT-U704` (front 3 needed a test for the new avatar
+  action on `CategoriasScreen`, and the module had no screen test infra yet), not as its own
+  planned task.
 - [x] **TEST-C402:** First screen-level integration test for `:feature:categorias`
-  (`CategoriasScreenTest.kt`, covers the `TopAppBar` with the new avatar; the category
-  grid/creation dialog still has no screen test of its own — consider a `TEST-C403` if that
-  coverage is needed).
+  (`CategoriasScreenTest.kt`, commit `2183bde`).
+  **Deviation:** only covers the `TopAppBar`'s new avatar action, not the category grid/creation
+  dialog the original task description implied — consider a `TEST-C403` if that coverage is needed.
 - [x] **FEAT-U703:** Real login + logout without automatic anonymous re-creation (front 2/3). Real
   email/password, password recovery, `SesionGateViewModel` + `SesionPreferences` (DataStore) to
   persist explicit logout. Merged to `main` (`53f493e..0f4cccb`).
