@@ -1,11 +1,15 @@
 package com.agoitdev.spenvo.planes
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import com.agoitdev.spenvo.data.remote.sync.PlanSincronizacion
+import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_IMAGEN
+import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_PLACEHOLDER
 import com.agoitdev.spenvo.domain.model.AccesoPlan
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Gasto
@@ -188,6 +192,37 @@ class PlanesScreenTest {
 
         composeTestRule.onNodeWithTag(TAG_PLANES_CARGANDO).assertDoesNotExist()
         composeTestRule.onNodeWithText("Casa").assertIsDisplayed()
+    }
+
+    @Test
+    fun `UX-H903 el menu de cuenta muestra el avatar real cuando la sesion tiene foto`() {
+        sesionFlow.value = Sesion(
+            uid = "user-1",
+            esAnonima = false,
+            email = "familia@example.com",
+            photoUrl = "https://example.com/avatar.jpg",
+        )
+        val viewModel = crearViewModel()
+
+        composeTestRule.setContent {
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_IMAGEN, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `UX-H903 el menu de cuenta muestra el placeholder cuando la sesion no tiene foto`() {
+        sesionFlow.value = Sesion(uid = "user-1", esAnonima = false, email = "familia@example.com")
+        val viewModel = crearViewModel()
+
+        composeTestRule.setContent {
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag(TAG_AVATAR_TOPBAR_IMAGEN, useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test

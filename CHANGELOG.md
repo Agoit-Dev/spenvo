@@ -69,6 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Navigation 3 backstack with no double-tap guard, so a fast double tap on an avatar or a plan card
   could push the same route twice. New `MutableList<NavKey>.pushUnlessTop(destino)` no-ops instead
   of pushing when the destination is already on top.
+- `PlanesScreen`'s account menu showed a generic person icon while the 4 plan tabs already showed
+  the real avatar photo since front 3. `CuentaMenu` now reuses the same `AvatarTopBarAction`,
+  sourced from `sesion.photoUrl` (already collected for the menu's own state text) — no new data
+  plumbing.
 
 ### Changed
 

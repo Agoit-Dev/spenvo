@@ -37,9 +37,6 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **UX-H901:** `HomeScreen` shows the plan name twice (the new `TopAppBar` title + `HomeContenido`'s
   own heading). The design allowed this on purpose, but it's worth evaluating whether to drop the
   duplicate heading.
-- [ ] **UX-H903:** `PlanesScreen`'s account menu (`CuentaMenu`) still shows a generic icon instead of
-  the user's real photo, unlike the 4 new tabs that already use `AvatarTopBarAction`. Left out of
-  front 3's scope on purpose.
 
 ### 🎨 Product Features / UX (Low Priority)
 - [ ] **FEAT-M402:** Extend `Categoria`'s domain model and Room entity to support a hex color field
@@ -89,3 +86,6 @@ task's implementation departed from what its plan/design doc specified, note it 
   **Deviation:** the item only named `onAbrirCuenta`, but `onCrearCuenta` and `onAbrirPlan` in the
   same file have the exact same latent double-tap bug — fixed all three with one shared helper
   rather than leaving 2 of 3 identical call sites unprotected.
+- [x] **UX-H903:** `PlanesScreen`'s `CuentaMenu` now reuses `AvatarTopBarAction` (the same component
+  the 4 tab screens already use) instead of a generic `Icons.Filled.AccountCircle`, sourced from the
+  already-collected `sesion.photoUrl` — no new data plumbing.
