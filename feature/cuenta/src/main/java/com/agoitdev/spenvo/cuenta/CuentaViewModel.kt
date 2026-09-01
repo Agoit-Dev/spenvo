@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
+@Suppress("TooManyFunctions")
 class CuentaViewModel @Suppress("LongParameterList") @Inject constructor(
     private val vincularCredencial: VincularCredencialUseCase,
     private val iniciarSesionConEmail: IniciarSesionConEmailUseCase,
@@ -65,19 +66,41 @@ class CuentaViewModel @Suppress("LongParameterList") @Inject constructor(
         }
     }
 
+    /**
+     * ARCH-U801: owns the "Auth link succeeded, Firestore sync may still fail" retry step —
+     * kept out of [CuentaViewModel] itself so a retry entry point doesn't push the class over
+     * detekt's per-class function-count threshold, and so the sync logic is shared between the
+     * initial attempt and [reintentarSyncUsuario] instead of duplicated.
+     */
+    private val sincronizacionUsuario = SincronizacionUsuarioVinculado(
+        asegurarUsuario = asegurarUsuario,
+        onCompletado = { _estado.value = RegistroEstado(completado = true) },
+        onPendiente = { _estado.value = RegistroEstado(syncPendiente = true) },
+    )
+
     fun registrar(nombre: String, email: String, password: String) {
         _estado.update { it.copy(cargando = true, error = null) }
         viewModelScope.launch {
-            runCatching {
-                vincularCredencial(email = email, password = password, nombre = nombre)
-                val uid = sesion.value.uid ?: error("sin uid tras vincular")
-                asegurarUsuario.paraVincularEmail(usuarioId = uid, nombre = nombre, email = email)
-            }
-                .onSuccess { _estado.value = RegistroEstado(completado = true) }
+            runCatching { vincularCredencial(email = email, password = password, nombre = nombre) }
+                .onSuccess {
+                    val uid = sesion.value.uid ?: error("sin uid tras vincular")
+                    sincronizacionUsuario.sincronizar(uid, nombre, email)
+                }
                 .onFailure { error ->
                     _estado.value = RegistroEstado(error = error.message)
                 }
         }
+    }
+
+    /**
+     * Retries only the Firestore sync, never [vincularCredencial] — retrying that would fail
+     * with Firebase's "credential already linked" instead of succeeding, since the account was
+     * already created on the failed attempt. A no-op without a pending sync (nothing to retry).
+     */
+    fun reintentarSyncUsuario() {
+        if (!sincronizacionUsuario.hayPendiente()) return
+        _estado.update { it.copy(cargando = true, syncPendiente = false) }
+        viewModelScope.launch { sincronizacionUsuario.reintentar() }
     }
 
     fun consumirError() {
@@ -192,7 +215,43 @@ data class RegistroEstado(
     val completado: Boolean = false,
     val error: String? = null,
     @param:StringRes val errorRes: Int? = null,
+    /**
+     * ARCH-U801: true when Auth linking succeeded but the Firestore `Usuario` sync failed —
+     * the account already exists, so this is distinct from [error]/[errorRes] and must not
+     * retry [VincularCredencialUseCase].
+     */
+    val syncPendiente: Boolean = false,
 )
+
+/** See [CuentaViewModel.sincronizacionUsuario]. */
+private class SincronizacionUsuarioVinculado(
+    private val asegurarUsuario: AsegurarUsuarioUseCase,
+    private val onCompletado: () -> Unit,
+    private val onPendiente: () -> Unit,
+) {
+    private var pendiente: DatosVinculacion? = null
+
+    fun hayPendiente(): Boolean = pendiente != null
+
+    suspend fun sincronizar(uid: String, nombre: String, email: String) {
+        runCatching { asegurarUsuario.paraVincularEmail(usuarioId = uid, nombre = nombre, email = email) }
+            .onSuccess {
+                pendiente = null
+                onCompletado()
+            }
+            .onFailure {
+                pendiente = DatosVinculacion(uid, nombre, email)
+                onPendiente()
+            }
+    }
+
+    suspend fun reintentar() {
+        val datos = pendiente ?: return
+        sincronizar(datos.uid, datos.nombre, datos.email)
+    }
+
+    private data class DatosVinculacion(val uid: String, val nombre: String, val email: String)
+}
 
 data class RecoveryEstado(
     val cargando: Boolean = false,

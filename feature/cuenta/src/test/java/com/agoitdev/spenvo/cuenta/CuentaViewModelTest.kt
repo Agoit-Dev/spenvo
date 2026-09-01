@@ -156,6 +156,62 @@ class CuentaViewModelTest {
     }
 
     @Test
+    fun `registrar cuando falla la sincronizacion de Usuario deja syncPendiente sin marcar error`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = true)
+        usuarioRepository.excepcionObtener = RuntimeException("firestore caido")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.registrar(nombre = "Ana", email = "ana@example.com", password = "secret123")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.estado.value.syncPendiente)
+        assertFalse(viewModel.estado.value.completado)
+        assertNull(viewModel.estado.value.error)
+        job.cancel()
+    }
+
+    @Test
+    fun `reintentarSyncUsuario tras un fallo de sync completa el registro sin re-vincular`() = runTest {
+        authRepository.sesionFlow.value = Sesion(uid = "user-1", esAnonima = true)
+        usuarioRepository.excepcionObtener = RuntimeException("firestore caido")
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+        viewModel.registrar(nombre = "Ana", email = "ana@example.com", password = "secret123")
+        advanceUntilIdle()
+        assertTrue(viewModel.estado.value.syncPendiente)
+
+        usuarioRepository.excepcionObtener = null
+        viewModel.reintentarSyncUsuario()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.estado.value.completado)
+        assertFalse(viewModel.estado.value.syncPendiente)
+        assertEquals(1, authRepository.vincularLlamadas)
+        val actualizado = usuarioRepository.actualizados.single()
+        assertEquals("Ana", actualizado.nombre)
+        assertEquals("ana@example.com", actualizado.email)
+        job.cancel()
+    }
+
+    @Test
+    fun `reintentarSyncUsuario sin una vinculacion pendiente no hace nada`() = runTest {
+        authRepository.sesionFlow.value = Sesion.Anonima
+        val viewModel = crearViewModel()
+        val job = launch { viewModel.sesion.collect {} }
+        advanceUntilIdle()
+
+        viewModel.reintentarSyncUsuario()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.estado.value.completado)
+        assertFalse(viewModel.estado.value.syncPendiente)
+        job.cancel()
+    }
+
+    @Test
     fun `iniciarSesion exitoso marca el estado como completado`() = runTest {
         authRepository.sesionFlow.value = Sesion.Anonima
         val viewModel = crearViewModel()
@@ -405,6 +461,7 @@ private class FakeAuthRepositorioCuenta : AuthRepository {
     var excepcionLogin: Throwable? = null
     var ultimoEmailRecovery: String? = null
     var excepcionRecovery: Throwable? = null
+    var vincularLlamadas = 0
 
     override fun observeSesion(): Flow<Sesion> = sesionFlow
     override suspend fun iniciarSesionAnonima() = Unit
@@ -418,7 +475,9 @@ private class FakeAuthRepositorioCuenta : AuthRepository {
         ultimoEmailRecovery = email
         excepcionRecovery?.let { throw it }
     }
-    override suspend fun vincularEmail(email: String, password: String, nombre: String) = Unit
+    override suspend fun vincularEmail(email: String, password: String, nombre: String) {
+        vincularLlamadas++
+    }
     override suspend fun actualizarPerfil(nombre: String?, photoUrl: String?) {
         ultimoPhotoUrlActualizado = photoUrl
     }

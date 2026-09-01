@@ -229,18 +229,19 @@ practice now that Firestore itself is healthy for this path: the separate, highe
 `acceso_plan_financiero.create` rule gap that used to make EVERY pending-invite resolution fail
 (not just a rare partial one) was fixed by Task 9's Step 3b — resolved, no longer open.
 
-## Known gap, deliberately deferred (found during Task 4's review)
+## Known gap, deliberately deferred (found during Task 4's review) — resolved, `ARCH-U801`
 
-`CuentaViewModel.registrar()` runs `vincularCredencial(...)` (which permanently upgrades the
+`CuentaViewModel.registrar()` ran `vincularCredencial(...)` (which permanently upgrades the
 Firebase Auth account from anonymous to email+password) and `asegurarUsuario.paraVincularEmail(...)`
-inside the same `runCatching` block. If the Auth linking succeeds but the Firestore `Usuario`
-sync then fails, the UI reports registration as failed even though the account was actually
+inside the same `runCatching` block. If the Auth linking succeeded but the Firestore `Usuario`
+sync then failed, the UI reported registration as failed even though the account was actually
 created — and a retry would hit Firebase Auth's "credential already linked" error instead of
-succeeding. Not fixed here: the right fix (treat the Firestore sync as best-effort like
-`PlanesViewModel`'s equivalent call, or give `registrar()` a distinct partial-failure state) is a
-product decision about error surfacing, not a mechanical one, and out of this slice's scope.
-Revisit before front 2 (real login) ships, since a confusing stuck-registration state is exactly
-the kind of thing that pushes someone toward re-registering instead of logging in.
+succeeding. Resolved as `ARCH-U801`: the two steps are now separate, a sync failure sets a
+distinct `RegistroEstado.syncPendiente` (not the generic error path), and `reintentarSyncUsuario()`
+retries only the sync — never `vincularCredencial` again. The product decision made was the
+distinct-partial-failure-state option, not the `PlanesViewModel`-style best-effort one: unlike that
+bootstrap, `registrar()` has no recurring session-re-emission to self-heal on, so a silently
+swallowed sync failure here would have left the `Usuario` doc missing indefinitely.
 
 ## Out of scope (explicitly)
 

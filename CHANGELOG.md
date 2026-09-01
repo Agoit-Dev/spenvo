@@ -73,6 +73,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the real avatar photo since front 3. `CuentaMenu` now reuses the same `AvatarTopBarAction`,
   sourced from `sesion.photoUrl` (already collected for the menu's own state text) — no new data
   plumbing.
+- `CuentaViewModel.registrar()` wrapped Auth credential linking and the Firestore `Usuario` sync in
+  the same `runCatching`: if linking succeeded but the sync then failed, the UI reported the whole
+  registration as failed even though the account already existed, and a retry hit Firebase's
+  "credential already linked" instead of succeeding. The two steps are now separate; a sync failure
+  sets a distinct `RegistroEstado.syncPendiente`, surfaced by `CuentaScreen` as an indefinite
+  snackbar with a "Reintentar" action that calls the new `reintentarSyncUsuario()` — which retries
+  only the sync, never the credential link again.
 
 ### Changed
 

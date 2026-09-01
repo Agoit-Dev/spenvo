@@ -22,11 +22,6 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable
   devices.
-- [ ] **ARCH-U801:** `CuentaViewModel.registrar()` wraps credential linking and
-  `AsegurarUsuarioUseCase.paraVincularEmail` in the same `runCatching`: if Auth linking succeeds but
-  the Firestore sync fails, the UI shows an error even though the account was already created, and a
-  retry then hits "email already linked". Documented as a deliberately deferred gap in
-  `doc/designs/2026-08-30-usuario-nombreusuario-design.md`.
 - [ ] **ARCH-U802:** `AsegurarUsuarioUseCase.paraVincularEmail` resolves pending email invitations in
   a sequential `forEach` with no partial-failure handling: if one fails mid-loop, the remaining
   invitations are orphaned with no retry path. Documented as a deliberately deferred gap in the same
@@ -89,3 +84,9 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [x] **UX-H903:** `PlanesScreen`'s `CuentaMenu` now reuses `AvatarTopBarAction` (the same component
   the 4 tab screens already use) instead of a generic `Icons.Filled.AccountCircle`, sourced from the
   already-collected `sesion.photoUrl` — no new data plumbing.
+- [x] **ARCH-U801:** `CuentaViewModel.registrar()` now splits Auth linking from the Firestore
+  `Usuario` sync. A sync failure (Auth already linked) sets a distinct `RegistroEstado.syncPendiente`
+  instead of a generic error, and `reintentarSyncUsuario()` retries only the sync step — never
+  `vincularCredencial` again, which would otherwise fail with "credential already linked". New
+  `SincronizacionUsuarioVinculado` private helper shares the sync logic between the initial attempt
+  and the retry. `CuentaScreen` surfaces it as an indefinite snackbar with a "Reintentar" action.

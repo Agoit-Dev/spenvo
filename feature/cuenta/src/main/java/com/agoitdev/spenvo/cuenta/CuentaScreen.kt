@@ -25,8 +25,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -189,6 +191,21 @@ private fun CuentaSideEffects(
         estado.error?.let { error ->
             snackbarHostState.showSnackbar(error)
             viewModel.consumirError()
+        }
+    }
+
+    val mensajeSyncPendiente = stringResource(R.string.account_error_sync_pendiente)
+    val accionReintentar = stringResource(R.string.account_action_reintentar)
+    LaunchedEffect(estado.syncPendiente) {
+        if (estado.syncPendiente) {
+            val resultado = snackbarHostState.showSnackbar(
+                message = mensajeSyncPendiente,
+                actionLabel = accionReintentar,
+                duration = SnackbarDuration.Indefinite,
+            )
+            if (resultado == SnackbarResult.ActionPerformed) {
+                viewModel.reintentarSyncUsuario()
+            }
         }
     }
 

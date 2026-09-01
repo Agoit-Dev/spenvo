@@ -32,4 +32,6 @@
     <string name="account_error_credenciales_invalidas">Email o contraseña incorrectos</string>
     <string name="account_error_sin_red">Revisá tu conexión e intentá de nuevo</string>
     <string name="account_error_generico">Ocurrió un error. Intentá de nuevo</string>
+    <string name="account_error_sync_pendiente">Tu cuenta se creó, pero no pudimos sincronizar tu perfil. Volvé a intentarlo.</string>
+    <string name="account_action_reintentar">Reintentar</string>
 </resources>
