@@ -20,16 +20,16 @@ reimplements it with Clean Architecture, security and tests from the first commi
 
 | Layer | Choice | Version |
 |---|---|---|
-| Build | AGP + built-in Kotlin | 9.3.1 / Kotlin 2.2.10 |
-| Compose | BOM + Material 3 + Adaptive (List-Detail) | 2026.02.01 / 1.3.0 |
+| Build | AGP + built-in Kotlin | 9.3.1 / Kotlin 2.4.10 |
+| Compose | BOM + Material 3 + Adaptive (List-Detail) | 2026.08.00 / 1.3.0 |
 | Icons | Compose Material Icons Extended | via Compose BOM |
 | Startup | AndroidX Core SplashScreen | 1.2.0 |
-| Navigation | Navigation 3 (`androidx.navigation3`) | 1.1.4 |
-| DI | Hilt + KSP2 | 2.60.1 / 2.2.10-2.0.2 |
+| Navigation | Navigation 3 (`androidx.navigation3`) | 1.1.7 |
+| DI | Hilt + KSP2 | 2.60.1 / 2.3.10 |
 | Persistence | Room + SQLCipher | 2.8.4 / 4.18.0 |
 | Async | Coroutines / Flow | 1.11.0 |
 | Serialization | kotlinx-serialization | 1.11.0 |
-| Images | Coil 3 | 3.4.0 |
+| Images | Coil 3 | 3.6.1 |
 | Prefs | DataStore Preferences | 1.2.1 |
 | Backend | Firebase (Auth, Firestore, Storage, App Check) | BOM 34.17.0 |
 | Quality | detekt + blocking lint | 1.23.8 |
@@ -40,9 +40,13 @@ All versions live in `gradle/libs.versions.toml` — never inline a version in a
 `build.gradle.kts`. Gradle dependency locking is enforced repo-wide (`dependencyLocking` in root +
 `subprojects{}`); any `libs.versions.toml` change requires regenerating every module's lockfile
 (see "Useful commands" below — the bare root-level invocation doesn't cover the modules) before the
-change is done. Kotlin/KSP compatibility is tight — KSP is pinned to match the Kotlin
-version (`2.2.10-2.0.2`), and libraries requiring a newer Kotlin (e.g. Coil ≥3.5.0 needs Kotlin 2.4)
-must be held back to a compatible version instead (Coil is pinned at 3.4.0 for this reason).
+change is done. Kotlin/KSP compatibility is tight — KSP's own version numbering isn't reliably
+`<kotlinVersion>-<kspVersion>` anymore (recent KSP releases are plain semver, decoupled from the
+exact Kotlin patch), so don't infer the matching KSP version from the string pattern; verify
+against https://github.com/google/ksp/releases (or the Kotlin docs' own KSP quickstart example)
+at upgrade time instead. Currently Kotlin 2.4.10 pairs with KSP 2.3.10. Libraries requiring a newer
+Kotlin than what's pinned must be held back to a compatible version instead — not currently the
+case for Coil (3.6.1 needs Kotlin 2.4.10, already satisfied).
 
 ## Module structure
 

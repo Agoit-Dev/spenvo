@@ -97,6 +97,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Kotlin 2.4.10) and warrant their own dedicated upgrade and test pass, not a drive-by bump.
   `./gradlew dependencies --write-locks` re-run per module (the root-level invocation only covers
   the root project's own, dependency-free configurations).
+- Dependency bump, second half: `kotlin` 2.2.10 → 2.4.10, `ksp` 2.2.10-2.0.2 → 2.3.10 (matched pair,
+  verified against KSP's own release notes rather than assumed from the version string — KSP's
+  numbering is no longer reliably tied to the exact Kotlin patch), `coil` 3.4.0 → 3.6.1 (previously
+  held back specifically because it needed a newer Kotlin than was pinned; no longer the case).
+  Verified with a full Hilt (`:app`) and Room (`:core:data`) KSP codegen smoke pass before running
+  the full gate suite, since this trio touches annotation processing in every module.
 - Movimientos edit modal now opens read-only for an existing movimiento, with an explicit "Editar"
   action to enable fields; Cancelar reverts unsaved changes and returns to the read-only view
   instead of dismissing the sheet; Eliminar is now only reachable after Editar. The category
