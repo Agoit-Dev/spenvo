@@ -20,7 +20,7 @@ reimplements it with Clean Architecture, security and tests from the first commi
 
 | Layer | Choice | Version |
 |---|---|---|
-| Build | AGP + built-in Kotlin | 9.3.1 / Kotlin 2.4.10 |
+| Build | AGP + built-in Kotlin | 9.3.2 / Kotlin 2.4.10 |
 | Compose | BOM + Material 3 + Adaptive (List-Detail) | 2026.08.00 / 1.3.0 |
 | Icons | Compose Material Icons Extended | via Compose BOM |
 | Startup | AndroidX Core SplashScreen | 1.2.0 |
@@ -31,7 +31,7 @@ reimplements it with Clean Architecture, security and tests from the first commi
 | Serialization | kotlinx-serialization | 1.11.0 |
 | Images | Coil 3 | 3.6.1 |
 | Prefs | DataStore Preferences | 1.2.1 |
-| Backend | Firebase (Auth, Firestore, Storage, App Check) | BOM 34.17.0 |
+| Backend | Firebase (Auth, Firestore, Storage, App Check) | BOM 34.18.0 |
 | Quality | detekt + blocking lint | 1.23.8 |
 
 > Outside the baseline: **any** new dependency requires explicit user OK.

@@ -92,9 +92,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dependency bump: `composeBom` 2026.02.01 → 2026.08.00 (Compose 1.12), `nav3`
   (`navigation3-runtime`/`navigation3-ui`) 1.1.4 → 1.1.7, `robolectric` 4.15.1 → 4.16.1.
-  `agp`/`firebaseBom` were already the latest stable release. `kotlin`/`ksp`/`coil` intentionally
-  held back — they're a tightly-coupled trio (Coil 3.5.0+ requires Kotlin 2.2+, 3.6.0+ requires
-  Kotlin 2.4.10) and warrant their own dedicated upgrade and test pass, not a drive-by bump.
+  `kotlin`/`ksp`/`coil` intentionally held back — they're a tightly-coupled trio (Coil 3.5.0+
+  requires Kotlin 2.2+, 3.6.0+ requires Kotlin 2.4.10) and warrant their own dedicated upgrade and
+  test pass, not a drive-by bump.
   `./gradlew dependencies --write-locks` re-run per module (the root-level invocation only covers
   the root project's own, dependency-free configurations).
 - Dependency bump, second half: `kotlin` 2.2.10 → 2.4.10, `ksp` 2.2.10-2.0.2 → 2.3.10 (matched pair,
@@ -103,6 +103,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   held back specifically because it needed a newer Kotlin than was pinned; no longer the case).
   Verified with a full Hilt (`:app`) and Room (`:core:data`) KSP codegen smoke pass before running
   the full gate suite, since this trio touches annotation processing in every module.
+- Dependency bump: `agp` 9.3.1 → 9.3.2 (a Lint/JDK 17 crash fix, no breaking changes), `firebaseBom`
+  34.17.0 → 34.18.0 (larger Firestore document/message-size limits over gRPC; no breaking changes
+  for the Auth/Firestore/Storage/App Check products this project uses — Firebase AI Logic's
+  breaking change in this release doesn't apply, the project doesn't depend on it). Both were
+  previously reported as already-latest; that check was stale.
 - Movimientos edit modal now opens read-only for an existing movimiento, with an explicit "Editar"
   action to enable fields; Cancelar reverts unsaved changes and returns to the read-only view
   instead of dismissing the sheet; Eliminar is now only reachable after Editar. The category
