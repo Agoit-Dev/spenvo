@@ -281,6 +281,10 @@ private class FakeMovimientoRepositorioScreen : MovimientoRepository {
     override suspend fun aplicarIngresoRemoto(id: String) = Unit
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(emptyList())
     override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(emptyList())
+    override suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoLocal(ingreso: Ingreso, clave: String) = Unit
+    override suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoRemoto(id: String, clave: String) = Unit
 }
 
 private class FakePlanSincronizacionScreen : PlanSincronizacion {
