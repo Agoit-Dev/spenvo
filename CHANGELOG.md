@@ -202,7 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **OSV-M801 (M8, in progress — implementation done, not yet enforced):** OSV-Scanner CI gate
+- **OSV-M801 (M8, CI half — done):** OSV-Scanner CI gate
   implemented and validated, both locally and against real GitHub Actions
   (`.github/workflows/osv-scanner-pr.yml`, `.github/workflows/osv-scanner-scheduled.yml`,
   `.github/scripts/osv-classify.mjs`, `.github/scripts/osv-gate.mjs`, 40 `node:test` cases). Fail-
@@ -248,6 +248,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rows remain (`node .github/scripts/osv-gate.mjs --mode=pr` exits 0).
   `OSV-M804` (required status check) and `OSV-M805` (scheduled-scan post-merge validation) are
   still open — `OSV-M801` can close once both land.
+- **OSV-M804 + OSV-M805 — `OSV-M801` (M8, CI half) now fully closed:** `scan` is a required status
+  check on `main`'s branch protection (`main` had no protection rule at all before this; only what
+  `OSV-M804` asked for was added — no required reviews or push restrictions). The scheduled
+  workflow's Issue create/update/close lifecycle was validated end-to-end for real on a disposable
+  branch (one exception temporarily disabled to produce a genuine blocking finding): create → update
+  (same issue, one new comment, no duplicate) → close (once the exception was restored). That first
+  live run also caught and fixed two real defects before the validation could pass: the repo had no
+  `security`/`dependencies` labels (`gh issue create` crashed uncaught before creating or closing
+  anything — labels created directly), and `planIssueActions` created 18 duplicate issues for one
+  blocking finding (see the `planIssueActions`/`consolidateBlockingFindings` fix above). M8's MFA
+  half (`OSV-M802`) remains open and out of scope here.
 - Login real + logout sin recreación anónima automática (front 2/3): real email/password
   sign-in and password recovery replace the placeholder registration-only flow. New
   `AuthRepository.iniciarSesionConEmail`/`enviarRecuperacionPassword`, backed by

@@ -16,15 +16,8 @@ task's implementation departed from what its plan/design doc specified, note it 
 ## 📋 To Do
 
 ### 🔐 Security & Supply Chain (High Priority)
-*M8 from `ROADMAP.md`. `OSV-M801`'s implementation itself is done and validated — see
-🧪 In Review / QA below. `OSV-M803` is done (see ✅ Done); these two are what's left before
-`OSV-M801` can close.*
-- [ ] **OSV-M804:** Configure `scan` (from `osv-scanner-pr.yml`) as a required status check in
-  `main`'s branch protection / ruleset. Until this lands, the gate failing red does not actually
-  block a merge — it's informative only.
-- [ ] **OSV-M805:** Run `osv-scanner-scheduled.yml` for real post-merge (`gh workflow run
-  osv-scanner-scheduled.yml --ref main`) and validate its GitHub Issue create/update/close lifecycle
-  end-to-end. `OSV-M803`'s baseline is now clean so this is safe to run without an issue flood.
+*M8 from `ROADMAP.md`. `OSV-M801` (CI half) is fully done — see ✅ Done. Only the MFA half
+(`OSV-M802`) remains open.*
 - [ ] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — no design yet;
   needs its own brainstorm session before any implementation task exists. Deliberately out of
   `OSV-M801`'s scope.
@@ -46,15 +39,32 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **FEAT-M403:** Add a basic color picker to the category creation/edit `ModalBottomSheet`.
 
 ## 🧪 In Review / QA
-- [ ] **OSV-M801:** OSV-Scanner CI gate (M8, CI half) — implementation done and validated, both
-  locally (dry-run against this repo's real 10 lockfiles) and in real GitHub Actions (draft PR #33,
-  `chore/m8-osv-scanner-ci` → `main`, triggered `osv-scanner-pr.yml` for real; identical result to
-  the local run: 463 blocking rows, 51 unique vulnerabilities, exit code 1). Not moved to Done yet —
-  `OSV-M803`'s baseline triage is done; two things remain: `OSV-M804` (make the check required on
-  `main`), `OSV-M805` (validate the scheduled workflow's Issue lifecycle post-merge). See
-  `doc/designs/2026-09-02-osv-scanner-ci-design.md`, `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
+*Nothing active right now.*
 
 ## ✅ Done
+- [x] **OSV-M801:** OSV-Scanner CI gate (M8, CI half) — closed. PR #33 (`chore/m8-osv-scanner-ci` →
+  `main`) merged with `OSV-M803`'s baseline triage; `OSV-M804` and `OSV-M805` (below) closed the
+  remaining two gaps. See `doc/designs/2026-09-02-osv-scanner-ci-design.md`,
+  `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
+- [x] **OSV-M804:** `scan` (from `osv-scanner-pr.yml`) is now a required status check on `main`'s
+  branch protection (`required_status_checks.checks: [{context: "scan"}]`, `enforce_admins: false`,
+  no required reviews/push restrictions added — `main` had no protection rule at all before this,
+  and only what `OSV-M804` asked for was added). Verified via the GitHub API response.
+- [x] **OSV-M805:** Ran `osv-scanner-scheduled.yml` for real, end-to-end, on a disposable branch
+  (exception temporarily commented out to produce one real blocking finding) plus a final run on
+  `main`: create (run 1) → update (run 2, same open issue, one new comment, no duplicate) → close
+  (run 3 on `main`, exception intact). Verified the Issue marker, labels, comment bodies, and final
+  `closed`/`COMPLETED` state via the GitHub API.
+  **Deviation:** the first live attempt surfaced two real defects, both fixed and merged before
+  re-validating: (1) the repo had no `security`/`dependencies` labels, so `gh issue create` crashed
+  the whole script uncaught before it could create or close anything — labels created directly, no
+  code change needed; (2) `planIssueActions` planned one create/update per raw OSV-Scanner finding
+  row instead of per unique vulnerability, so a single blocking finding (2 resolved versions × 9
+  module lockfiles) created **18 duplicate issues** in one run — fixed via TDD in a separate PR
+  (#53, `consolidateBlockingFindings`, 5 new `node:test` cases) rather than folded into this
+  validation. Also live-discovered and separately fixed (PR #54, same pattern as `OSV-M803`'s `qs`
+  finding): `fast-uri` had a fresh advisory published on osv.dev mid-session
+  (GHSA-jqff-g426-hqxp and 3 aliases), remediated via `overrides."fast-uri" = ">=3.1.6"`.
 - [x] **OSV-M803:** Triaged the 463 blocking rows / 51 unique vulnerabilities from the PR #33
   baseline. 26 justified, individually-reasoned `osv-scanner.toml` exceptions (23 dormant
   `io.netty:*` findings limited to AGP's unused `unified-test-platform-*` tooling,
