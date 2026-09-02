@@ -60,14 +60,14 @@ profile reachable from the whole app.*
   `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`, and `backlog.md`'s
   `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` (all ✅ Done). Optional MFA (`OSV-M802`) is
   **deliberately deferred**, not implemented: discovery (`openspec/changes/m8-optional-mfa/`)
-  found any MFA factor requires enabling Firebase Authentication with Identity Platform — a free
-  switch (not a mandatory Blaze cost for TOTP), but one that changes the project's operational
-  limits platform-wide (Spark's free-auth allowance drops from 50,000 MAU to a 3,000-DAU cap; SMS
-  specifically does require Blaze + per-message billing). Deferred because that operational change
-  plus a missing email-verification prerequisite plus MFA's own state-machine/recovery/UX surface
-  don't earn their keep at the current prototype stage — not because of a mandatory billing cost.
-  Reconsider on public launch, real sensitive user data, a regulatory requirement, paying users, or
-  a lower-cost MFA option. M8 closes with this deferral as its recorded outcome.
+  found that enabling Firebase Authentication with Identity Platform (required for any MFA factor)
+  needs no migration and stays free on Spark; it introduces a 3,000-DAU quota and enables extra
+  project-wide features. TOTP has no per-use charge; SMS would require Blaze and per-message
+  billing. The deferral is **not economic**: it's scope and complexity — MFA still needs email
+  verification implemented first, plus its own enrollment/challenge/recovery flows, whose
+  development cost isn't justified for the current prototype. Reconsider on public launch, real
+  sensitive user data, a regulatory requirement, paying users, or scope/complexity dropping enough
+  to justify it. M8 closes with this deferral as its recorded outcome.
 
 ### ⚪ Phase 9: Future Ideas Backlog (Under Review)
 - [ ] Alternative third-party auth provider integration (OAuth / Google Sign-In) — deliberately left

@@ -22,17 +22,15 @@ viewer(0)`) keyed by Firebase Auth `uid`. MFA in Firebase Auth is a property of 
 (account-level), fully decoupled from plan membership — confirmed via rules structure.
 
 Firebase Auth Android MFA support (verified against Google Cloud/Firebase docs, Sept 2026): both
-TOTP and SMS second factors require upgrading the Firebase project to **"Firebase Authentication
-with Identity Platform."** Correction from an earlier draft of this document: that upgrade is a
-**free switch**, not a Blaze/billing requirement — Identity Platform has no price tag of its own
-and is available on the Spark (free) plan. What actually changes is the operational envelope: a
-Spark project that upgrades to Identity Platform drops from the standard 50,000-MAU free-auth
-allowance to a **3,000-daily-active-users (DAU) cap**; staying under the standard 50,000-MAU
-no-cost tier (and beyond, at $0.0055/MAU) requires Blaze instead. **TOTP** has no per-use billing
-on either plan. **SMS** is the one piece that does have a hard Blaze requirement: since September
-2024, SMS verification needs the Blaze plan with a billing account attached, billed per SMS sent
-(first 10/day free). MFA also **requires email verification** to be enforced first. Android SDK
-surface: `user.multiFactor.session`, `PhoneAuthProvider` / `TotpMultiFactorGenerator`,
+TOTP and SMS second factors require enabling **"Firebase Authentication with Identity Platform."**
+Correction from an earlier draft of this document: enabling it requires **no migration** and can
+be done while staying on the free Spark plan — Identity Platform has no price tag of its own. It
+introduces a **3,000-daily-active-users (DAU) quota** and enables additional features (SAML/OIDC
+providers, blocking functions, audit logging, multi-tenancy) for the whole project. **TOTP** has
+no per-use charge on either plan. **SMS** is the one piece with a real Blaze requirement: since
+September 2024, SMS verification needs the Blaze plan with a billing account attached, billed per
+SMS sent (first 10/day free). MFA also **requires email verification** to be enforced first.
+Android SDK surface: `user.multiFactor.session`, `PhoneAuthProvider` / `TotpMultiFactorGenerator`,
 `user.multiFactor.enroll()`, `FirebaseAuthMultiFactorException` + `MultiFactorResolver` for the
 sign-in-time challenge.
 
@@ -56,39 +54,37 @@ sign-in-time challenge.
 
 ## Approaches
 
-1. **TOTP-only (authenticator app)** — Pros: no per-use cost on either plan, no phone-number PII
-   collection, works offline for code generation, stronger OWASP posture than SMS, does not force
-   Blaze. Cons: enrollment UX needs QR/secret display + external authenticator app (extra friction
-   for non-technical family members); still needs the Identity Platform upgrade (accepting its
-   3,000-DAU cap if staying on Spark) and the missing email-verification prerequisite.
-   Effort: Medium.
+1. **TOTP-only (authenticator app)** — Pros: no per-use charge, no phone-number PII collection,
+   works offline for code generation, stronger OWASP posture than SMS, no Blaze needed. Cons:
+   enrollment UX needs QR/secret display + external authenticator app (extra friction for
+   non-technical family members); still needs enabling Identity Platform (its 3,000-DAU quota) and
+   the missing email-verification prerequisite; enrollment/challenge/recovery flows are real
+   development cost and complexity. Effort: Medium.
 2. **SMS-based MFA** — Pros: familiar UX, no separate app needed. Cons: mandatory Blaze plan +
    billing account (since Sept 2024) plus recurring per-message cost beyond 10/day free, requires
    collecting a phone number (new field, not in `Sesion`/Firestore user doc today), weaker against
    SIM-swap per OWASP, same Identity Platform prerequisite plus new PII handling. Effort:
    Medium-High.
-3. **Defer (keep as open backlog item)** — Pros: zero operational/UX footprint now, avoids
-   committing to the Identity Platform switch and its DAU-cap tradeoff before validating real
-   need. Cons: leaves owner/admin-role accounts in shared plans with no step-up protection beyond
-   a single password. Effort: None.
+3. **Defer (keep as open backlog item)** — Pros: avoids the enrollment/challenge/recovery
+   development cost and complexity before validating real need. Cons: leaves owner/admin-role
+   accounts in shared plans with no step-up protection beyond a single password. Effort: None.
 
 ## Recommendation
 
 TOTP-only, explicitly excluding SMS this milestone. SMS is the option with a real mandatory Blaze
-+ per-message cost; TOTP does not force any billing plan. Treat "add email verification to
++ per-message cost; TOTP has no per-use charge. Treat "add email verification to
 registration/linking" as a distinct, possibly-separable prerequisite — it is independently useful
 (closes an existing gap where nothing confirms email ownership) and MFA is blocked without it
-either way. Do not proceed to `sdd-propose` until the Identity Platform switch is explicitly
-confirmed acceptable — even without a mandatory Blaze cost for TOTP, it is a project-wide
-operational change (Spark's DAU cap drops to 3,000, plus audit-logging/multi-tenancy surface
-changes) outside code that explore/propose cannot decide unilaterally.
+either way. Do not proceed to `sdd-propose` until the scope is explicitly confirmed worthwhile —
+not because Identity Platform costs anything for TOTP, but because MFA's enrollment, challenge,
+and recovery flows are real development scope that explore/propose cannot commit to unilaterally.
 
 ## Risks
 
-- **Operational/infra**: enabling Identity Platform (required for any MFA factor, TOTP included)
-  changes the project's operating limits — Spark's free-auth allowance drops from 50,000 MAU to a
-  3,000-DAU cap; keeping the 50,000-MAU allowance requires Blaze. This is a platform-wide toggle,
-  not scoped to MFA users only — needs explicit user/product sign-off before design work.
+- **Quota/capability change**: enabling Identity Platform (required for any MFA factor, TOTP
+  included) requires no migration and stays free on Spark, but introduces a 3,000-DAU quota and
+  turns on additional project-wide features (SAML/OIDC, blocking functions, audit logging,
+  multi-tenancy) — worth a deliberate sign-off even though it isn't a cost.
 - **Missing prerequisite**: no email-verification flow exists; Firebase requires it for MFA
   enrollment — this is either in-scope for this change or a hard blocking dependency on a
   preceding change.
@@ -108,9 +104,9 @@ changes) outside code that explore/propose cannot decide unilaterally.
 
 **No.** Two blockers must be resolved with the user first:
 
-1. Explicit confirmation that the Identity Platform operational tradeoff (3,000-DAU cap if
-   staying on Spark, or Blaze to keep 50,000 MAU) is acceptable — not a mandatory billing cost for
-   TOTP, but still a project-wide platform change.
+1. Explicit confirmation that scoping in the Identity Platform quota/capability change (3,000-DAU
+   quota, plus project-wide SAML/OIDC/audit-logging/multi-tenancy features) is worthwhile — free
+   and migration-free, but not a decision explore/propose can make unilaterally.
 2. Decision on whether email verification ships as part of this change or as a separate preceding
    change.
 
@@ -119,17 +115,18 @@ Once resolved, `sdd-propose` can proceed with TOTP-only as the recommended defau
 ## Resolution
 
 **Deferred**, 2026-09-02. The user decided not to proceed to `sdd-propose` for the current MVP
-stage. The deferral rests on this corrected basis (not on a mandatory Blaze/billing cost, which an
-earlier draft of this document incorrectly claimed):
+stage. The deferral is **not economic** — an earlier draft of this document incorrectly implied a
+mandatory Blaze/billing cost, which is wrong for TOTP. The real basis:
 
-- Enabling Identity Platform changes the project's operational limits and conditions platform-wide
-  (the DAU/MAU tradeoff above), even though it carries no mandatory fee for TOTP.
 - Email verification, a hard MFA prerequisite, is not implemented yet.
-- MFA adds real state-machine, recovery, and UX surface (see Risks) — meaningful implementation
-  cost regardless of billing.
+- MFA adds real enrollment, challenge, and recovery flows (see Risks) whose development cost and
+  complexity aren't justified for the current prototype.
 - It does not deliver enough value for the app's current prototype stage.
-- There is potential future cost (Blaze once past the free MAU/DAU tier, or if SMS is ever added)
-  but no cost that is mandatory today for a small MVP choosing TOTP-only.
+- Enabling Identity Platform itself requires no migration and stays free on Spark; it only
+  introduces a 3,000-DAU quota and enables extra project-wide features — a scope/capability change
+  worth a deliberate decision, not a cost driving the deferral.
+- TOTP has no per-use charge; only SMS would require Blaze and per-message billing, and SMS isn't
+  the recommended factor anyway.
 
 See `backlog.md` (`OSV-M802`), `ROADMAP.md` (M8 closed), `CHANGELOG.md`, and
 `openspec/changes/m8-optional-mfa/state.yaml` for the recorded outcome.

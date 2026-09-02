@@ -68,19 +68,17 @@ task's implementation departed from what its plan/design doc specified, note it 
   `rules-tests` `npm test` run (76/76 passing against the Firestore/Storage emulators), and a
   re-scan showing 0 blocking rows (`osv-gate.mjs --mode=pr` exits 0).
 - [x] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — **Deferred**,
-  not implemented. `sdd-explore` (`openspec/changes/m8-optional-mfa/exploration.md`) found MFA
-  (any factor) requires enabling Firebase Authentication with Identity Platform — a free switch,
-  not a mandatory Blaze cost for TOTP, but one that changes the project's operational limits
-  platform-wide (Spark's free-auth allowance drops from 50,000 MAU to a 3,000-DAU cap; SMS
-  specifically does require Blaze + per-message billing). Explicit product decision to defer, not
-  indefinitely pending: activating Identity Platform is still a project-wide operational change,
-  email verification (a hard MFA prerequisite) isn't implemented yet, MFA adds real state-machine/
-  recovery/UX surface, and none of that earns its keep at the current prototype stage — with
-  potential future cost (Blaze past the free tier, or if SMS is ever added) but no cost mandatory
-  today for TOTP-only. Auth architecture (`AuthRepository`, `Sesion`, `:feature:cuenta`) is left
-  as-is, with no speculative MFA abstractions added. Reconsider when any of: public launch, real
-  sensitive user data at stake, regulatory requirement, paying users, or a lower-cost MFA option
-  becomes available. With `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` already done, this closes M8.
+  not implemented. `sdd-explore` (`openspec/changes/m8-optional-mfa/exploration.md`) found that
+  enabling Firebase Authentication with Identity Platform (required for any MFA factor) requires
+  no migration and can be done while staying on the free Spark plan; it introduces a 3,000-DAU
+  quota and enables extra features for the whole project. TOTP has no per-use charge; SMS would
+  require Blaze and per-message billing. The deferral is **not economic**: MFA still needs
+  email verification implemented first, and adds enrollment/challenge/recovery flows whose
+  development cost and complexity aren't justified for the current prototype. Auth architecture
+  (`AuthRepository`, `Sesion`, `:feature:cuenta`) is left as-is, with no speculative MFA
+  abstractions added. Reconsider when any of: public launch, real sensitive user data at stake,
+  regulatory requirement, paying users, or scope/complexity dropping enough to justify it. With
+  `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` already done, this closes M8.
   **Deviation:** the live re-scan (osv.dev is queried live, not embedded in the pinned scanner
   image) surfaced 2 more blocking findings not present in the original PR #33 snapshot — `qs`
   GHSA-4mjr-xmp4-gh2g/GHSA-x5fp-wj9c-mxmx, published in the gap between the two scans. Handled the
