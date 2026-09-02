@@ -11,7 +11,7 @@ task's implementation departed from what its plan/design doc specified, note it 
 *No externally blocked tasks right now.*
 
 ## 🏃 In Progress
-*No active tasks right now.*
+*No tasks currently in progress.*
 
 ## 📋 To Do
 
@@ -35,6 +35,14 @@ task's implementation departed from what its plan/design doc specified, note it 
 *No tasks pending review this session.*
 
 ## ✅ Done
+- [x] **UI-THEME-001:** Established Delivery 1 of Spenvo's Material 3 design system: explicit Brand
+  Light/Dark schemes, independent luminosity and color-source configuration, stable financial
+  semantic colors, complete typography and shapes, a deterministic four-variant preview catalog,
+  theme contract tests, and migration/audit of current consumers. Focused consumer mapping and
+  color-pair resolver tests use the existing `:feature:movimientos` unit-test infrastructure. See
+  the approved [design](doc/designs/2026-09-02-spenvo-theming-design.md) and
+  [implementation plan](doc/plans/2026-09-02-spenvo-theming-implementation.md). User-facing theme
+  preferences and persistence remain deferred to Delivery 2.
 - [x] **BUILD-001:** Narrowed `:app`'s kotlinx-serialization dependency from `json` to `core`, which
   is all its `@Serializable` Navigation 3 routes require; kept JSON scoped to `:core:data`,
   regenerated `app/gradle.lockfile`, and verified the project successfully.
