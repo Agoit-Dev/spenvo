@@ -64,33 +64,49 @@ UI ← Flow ← Room ← (reconciliation) ← Firestore.
 - Every synced entity carries `editedBy` + `editedAt` (server-set) + `deletedAt`.
 - Real conflict (same field, concurrent edits) → visible in UI, user's decision.
 - Conflict detection (M5 Slice 4): each repository's optimistic write registers
-  an unconfirmed pending edit in `EdicionesPendientes` (`:core:domain`, keyed
-  `"$coleccion:$id"`) at the point it already reads `previo`. Each
-  sincronizador's snapshot listener consults it per document; a conflict is
-  flagged only when the incoming `editedAt` is newer than the pending edit's
-  known base AND `editedBy` differs AND a pending edit exists — a plain remote
-  update fires nothing. Flagged documents are held back from Room and queued
-  in `ConflictosPendientes` (`StateFlow<Map<String, ConflictoEdicion>>`) for
-  per-record UI resolution (Slice 5b), never an app-wide interrupt. **Accepted
-  debt**: both registries are in-memory only (process lifetime), by design —
-  not a homegrown outbox. If the process dies between the optimistic Room
-  write and the Firestore echo, the pending marker is lost and the remote
-  version silently wins on the next sync.
+  an unconfirmed pending edit via `RegistroEdicionesPendientes` (`:core:domain`
+  interface, keyed `"$coleccion:$id"` by `claveRegistro()`) at the point it
+  already reads `previo`. Each sincronizador's snapshot listener consults it
+  per document; a conflict is flagged only when the incoming `editedAt` is
+  newer than the pending edit's known base AND `editedBy` differs AND a
+  pending edit exists — a plain remote update fires nothing. Flagged documents
+  are held back from Room and queued via `RegistroConflictosPendientes`
+  (`conflictos: Flow<Map<String, ConflictoEdicion>>`) for per-record UI
+  resolution (Slice 5b), never an app-wide interrupt. **Room-backed (ARCH-M501,
+  resolved)**: both registries are persisted to Room (`ediciones_pendientes`/
+  `conflictos_pendientes` tables, `SpenvoDatabase` v3→v4, `:core:data`'s
+  `RegistroEdicionesPendientesRoom`/`RegistroConflictosPendientesRoom`), not
+  in-memory — still not a homegrown outbox, since nothing is retried
+  automatically; Room only makes the *bookkeeping* durable. Every write that
+  touches either registry shares a `SpenvoDatabase.withTransaction { }` block
+  with the Room write it used to merely precede, so a process death between
+  the optimistic Room write and the Firestore echo can no longer lose the
+  pending marker: the transaction either commits both together or neither.
+  See `doc/designs/2026-09-01-conflictos-pendientes-room-design.md` for the
+  full design.
 - Conflict resolution UI (M5 Slice 5b, movimientos only): a row-level badge
-  (`MovimientoItem`) marks any id present in `ConflictosPendientes.conflictos`;
-  the blocking `ConflictoDialog` (`:core:designsystem`, entity-agnostic —
-  no `:core:domain` or `res/` dependency) opens only when the user taps that
-  row again, never as an app-wide interrupt. `feature/movimientos` maps the
-  domain `ConflictoEdicion`/`SnapshotConflicto` to the dialog's plain-string UI
-  model and resolves `R.string.conflict_field_*` labels before calling in
-  (`ConflictoMovimientoHost.kt`). Resolution: "usar la mía"/"restaurar mi
-  edición" re-issue `actualizar()` with the local version (fresh
-  `editedBy`/`editedAt`); "usar la suya"/"mantener borrado" persist the
-  Firestore document straight into Room via
-  `MovimientoRepository.aplicar{Gasto,Ingreso}Remoto(id)`, bypassing the
-  edit-attribution use case since the remote write is already correctly
-  attributed and was only held back from the last sync. Every path ends by
-  calling `ConflictosPendientes.resolver(key)`.
+  (`MovimientoItem`) marks any id present in
+  `MovimientosViewModel.conflictos` (a `StateFlow` derived from
+  `RegistroConflictosPendientes.conflictos`); the blocking `ConflictoDialog`
+  (`:core:designsystem`, entity-agnostic — no `:core:domain` or `res/`
+  dependency) opens only when the user taps that row again, never as an
+  app-wide interrupt. `feature/movimientos` maps the domain
+  `ConflictoEdicion`/`SnapshotConflicto` to the dialog's plain-string UI model
+  and resolves `R.string.conflict_field_*` labels before calling in
+  (`ConflictoMovimientoHost.kt`); `claveVisible()` resolves the unambiguous
+  `clave` for the movimiento on screen (id alone is ambiguous — a Gasto and an
+  Ingreso can share one). Resolution goes through 4 dedicated (ARCH-M501)
+  `MovimientoRepository` operations, one transaction each:
+  `resolverConflicto{Gasto,Ingreso}UsandoLocal` ("usar la mía"/"restaurar mi
+  edición" — stamps a fresh `editedBy`/`editedAt`, upserts, and resolves the
+  conflict together) and `resolverConflicto{Gasto,Ingreso}UsandoRemoto` ("usar
+  la suya"/"mantener borrado" — persists the already-correctly-attributed
+  Firestore document straight into Room and resolves the conflict together),
+  reached via matching `:core:domain` use cases rather than the plain
+  `actualizar()`/`aplicar{Gasto,Ingreso}Remoto()` + separate `resolver()` call
+  pair used before ARCH-M501 — closing a gap where a crash between the two
+  calls could leave the remote version applied with the conflict row still
+  present, or vice versa.
 
 ## Key recorded decisions
 

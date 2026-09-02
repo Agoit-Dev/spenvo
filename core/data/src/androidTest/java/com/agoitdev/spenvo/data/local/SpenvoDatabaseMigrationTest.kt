@@ -76,8 +76,44 @@ class SpenvoDatabaseMigrationTest {
         db.close()
     }
 
+    @Test
+    fun migra_de_v3_a_v4_creando_tablas_de_conflictos() {
+        helper.createDatabase(TEST_DB_V3_V4, 3).use { db ->
+            db.execSQL(
+                "INSERT INTO usuarios (id, nombreUsuario, nombre, email, avatarUrl, createdAt, updatedAt) " +
+                    "VALUES ('u1', 'GatoAzul42', 'Ana', 'ana@example.com', NULL, 123456, 123456)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB_V3_V4, 4, true, SpenvoDatabase.MIGRATION_3_4)
+
+        db.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('ediciones_pendientes', 'conflictos_pendientes')")
+            .use { cursor ->
+                val tables = buildSet {
+                    while (cursor.moveToNext()) add(cursor.getString(0))
+                }
+                assertEquals(setOf("ediciones_pendientes", "conflictos_pendientes"), tables)
+            }
+        db.query("SELECT COUNT(*) FROM ediciones_pendientes").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM conflictos_pendientes").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.query("SELECT nombre, email, nombreUsuario FROM usuarios WHERE id = 'u1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Ana", cursor.getString(0))
+            assertEquals("ana@example.com", cursor.getString(1))
+            assertEquals("GatoAzul42", cursor.getString(2))
+        }
+        db.close()
+    }
+
     companion object {
         private const val TEST_DB = "migration-test-v1-to-v2"
         private const val TEST_DB_V2_V3 = "migration-test-v2-to-v3"
+        private const val TEST_DB_V3_V4 = "migration-test-v3-to-v4"
     }
 }

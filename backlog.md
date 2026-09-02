@@ -16,9 +16,6 @@ task's implementation departed from what its plan/design doc specified, note it 
 ## 📋 To Do
 
 ### 🔒 Architecture & Robustness (Medium Priority)
-- [ ] **ARCH-M501:** Design a prototype to persist `EdicionesPendientes` and `ConflictosPendientes`
-  in the Room database instead of keeping them in memory only (`process-lifetime`), mitigating the
-  risk of losing sync state on process death.
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable
   devices.
@@ -92,3 +89,17 @@ task's implementation departed from what its plan/design doc specified, note it 
   reports overall failure (so `ARCH-U801`'s `reintentarSyncUsuario()` retry gets another chance at
   whichever invites failed); `invitarMiembro`/`eliminar` are both keyed by deterministic Firestore
   document ids, so retrying an already-granted invite is a safe no-op.
+- [x] **ARCH-M501:** `EdicionesPendientes`/`ConflictosPendientes` moved off in-memory-only storage
+  onto Room (`ediciones_pendientes`/`conflictos_pendientes`, `SpenvoDatabase` v3→v4), closing the
+  process-death data-loss gap `doc/architecture.md` had carried as accepted debt. `VersionPendiente`
+  is retired; `RegistroEdicionesPendientes`/`RegistroConflictosPendientes` (`:core:domain`) and their
+  Room implementations (`:core:data`) replace the old concrete classes, with 4
+  `SpenvoDatabase.withTransaction { }` boundaries (write, rollback, snapshot received, conflict
+  resolution) closing the race that used to exist between the optimistic Room write and the
+  Firestore echo. See `doc/designs/2026-09-01-conflictos-pendientes-room-design.md` for the full
+  design and `CHANGELOG.md`'s `[Unreleased]` entry for the complete list of call sites touched.
+  **Deviation:** the plan's own file lists undercounted the blast radius of extending
+  `MovimientoRepository` by 4 abstract methods — fixing every existing test fake/consumer for that
+  interface change (13 hand-written fakes across 4 modules, including 2 in `:feature:planes` missed
+  until this closing gate run) and wiring the 4 new use cases into `MovimientoModule.kt` (Hilt) both
+  turned out to be real, necessary scope beyond what was originally enumerated.

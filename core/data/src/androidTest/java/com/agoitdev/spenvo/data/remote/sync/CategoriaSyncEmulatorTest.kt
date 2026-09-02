@@ -11,8 +11,6 @@ import com.agoitdev.spenvo.data.remote.dto.CategoriaDto
 import com.agoitdev.spenvo.data.remote.repository.FirebaseCategoriaRepository
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.TipoCategoria
-import com.agoitdev.spenvo.domain.sync.ConflictosPendientes
-import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
@@ -39,8 +37,8 @@ class CategoriaSyncEmulatorTest {
     private lateinit var dao: CategoriaDao
     private lateinit var firestore: FirebaseFirestore
     private lateinit var repo: FirebaseCategoriaRepository
-    private lateinit var edicionesPendientes: EdicionesPendientes
-    private lateinit var conflictosPendientes: ConflictosPendientes
+    private lateinit var registroEdicionesPendientes: RegistroEdicionesPendientesRoom
+    private lateinit var registroConflictosPendientes: RegistroConflictosPendientesRoom
 
     @Before
     fun setup() {
@@ -59,9 +57,9 @@ class CategoriaSyncEmulatorTest {
         firestore.useEmulator("10.0.2.2", 8081)
         db = Room.inMemoryDatabaseBuilder(context, SpenvoDatabase::class.java).build()
         dao = db.categoriaDao()
-        edicionesPendientes = EdicionesPendientes()
-        conflictosPendientes = ConflictosPendientes()
-        repo = FirebaseCategoriaRepository(firestore, dao, edicionesPendientes)
+        registroEdicionesPendientes = RegistroEdicionesPendientesRoom(db.edicionPendienteDao())
+        registroConflictosPendientes = RegistroConflictosPendientesRoom(db.conflictoEdicionDao())
+        repo = FirebaseCategoriaRepository(firestore, db, dao, registroEdicionesPendientes)
     }
 
     @After
@@ -82,7 +80,7 @@ class CategoriaSyncEmulatorTest {
 
         repo.actualizarCategoria(categoria.copy(nombre = "Comidas", editedBy = "user-2"))
 
-        val pendiente = edicionesPendientes.obtener("categorias:p1:gasto_comida")
+        val pendiente = db.edicionPendienteDao().get("categorias:p1:gasto_comida")
         assertEquals("user-2", pendiente?.editorId)
     }
 
@@ -126,12 +124,16 @@ class CategoriaSyncEmulatorTest {
 
     @Test
     fun sincronizador_upserta_categorias_de_firestore() = runBlocking {
-        val sincronizador = CategoriaSincronizador(firestore, dao, edicionesPendientes, conflictosPendientes)
-        val job = launch { sincronizador.sincronizar("p1").collect { } }
+        // Plan propio: la Firestore del emulador se comparte entre tests (Room no), así que un
+        // planId compartido haría que este listener viera además las categorías que crean los
+        // tests del repositorio.
+        val planId = "p1-sync-upsert"
+        val sincronizador = CategoriaSincronizador(firestore, db, dao, registroEdicionesPendientes, registroConflictosPendientes)
+        val job = launch { sincronizador.sincronizar(planId).collect { } }
 
         val categoria = Categoria(
-            id = "p1:ingreso_salario",
-            planId = "p1",
+            id = "$planId:ingreso_salario",
+            planId = planId,
             nombre = "Salario",
             icono = "sueldo",
             tipo = TipoCategoria.INGRESO,
@@ -143,18 +145,19 @@ class CategoriaSyncEmulatorTest {
         kotlinx.coroutines.delay(2_000)
 
         job.cancel()
-        val ids = dao.observeByPlan("p1").first().map { it.id }
-        assertEquals(listOf("p1:ingreso_salario"), ids)
+        val ids = dao.observeByPlan(planId).first().map { it.id }
+        assertEquals(listOf("$planId:ingreso_salario"), ids)
     }
 
     @Test
     fun sincronizador_respeta_soft_delete() = runBlocking {
-        val sincronizador = CategoriaSincronizador(firestore, dao, edicionesPendientes, conflictosPendientes)
-        val job = launch { sincronizador.sincronizar("p1").collect { } }
+        val planId = "p1-sync-softdelete"
+        val sincronizador = CategoriaSincronizador(firestore, db, dao, registroEdicionesPendientes, registroConflictosPendientes)
+        val job = launch { sincronizador.sincronizar(planId).collect { } }
 
         val categoria = Categoria(
-            id = "p1:gasto_ropa",
-            planId = "p1",
+            id = "$planId:gasto_ropa",
+            planId = planId,
             nombre = "Ropa",
             icono = "ropa",
             tipo = TipoCategoria.GASTO,
@@ -167,6 +170,6 @@ class CategoriaSyncEmulatorTest {
         kotlinx.coroutines.delay(2_000)
 
         job.cancel()
-        assertEquals(0, dao.observeByPlan("p1").first().size)
+        assertEquals(0, dao.observeByPlan(planId).first().size)
     }
 }

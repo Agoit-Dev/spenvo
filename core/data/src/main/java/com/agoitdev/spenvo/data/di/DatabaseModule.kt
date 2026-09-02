@@ -4,6 +4,8 @@ import android.content.Context
 import com.agoitdev.spenvo.data.local.SpenvoDatabase
 import com.agoitdev.spenvo.data.local.dao.AccesoPlanDao
 import com.agoitdev.spenvo.data.local.dao.CategoriaDao
+import com.agoitdev.spenvo.data.local.dao.ConflictoEdicionDao
+import com.agoitdev.spenvo.data.local.dao.EdicionPendienteDao
 import com.agoitdev.spenvo.data.local.dao.GastoDao
 import com.agoitdev.spenvo.data.local.dao.IngresoDao
 import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
@@ -20,6 +22,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
+@Suppress("TooManyFunctions")
 object DatabaseModule {
 
     @Provides
@@ -54,6 +57,14 @@ object DatabaseModule {
     @Provides
     fun provideIngresoDao(database: SpenvoDatabase): IngresoDao =
         database.ingresoDao()
+
+    @Provides
+    fun provideEdicionPendienteDao(database: SpenvoDatabase): EdicionPendienteDao =
+        database.edicionPendienteDao()
+
+    @Provides
+    fun provideConflictoEdicionDao(database: SpenvoDatabase): ConflictoEdicionDao =
+        database.conflictoEdicionDao()
 
     @Provides
     @Singleton

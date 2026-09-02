@@ -1,14 +1,17 @@
 package com.agoitdev.spenvo.data.remote.repository
 
+import androidx.room.withTransaction
+import com.agoitdev.spenvo.data.local.SpenvoDatabase
 import com.agoitdev.spenvo.data.local.dao.PlanFinancieroDao
 import com.agoitdev.spenvo.data.local.mapper.toDomain
 import com.agoitdev.spenvo.data.local.mapper.toEntity
-import com.agoitdev.spenvo.data.remote.dto.PlanFinancieroDto
 import com.agoitdev.spenvo.data.remote.await
+import com.agoitdev.spenvo.data.remote.dto.PlanFinancieroDto
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
-import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
-import com.agoitdev.spenvo.domain.sync.VersionPendiente
+import com.agoitdev.spenvo.domain.sync.RegistroEdicionesPendientes
+import com.agoitdev.spenvo.domain.sync.TipoRegistro
+import com.agoitdev.spenvo.domain.sync.claveRegistro
 import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,13 +23,14 @@ import kotlinx.coroutines.flow.map
  * permanent Firestore error rolls Room back to the previous snapshot (see
  * `data-consistency.md` write contract). Update also registers an unconfirmed
  * pending edit (Slice 4 conflict detection) at the point `previo` is read,
- * for free.
+ * for free — both land in one Room transaction (ARCH-M501).
  */
 @Singleton
 class FirebasePlanFinancieroRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
+    private val database: SpenvoDatabase,
     private val planDao: PlanFinancieroDao,
-    private val edicionesPendientes: EdicionesPendientes,
+    private val registroEdicionesPendientes: RegistroEdicionesPendientes,
 ) : PlanFinancieroRepository {
 
     override fun observarPlanesDelUsuario(usuarioId: String): Flow<List<PlanFinanciero>> =
@@ -50,19 +54,25 @@ class FirebasePlanFinancieroRepository @Inject constructor(
 
     @Suppress("TooGenericExceptionCaught")
     override suspend fun actualizarPlan(plan: PlanFinanciero) {
-        val previo = planDao.get(plan.id)
-        edicionesPendientes.registrarSiCorresponde(
-            clave = EdicionesPendientes.clave(PLANES_COLLECTION, plan.id),
-            editorId = plan.editedBy,
-            base = previo?.editedAt,
-            miEditedAt = plan.editedAt,
-            miVersion = VersionPendiente.DePlan(plan),
-        )
-        planDao.upsert(plan.toEntity())
+        val previo = database.withTransaction {
+            val previo = planDao.get(plan.id)
+            registroEdicionesPendientes.registrarSiCorresponde(
+                clave = claveRegistro(PLANES_COLLECTION, plan.id),
+                editorId = plan.editedBy,
+                base = previo?.editedAt,
+                miEditedAt = plan.editedAt,
+                tipo = TipoRegistro.PLAN,
+            )
+            planDao.upsert(plan.toEntity())
+            previo
+        }
         try {
             persistRemoto(plan)
         } catch (e: Exception) {
-            if (previo != null) planDao.upsert(previo) else planDao.delete(plan.id)
+            database.withTransaction {
+                registroEdicionesPendientes.limpiar(claveRegistro(PLANES_COLLECTION, plan.id))
+                if (previo != null) planDao.upsert(previo) else planDao.delete(plan.id)
+            }
             throw e
         }
     }

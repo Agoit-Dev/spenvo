@@ -113,6 +113,8 @@ private class FakeMovimientoRepo : MovimientoRepository {
     override suspend fun eliminarIngreso(ingreso: Ingreso) = Unit
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(gastosCreados)
     override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(ingresosCreados)
-    override suspend fun aplicarGastoRemoto(id: String) = Unit
-    override suspend fun aplicarIngresoRemoto(id: String) = Unit
+    override suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoLocal(ingreso: Ingreso, clave: String) = Unit
+    override suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoRemoto(id: String, clave: String) = Unit
 }

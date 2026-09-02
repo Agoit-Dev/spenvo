@@ -1,6 +1,6 @@
 # Data Schema — Spenvo
 
-Document version: **1.3** (M1 + Usuario/nombreUsuario, slices 1-9/10). Status: baseline draft, versioned with every change.
+Document version: **1.4** (M1 + Usuario/nombreUsuario, slices 1-9/10 + ARCH-M501 Room v4). Status: baseline draft, versioned with every change.
 
 ## 1. Source of truth and model
 
@@ -148,10 +148,10 @@ that resolution path always failed with `PERMISSION_DENIED` once rules were enfo
 - `editedBy`/`editedAt` are written by Firestore (rules) with `request.auth.uid` and `request.time`;
   the client never chooses them.
 
-## 3. Room (version 3)
+## 3. Room (version 4)
 
 Room is the encrypted local cache. Schema exports are versioned in
-`core/data/schemas/com.agoitdev.spenvo.data.local.SpenvoDatabase/` (`1.json`, `2.json`, `3.json`).
+`core/data/schemas/com.agoitdev.spenvo.data.local.SpenvoDatabase/` (`1.json`, `2.json`, `3.json`, `4.json`).
 
 ### `sync_state` (v1, unchanged)
 | Column | Type | Notes |
@@ -225,6 +225,34 @@ Room is the encrypted local cache. Schema exports are versioned in
 | deletedAt | INTEGER? | soft-delete |
 | Index | `planId, fecha` | `index_gastos_planId_fecha` / `index_ingresos_planId_fecha` |
 
+### `ediciones_pendientes` (new in v4, ARCH-M501)
+| Column | Type | Notes |
+|---|---|---|
+| clave | TEXT (PK) | `"$coleccion:$id"`, e.g. `gastos:g1` |
+| tipo | TEXT | `GASTO` \| `INGRESO` \| `CATEGORIA` \| `PLAN` |
+| editorId | TEXT | uid of the local edit's author |
+| base | INTEGER? | `editedAt` of the row read before the local write, epoch millis |
+| miEditedAt | INTEGER? | `editedAt` the local write is expected to echo back, epoch millis |
+
+Room-backed replacement for the process-lifetime-only `EdicionesPendientes` in-memory registry —
+closes the process-death data-loss gap (see `doc/architecture.md`). No `miVersion` column: the
+local snapshot is reconstructed from the corresponding main-table row at conflict-detection time
+instead, since the write-path transaction guarantees both are always in sync.
+
+### `conflictos_pendientes` (new in v4, ARCH-M501)
+| Column | Type | Notes |
+|---|---|---|
+| clave | TEXT (PK) | `"$coleccion:$id"` |
+| registroId | TEXT | the entity's own id |
+| tipo | TEXT | `GASTO` \| `INGRESO` \| `CATEGORIA` \| `PLAN` |
+| local | TEXT | `SnapshotConflicto` as JSON (kotlinx-serialization, epoch-millis DTO) |
+| remoto | TEXT | `SnapshotConflicto` as JSON, same converter |
+
+Room-backed replacement for the process-lifetime-only `ConflictosPendientes` in-memory registry —
+same rationale as `ediciones_pendientes` above. `local`/`remoto` are stored via a new
+`Converters.snapshotConflictoToJson`/`jsonToSnapshotConflicto` `@TypeConverter` pair, since
+`SnapshotConflicto.editadoEn: Instant?` has no built-in kotlinx-serialization support.
+
 ### Migration v1 → v2
 `SpenvoDatabase.MIGRATION_1_2` creates the six new tables and three indexes above;
 `sync_state` is preserved. Validated by an instrumented migration test
@@ -239,12 +267,21 @@ columns is renamed to `*_old`, re-added as nullable `TEXT`, copied over with an 
 the `*_old` column dropped. Every other table is untouched. Validated by the same instrumented
 migration test (`SpenvoDatabaseMigrationTest`) and by the Room exported schema (`3.json`).
 
+### Migration v3 → v4
+`SpenvoDatabase.MIGRATION_3_4` creates the two new tables above (`ediciones_pendientes`,
+`conflictos_pendientes`) via raw `CREATE TABLE IF NOT EXISTS`, matching `MIGRATION_1_2`'s style —
+no destructive migration, every existing table untouched. Validated by the same instrumented
+migration test (`SpenvoDatabaseMigrationTest`) and by the Room exported schema (`4.json`).
+
 ### Version plan
 - **v1 (M0)**: `sync_state` — validates the Room+KSP+SQLCipher toolchain.
 - **v2 (M1)**: local domain entities (users, plans, categories, expenses,
   income) as cache; indexes; `editedBy/editedAt`.
 - **v3 (Usuario/nombreUsuario)**: `usuarios` becomes a live synced entity — `nombreUsuario`
   added, `nombre`/`email` made nullable.
+- **v4 (ARCH-M501)**: `ediciones_pendientes`/`conflictos_pendientes` added — Room becomes the
+  durable single source of truth for pending-edit/conflict registries, closing the process-death
+  data-loss gap the prior in-memory-only registries carried.
 - Migrations with `Migration` + SQLCipher (upgrade test included).
 
 ## 4. Firestore indexes (draft)
@@ -263,3 +300,4 @@ See `firestore.indexes.json`. Rules:
 | 2026-08-30 | 1.2 | Firestore | Usuario/nombreUsuario slice 7/10 — added `invitaciones_pendientes_por_email` collection (anti-enumeration invite-by-email pending state) |
 | 2026-08-30 | 1.3 | Room v3 / Firestore | Usuario/nombreUsuario slices 1-9/10 — Room migration v2→v3 on `usuarios` (`nombreUsuario` added, `nombre`/`email` nullable); Firestore `usuarios` splits `get` (open to any authenticated caller) from `list` (denied) and gains the `nombres_usuario`/`emails_usuario` uniqueness-and-lookup index collections plus `invitaciones_pendientes_por_email`; `acceso_plan_financiero.create` gains the pending-invite self-grant disjunct so a newly-registered invitee can materialize their own access |
 | 2026-08-30 | 1.3 | Firestore rules | Pre-merge security fixes (no schema change): `invitaciones_pendientes_por_email.create` now requires admin(2)+ on the plan, `invitadoPor == uid` and a doc id matching its own `email_planId` (closes a privilege-escalation chain through the self-grant disjunct); `list`/`delete` compare against `request.auth.token.email.lower()`; `usuarios.create`/`update` require an owned `nombres_usuario` reservation for the written handle (closes `nombreUsuario` impersonation) |
+| 2026-09-02 | 1.4 | Room v4 | ARCH-M501 (Task 3) — Room migration v3→v4 adds `ediciones_pendientes`/`conflictos_pendientes`, the durable backing store for the pending-edit/conflict registries (closes the process-death data-loss gap in `doc/architecture.md`); new `EdicionPendienteEntity`/`ConflictoEdicionEntity`, `EdicionPendienteDao`/`ConflictoEdicionDao`, and a `SnapshotConflicto` JSON `@TypeConverter` pair in `Converters.kt` |

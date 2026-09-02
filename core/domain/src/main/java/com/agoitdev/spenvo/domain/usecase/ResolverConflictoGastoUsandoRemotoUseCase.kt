@@ -1,0 +1,9 @@
+package com.agoitdev.spenvo.domain.usecase
+
+import com.agoitdev.spenvo.domain.repository.MovimientoRepository
+
+class ResolverConflictoGastoUsandoRemotoUseCase(
+    private val repository: MovimientoRepository,
+) {
+    suspend operator fun invoke(id: String, clave: String) = repository.resolverConflictoGastoUsandoRemoto(id, clave)
+}
