@@ -131,6 +131,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chance — safe to re-run in full since `invitarMiembro`/`eliminar` are both keyed by deterministic
   document ids.
 
+### Docs
+
+- **OSV-M802 (M8, MFA half) — deferred, not implemented.** `sdd-explore` discovery
+  (`openspec/changes/m8-optional-mfa/`) found that enabling Firebase Authentication with Identity
+  Platform (required for any MFA factor) needs no migration and stays free on Spark; it introduces
+  a 3,000-DAU quota and enables extra project-wide features. TOTP has no per-use charge; SMS would
+  require Blaze and per-message billing. The deferral is **not economic**: MFA still needs email
+  verification implemented first, and adds enrollment/challenge/recovery flows whose development
+  cost and complexity aren't justified for the current MVP. Reconsider on public launch, real
+  sensitive user data, a regulatory requirement, paying users, or scope/complexity dropping enough
+  to justify it. No code changed; auth architecture left as-is with no speculative MFA
+  abstractions. With the osv-scanner-in-CI half (`OSV-M801`/`803`/`804`/`805`) already done, this
+  closes M8. See `backlog.md`, `ROADMAP.md`.
+
 ### Removed
 
 - **ARCH-M501 cleanup:** deleted `AplicarGastoRemotoUseCase`/`AplicarIngresoRemotoUseCase`, fully

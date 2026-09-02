@@ -15,13 +15,6 @@ task's implementation departed from what its plan/design doc specified, note it 
 
 ## 📋 To Do
 
-### 🔐 Security & Supply Chain (High Priority)
-*M8 from `ROADMAP.md`. `OSV-M801` (CI half) is fully done — see ✅ Done. Only the MFA half
-(`OSV-M802`) remains open.*
-- [ ] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — no design yet;
-  needs its own brainstorm session before any implementation task exists. Deliberately out of
-  `OSV-M801`'s scope.
-
 ### 🔒 Architecture & Robustness (Medium Priority)
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable
@@ -74,6 +67,18 @@ task's implementation departed from what its plan/design doc specified, note it 
   `>=11.1.1` and `qs` to `>=6.16.0`; verified via `npm ls` (no `invalid` entries), a full
   `rules-tests` `npm test` run (76/76 passing against the Firestore/Storage emulators), and a
   re-scan showing 0 blocking rows (`osv-gate.mjs --mode=pr` exits 0).
+- [x] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — **Deferred**,
+  not implemented. `sdd-explore` (`openspec/changes/m8-optional-mfa/exploration.md`) found that
+  enabling Firebase Authentication with Identity Platform (required for any MFA factor) requires
+  no migration and can be done while staying on the free Spark plan; it introduces a 3,000-DAU
+  quota and enables extra features for the whole project. TOTP has no per-use charge; SMS would
+  require Blaze and per-message billing. The deferral is **not economic**: MFA still needs
+  email verification implemented first, and adds enrollment/challenge/recovery flows whose
+  development cost and complexity aren't justified for the current prototype. Auth architecture
+  (`AuthRepository`, `Sesion`, `:feature:cuenta`) is left as-is, with no speculative MFA
+  abstractions added. Reconsider when any of: public launch, real sensitive user data at stake,
+  regulatory requirement, paying users, or scope/complexity dropping enough to justify it. With
+  `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` already done, this closes M8.
   **Deviation:** the live re-scan (osv.dev is queried live, not embedded in the pinned scanner
   image) surfaced 2 more blocking findings not present in the original PR #33 snapshot — `qs`
   GHSA-4mjr-xmp4-gh2g/GHSA-x5fp-wj9c-mxmx, published in the gap between the two scans. Handled the

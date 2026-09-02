@@ -1,0 +1,32 @@
+change: m8-optional-mfa
+artifact_store: hybrid
+execution_mode: interactive
+delivery_strategy: ask-on-risk
+review_budget_lines: 400
+
+phases:
+  explore:
+    status: done
+    engram_topic: sdd/m8-optional-mfa/explore
+    engram_observation_id: 136
+  propose:
+    status: deferred
+    decision: |
+      User decision 2026-09-02: defer optional MFA for the current MVP stage. The deferral is NOT
+      economic (two earlier drafts wrongly implied a mandatory Blaze billing cost/operational
+      migration): enabling Firebase Authentication with Identity Platform requires no migration and
+      stays free on Spark; it introduces a 3,000-DAU quota and enables extra project-wide features.
+      TOTP has no per-use charge; only SMS would require Blaze and per-message billing. The real
+      basis is scope and complexity: MFA still needs email verification implemented first, and adds
+      enrollment/challenge/recovery flows whose development cost isn't justified for the current
+      prototype. Not indefinitely pending — treated as a closed, documented decision (backlog.md,
+      ROADMAP.md, CHANGELOG.md). Reconsider on: public launch, real sensitive user data at stake, a
+      regulatory requirement, paying users, or scope/complexity dropping enough to justify it. M8
+      closes with this deferral as its outcome; no further SDD phases run for this change unless
+      one of the triggers above reopens it.
+  spec: { status: not_started }
+  design: { status: not_started }
+  tasks: { status: not_started }
+  apply: { status: not_started }
+  verify: { status: not_started }
+  archive: { status: not_started }
