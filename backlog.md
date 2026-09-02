@@ -35,6 +35,9 @@ task's implementation departed from what its plan/design doc specified, note it 
 *No tasks pending review this session.*
 
 ## ✅ Done
+- [x] **BUILD-001:** Narrowed `:app`'s kotlinx-serialization dependency from `json` to `core`, which
+  is all its `@Serializable` Navigation 3 routes require; kept JSON scoped to `:core:data`,
+  regenerated `app/gradle.lockfile`, and verified the project successfully.
 - [x] **BUG-H602:** Fixed the "no plans yet" flicker on `PlanesScreen`'s cold start using the
   internal `cargandoLista` state.
 - [x] **BUG-M601:** Implemented per-tab local state isolation via `rememberSaveableStateHolder()` in

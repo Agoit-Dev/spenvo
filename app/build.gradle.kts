@@ -84,7 +84,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
-    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(platform(libs.firebase.bom))
