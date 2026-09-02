@@ -12,7 +12,7 @@ import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.sync.CampoConflicto
 import com.agoitdev.spenvo.domain.sync.ConflictoEdicion
-import com.agoitdev.spenvo.domain.sync.ConflictosPendientes
+import com.agoitdev.spenvo.domain.sync.RegistroConflictosPendientes
 import com.agoitdev.spenvo.domain.sync.SnapshotConflicto
 import com.agoitdev.spenvo.domain.sync.TipoRegistro
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
@@ -26,15 +26,24 @@ import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasPorTipoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoRemotoUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -51,7 +60,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class MovimientosViewModelTest {
 
-    private val movimientoRepo = FakeMovimientoRepository()
+    private val conflictosPendientes = FakeRegistroConflictosPendientes()
+    private val movimientoRepo = FakeMovimientoRepository(conflictosPendientes)
     private val categoriaRepo = FakeCategoriaRepository(
         categorias = listOf(
             Categoria(id = "cat-gasto", planId = "p1", nombre = "Comida", tipo = TipoCategoria.GASTO),
@@ -60,7 +70,6 @@ class MovimientosViewModelTest {
     )
     private val sincronizador = FakeMovimientoSincronizacion()
     private val authRepository = FakeAuthRepository()
-    private val conflictosPendientes = ConflictosPendientes()
 
     @Before
     fun setUp() {
@@ -84,10 +93,29 @@ class MovimientosViewModelTest {
         eliminarIngreso = EliminarIngresoUseCase(movimientoRepo),
         aplicarGastoRemoto = AplicarGastoRemotoUseCase(movimientoRepo),
         aplicarIngresoRemoto = AplicarIngresoRemotoUseCase(movimientoRepo),
+        resolverConflictoGastoUsandoLocal = ResolverConflictoGastoUsandoLocalUseCase(
+            movimientoRepo,
+            ValidarMontoUseCase(),
+        ),
+        resolverConflictoIngresoUsandoLocal = ResolverConflictoIngresoUsandoLocalUseCase(
+            movimientoRepo,
+            ValidarMontoUseCase(),
+        ),
+        resolverConflictoGastoUsandoRemoto = ResolverConflictoGastoUsandoRemotoUseCase(movimientoRepo),
+        resolverConflictoIngresoUsandoRemoto = ResolverConflictoIngresoUsandoRemotoUseCase(movimientoRepo),
         sincronizador = sincronizador,
         authRepository = authRepository,
-        conflictosPendientes = conflictosPendientes,
+        registroConflictosPendientes = conflictosPendientes,
     )
+
+    /** Subscribes to [MovimientosViewModel.conflictos] so its `WhileSubscribed` `.stateIn()` starts
+     * relaying [conflictosPendientes] updates, then lets the scheduler catch up. Cancel the
+     * returned [Job] once the test no longer needs live updates. */
+    private fun TestScope.suscribirConflictos(viewModel: MovimientosViewModel): Job {
+        val job = launch { viewModel.conflictos.collect {} }
+        advanceUntilIdle()
+        return job
+    }
 
     @Test
     fun `categoriasTodas devuelve categorias de ambos tipos`() = runTest {
@@ -338,74 +366,110 @@ class MovimientosViewModelTest {
     @Test
     fun `mostrarConflicto muestra el conflicto solo del registro reabierto`() = runTest {
         val viewModel = crearViewModel()
+        val job = suscribirConflictos(viewModel)
         val gasto = gastoDeEjemplo()
         conflictosPendientes.registrar("gastos:g1", conflictoDeEjemplo("g1"))
+        advanceUntilIdle()
 
         viewModel.mostrarConflicto(gasto)
 
         assertEquals("g1", viewModel.conflictoVisible.value?.registroId)
+        job.cancel()
     }
 
     @Test
     fun `resolverConflicto usarLocal reenvia mi version con estampa nueva y limpia el conflicto`() = runTest {
         val viewModel = crearViewModel()
+        val job = suscribirConflictos(viewModel)
         val gasto = gastoDeEjemplo()
         conflictosPendientes.registrar("gastos:g1", conflictoDeEjemplo("g1"))
+        advanceUntilIdle()
         viewModel.mostrarConflicto(gasto)
 
         viewModel.resolverConflicto(gasto, usarLocal = true)
         advanceUntilIdle()
 
-        assertEquals("user-1", movimientoRepo.gastosActualizados.single().editedBy)
+        val (gastoResuelto, claveResuelta) = movimientoRepo.gastosResueltosLocal.single()
+        assertEquals("user-1", gastoResuelto.editedBy)
+        assertEquals("gastos:g1", claveResuelta)
         assertNull(conflictosPendientes.conflictoPara("gastos:g1"))
         assertNull(viewModel.conflictoVisible.value)
+        job.cancel()
     }
 
     @Test
     fun `resolverConflicto usarRemoto aplica la version remota y limpia el conflicto`() = runTest {
         val viewModel = crearViewModel()
+        val job = suscribirConflictos(viewModel)
         val gasto = gastoDeEjemplo()
         conflictosPendientes.registrar("gastos:g1", conflictoDeEjemplo("g1"))
+        advanceUntilIdle()
         viewModel.mostrarConflicto(gasto)
 
         viewModel.resolverConflicto(gasto, usarLocal = false)
         advanceUntilIdle()
 
-        assertEquals(listOf("g1"), movimientoRepo.gastosRemotosAplicados)
+        assertEquals(listOf("g1" to "gastos:g1"), movimientoRepo.gastosResueltosRemoto)
         assertNull(conflictosPendientes.conflictoPara("gastos:g1"))
         assertNull(viewModel.conflictoVisible.value)
+        job.cancel()
     }
 
     @Test
     fun `restaurar mi edicion limpia deletedAt y reenvia mi version tras un conflicto de borrado`() = runTest {
         val viewModel = crearViewModel()
+        val job = suscribirConflictos(viewModel)
         val gasto = gastoDeEjemplo()
         conflictosPendientes.registrar("gastos:g1", conflictoDeEjemplo("g1", borradoRemoto = true))
+        advanceUntilIdle()
         viewModel.mostrarConflicto(gasto)
 
         viewModel.resolverConflicto(gasto.copy(deletedAt = null), usarLocal = true)
         advanceUntilIdle()
 
-        val actualizado = movimientoRepo.gastosActualizados.single()
+        val (actualizado, claveResuelta) = movimientoRepo.gastosResueltosLocal.single()
         assertNull(actualizado.deletedAt)
         assertEquals("user-1", actualizado.editedBy)
+        assertEquals("gastos:g1", claveResuelta)
         assertNull(conflictosPendientes.conflictoPara("gastos:g1"))
         assertNull(viewModel.conflictoVisible.value)
+        job.cancel()
     }
 
     @Test
     fun `mantener borrado aplica la version remota borrada y limpia el conflicto`() = runTest {
         val viewModel = crearViewModel()
+        val job = suscribirConflictos(viewModel)
         val gasto = gastoDeEjemplo()
         conflictosPendientes.registrar("gastos:g1", conflictoDeEjemplo("g1", borradoRemoto = true))
+        advanceUntilIdle()
         viewModel.mostrarConflicto(gasto)
 
         viewModel.resolverConflicto(gasto, usarLocal = false)
         advanceUntilIdle()
 
-        assertEquals(listOf("g1"), movimientoRepo.gastosRemotosAplicados)
+        assertEquals(listOf("g1" to "gastos:g1"), movimientoRepo.gastosResueltosRemoto)
         assertNull(conflictosPendientes.conflictoPara("gastos:g1"))
         assertNull(viewModel.conflictoVisible.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `resolverConflicto usarRemoto cuando el remoto ya no existe mantiene el dialogo y muestra error`() = runTest {
+        movimientoRepo.errorResolverGastoRemoto = "El movimiento remoto ya no existe"
+        val viewModel = crearViewModel()
+        val job = suscribirConflictos(viewModel)
+        val gasto = gastoDeEjemplo()
+        conflictosPendientes.registrar("gastos:g1", conflictoDeEjemplo("g1"))
+        advanceUntilIdle()
+        viewModel.mostrarConflicto(gasto)
+
+        viewModel.resolverConflicto(gasto, usarLocal = false)
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.estadoForm.value.error)
+        assertNotNull(viewModel.conflictoVisible.value) // dialog stays open — did NOT close on failure
+        job.cancel()
     }
 }
 
@@ -435,7 +499,9 @@ private fun conflictoDeEjemplo(id: String, borradoRemoto: Boolean = false): Conf
     ),
 )
 
-private class FakeMovimientoRepository : MovimientoRepository {
+private class FakeMovimientoRepository(
+    private val conflictosPendientes: FakeRegistroConflictosPendientes,
+) : MovimientoRepository {
     val gastosCreados = mutableListOf<Gasto>()
     val ingresosCreados = mutableListOf<Ingreso>()
     val gastosActualizados = mutableListOf<Gasto>()
@@ -444,6 +510,13 @@ private class FakeMovimientoRepository : MovimientoRepository {
     val ingresosEliminados = mutableListOf<Ingreso>()
     val gastosRemotosAplicados = mutableListOf<String>()
     val ingresosRemotosAplicados = mutableListOf<String>()
+    val gastosResueltosLocal = mutableListOf<Pair<Gasto, String>>()
+    val ingresosResueltosLocal = mutableListOf<Pair<Ingreso, String>>()
+    val gastosResueltosRemoto = mutableListOf<Pair<String, String>>()
+    val ingresosResueltosRemoto = mutableListOf<Pair<String, String>>()
+
+    /** Set to simulate the remote document being gone (e.g. deleted concurrently) when resolving. */
+    var errorResolverGastoRemoto: String? = null
 
     override suspend fun addGasto(gasto: Gasto) {
         gastosCreados.add(gasto)
@@ -482,6 +555,42 @@ private class FakeMovimientoRepository : MovimientoRepository {
 
     override fun observeIngresos(planId: String): Flow<List<Ingreso>> =
         flowOf(ingresosCreados.filter { it.planId == planId })
+
+    override suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String) {
+        gastosResueltosLocal.add(gasto to clave)
+        conflictosPendientes.resolver(clave)
+    }
+
+    override suspend fun resolverConflictoIngresoUsandoLocal(ingreso: Ingreso, clave: String) {
+        ingresosResueltosLocal.add(ingreso to clave)
+        conflictosPendientes.resolver(clave)
+    }
+
+    override suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) {
+        errorResolverGastoRemoto?.let { error(it) }
+        gastosResueltosRemoto.add(id to clave)
+        conflictosPendientes.resolver(clave)
+    }
+
+    override suspend fun resolverConflictoIngresoUsandoRemoto(id: String, clave: String) {
+        ingresosResueltosRemoto.add(id to clave)
+        conflictosPendientes.resolver(clave)
+    }
+}
+
+private class FakeRegistroConflictosPendientes : RegistroConflictosPendientes {
+    private val _conflictos = MutableStateFlow<Map<String, ConflictoEdicion>>(emptyMap())
+    override val conflictos: Flow<Map<String, ConflictoEdicion>> = _conflictos.asStateFlow()
+
+    override suspend fun conflictoPara(clave: String): ConflictoEdicion? = _conflictos.value[clave]
+
+    override suspend fun registrar(clave: String, conflicto: ConflictoEdicion) {
+        _conflictos.update { it + (clave to conflicto) }
+    }
+
+    override suspend fun resolver(clave: String) {
+        _conflictos.update { it - clave }
+    }
 }
 
 private class FakeCategoriaRepository(

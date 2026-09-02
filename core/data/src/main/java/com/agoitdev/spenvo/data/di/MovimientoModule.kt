@@ -15,6 +15,10 @@ import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarBalanceAcumuladoPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoRemotoUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
 import dagger.Binds
 import dagger.Module
@@ -42,6 +46,7 @@ abstract class MovimientoModule {
 
 @Module
 @InstallIn(SingletonComponent::class)
+@Suppress("TooManyFunctions")
 object MovimientoUseCaseModule {
 
     @Provides
@@ -95,6 +100,30 @@ object MovimientoUseCaseModule {
     fun provideAplicarIngresoRemoto(
         movimientoRepository: MovimientoRepository,
     ): AplicarIngresoRemotoUseCase = AplicarIngresoRemotoUseCase(movimientoRepository)
+
+    @Provides
+    fun provideResolverConflictoGastoUsandoLocal(
+        movimientoRepository: MovimientoRepository,
+        validarMonto: ValidarMontoUseCase,
+    ): ResolverConflictoGastoUsandoLocalUseCase =
+        ResolverConflictoGastoUsandoLocalUseCase(movimientoRepository, validarMonto)
+
+    @Provides
+    fun provideResolverConflictoIngresoUsandoLocal(
+        movimientoRepository: MovimientoRepository,
+        validarMonto: ValidarMontoUseCase,
+    ): ResolverConflictoIngresoUsandoLocalUseCase =
+        ResolverConflictoIngresoUsandoLocalUseCase(movimientoRepository, validarMonto)
+
+    @Provides
+    fun provideResolverConflictoGastoUsandoRemoto(
+        movimientoRepository: MovimientoRepository,
+    ): ResolverConflictoGastoUsandoRemotoUseCase = ResolverConflictoGastoUsandoRemotoUseCase(movimientoRepository)
+
+    @Provides
+    fun provideResolverConflictoIngresoUsandoRemoto(
+        movimientoRepository: MovimientoRepository,
+    ): ResolverConflictoIngresoUsandoRemotoUseCase = ResolverConflictoIngresoUsandoRemotoUseCase(movimientoRepository)
 }
 
 @Module

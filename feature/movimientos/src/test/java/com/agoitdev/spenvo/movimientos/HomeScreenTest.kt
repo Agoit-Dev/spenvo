@@ -22,7 +22,8 @@ import com.agoitdev.spenvo.domain.repository.AuthRepository
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.repository.PlanFinancieroRepository
-import com.agoitdev.spenvo.domain.sync.ConflictosPendientes
+import com.agoitdev.spenvo.domain.sync.ConflictoEdicion
+import com.agoitdev.spenvo.domain.sync.RegistroConflictosPendientes
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.AplicarGastoRemotoUseCase
@@ -37,12 +38,18 @@ import com.agoitdev.spenvo.domain.usecase.ObservarCategoriasUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoRemotoUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
 import java.time.LocalDate
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -110,9 +117,19 @@ class HomeScreenTest {
         eliminarIngreso = EliminarIngresoUseCase(movimientoRepo),
         aplicarGastoRemoto = AplicarGastoRemotoUseCase(movimientoRepo),
         aplicarIngresoRemoto = AplicarIngresoRemotoUseCase(movimientoRepo),
+        resolverConflictoGastoUsandoLocal = ResolverConflictoGastoUsandoLocalUseCase(
+            movimientoRepo,
+            ValidarMontoUseCase(),
+        ),
+        resolverConflictoIngresoUsandoLocal = ResolverConflictoIngresoUsandoLocalUseCase(
+            movimientoRepo,
+            ValidarMontoUseCase(),
+        ),
+        resolverConflictoGastoUsandoRemoto = ResolverConflictoGastoUsandoRemotoUseCase(movimientoRepo),
+        resolverConflictoIngresoUsandoRemoto = ResolverConflictoIngresoUsandoRemotoUseCase(movimientoRepo),
         sincronizador = sincronizador,
         authRepository = authRepository,
-        conflictosPendientes = ConflictosPendientes(),
+        registroConflictosPendientes = FakeRegistroConflictosPendientesHomeScreen(),
     )
 
     private fun montarHome(avatarUrl: String? = null, onAbrirCuenta: () -> Unit = {}) {
@@ -280,9 +297,25 @@ private class FakeMovimientoRepositorioHomeScreen : MovimientoRepository {
     override suspend fun aplicarIngresoRemoto(id: String) = Unit
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(gastos.filter { it.planId == planId })
     override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(ingresos.filter { it.planId == planId })
+    override suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoLocal(ingreso: Ingreso, clave: String) = Unit
+    override suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoRemoto(id: String, clave: String) = Unit
 
     private fun fallarSiCorresponde() {
         errorAlGuardar?.let { throw IllegalStateException(it) }
+    }
+}
+
+private class FakeRegistroConflictosPendientesHomeScreen : RegistroConflictosPendientes {
+    private val _conflictos = MutableStateFlow<Map<String, ConflictoEdicion>>(emptyMap())
+    override val conflictos: Flow<Map<String, ConflictoEdicion>> = _conflictos.asStateFlow()
+    override suspend fun conflictoPara(clave: String): ConflictoEdicion? = _conflictos.value[clave]
+    override suspend fun registrar(clave: String, conflicto: ConflictoEdicion) {
+        _conflictos.value = _conflictos.value + (clave to conflicto)
+    }
+    override suspend fun resolver(clave: String) {
+        _conflictos.value = _conflictos.value - clave
     }
 }
 
