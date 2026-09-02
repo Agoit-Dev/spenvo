@@ -44,8 +44,9 @@ profile reachable from the whole app.*
 
 ### 🔵 Phase 8: Next Milestones and Technical Debt (Upcoming)
 *Critical improvements found in code reviews across milestones M4 to M7.*
-- [ ] **Conflict State Persistence:** Evaluate migrating the in-memory `EdicionesPendientes` /
-  `ConflictosPendientes` records to Room, to avoid losing state on process death.
+- [x] **Conflict State Persistence:** Evaluate migrating the in-memory `EdicionesPendientes` /
+  `ConflictosPendientes` records to Room, to avoid losing state on process death. Closed by
+  `ARCH-M501` — see `doc/designs/2026-09-01-conflictos-pendientes-room-design.md`.
 - [ ] **Product Evolution:** Evaluate adding customizable per-category color palettes (post-M4
   request).
 - [ ] **Phase 7 robustness (minor debt):** `ARCH-U801`, `ARCH-U802`, `UX-H902`, and `UX-H903` —

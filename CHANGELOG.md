@@ -113,6 +113,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of dismissing the sheet; Eliminar is now only reachable after Editar. The category
   selector now visibly dims while read-only, matching the amount/description fields and type
   chips.
+- **ARCH-M501:** `EdicionesPendientes`/`ConflictosPendientes` are no longer in-memory-only — Room is
+  now the single source of truth for both the pending-edit and the conflict-detection registries,
+  closing the process-death data-loss gap `doc/architecture.md` had documented as accepted debt (a
+  process death between the optimistic Room write and the Firestore echo used to silently drop the
+  pending marker, letting the remote version win with no conflict ever surfaced). Two new tables
+  (`ediciones_pendientes`, `conflictos_pendientes`; `SpenvoDatabase` v3→v4 via a real
+  `MIGRATION_3_4`) back new `:core:domain` interfaces `RegistroEdicionesPendientes`/
+  `RegistroConflictosPendientes`, implemented by `RegistroEdicionesPendientesRoom`/
+  `RegistroConflictosPendientesRoom` in `:core:data`. `VersionPendiente` is retired: its one real
+  read site is superseded by reconstructing the local snapshot from the main table at
+  conflict-detection time, since the write-path transaction now guarantees the marker and the
+  main-table row are always in sync. Four transaction boundaries (write, rollback, snapshot
+  received, conflict resolution) wrap `SpenvoDatabase.withTransaction { }` around what used to be
+  two or more unrelated calls with no atomicity between them; `CategoriaSincronizador`/
+  `MovimientoSincronizador`/`PlanSincronizador` each gain an internal FIFO `Channel` per collection
+  so overlapping Firestore snapshot callbacks process strictly in delivery order instead of racing.
+  Conflict resolution (movimientos only) gets 4 new dedicated `MovimientoRepository` operations
+  (`resolverConflicto{Gasto,Ingreso}Usando{Local,Remoto}`) and matching use cases, replacing the
+  previous two-call sequences that could leave a conflict half-resolved on a crash between them;
+  `MovimientosViewModel.claveVisible()` replaces the ambiguous by-`registroId`-only conflict lookup
+  (a Gasto and an Ingreso could share an id). `MovimientoModule.kt` (Hilt) now wires all 4 new use
+  cases — a real gap the previous commit had left unwired, only caught during this slice's
+  repository-wide gate pass. Also fixed along the way: `core:data` was missing the
+  `kotlinx-serialization` plugin/dependency needed by the new JSON-column `Converters` entry, a
+  flaky shared-`planId` race between sibling tests in `CategoriaSyncEmulatorTest`, and 13
+  hand-written `MovimientoRepository` test fakes across `:core:domain`, `:core:data` (androidTest),
+  `:feature:movimientos`, and `:feature:planes` that hadn't been updated for the interface's 4 new
+  abstract methods.
 
 ### Added
 
