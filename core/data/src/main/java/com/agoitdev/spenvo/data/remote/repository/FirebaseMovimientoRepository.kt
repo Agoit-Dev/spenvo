@@ -139,6 +139,7 @@ class FirebaseMovimientoRepository @Inject constructor(
             ?: error("El movimiento remoto no es válido")
         database.withTransaction {
             gastoDao.upsert(remoto.toEntity())
+            registroEdicionesPendientes.limpiar(clave)
             registroConflictosPendientes.resolver(clave)
         }
     }
@@ -151,6 +152,7 @@ class FirebaseMovimientoRepository @Inject constructor(
             ?: error("El movimiento remoto no es válido")
         database.withTransaction {
             ingresoDao.upsert(remoto.toEntity())
+            registroEdicionesPendientes.limpiar(clave)
             registroConflictosPendientes.resolver(clave)
         }
     }

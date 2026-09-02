@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **ARCH-M501 follow-up:** `resolverConflictoGastoUsandoRemoto`/`resolverConflictoIngresoUsandoRemoto`
+  cleared the conflict record but never the pending-edit marker (`registroEdicionesPendientes`) that
+  caused it — a review of the ARCH-M501 slice caught this before it shipped. The stale marker
+  survived with its original `editorId`/`base`, so the next time the same already-applied document
+  got re-evaluated by a sincronizador (even a metadata-only Firestore re-delivery of the exact same
+  document), `decidirSincronizacion` compared the incoming `editedBy`/`editedAt` against the stale
+  marker and flagged `CONFLICTO` again, even though the user had already explicitly resolved it by
+  accepting the remote version. Both methods now also call `registroEdicionesPendientes.limpiar(clave)`
+  inside the same transaction, matching `resolverConflictoUsandoLocal`'s existing three-registry
+  handling (the design doc's own "usar remota" transaction sketch in
+  `doc/designs/2026-09-01-conflictos-pendientes-room-design.md` missed this too — it's now the
+  documented shape). Added regression coverage in `MovimientoRepositoryEmulatorTest` (drives the
+  actual repository method against the Firestore emulator, then re-runs `procesarSnapshotGastos`/
+  `procesarSnapshotIngresos` on the same remote data to prove the conflict doesn't reopen — verified
+  to fail against the pre-fix code) plus a new `MovimientoSincronizadorProcesamientoTest` mirroring
+  `CategoriaSincronizadorProcesamientoTest`'s 3 in-memory-Room cases for `procesarSnapshotGastos`/
+  `procesarSnapshotIngresos`.
 - `PlanScaffold`'s bottom-nav tab switching disposed the non-selected tab's whole composable subtree
   on every switch, which unregistered its `rememberSaveable` state — e.g. Movimientos' search text,
   selected type filter, and list scroll position were all lost when navigating away and back. Fixed
