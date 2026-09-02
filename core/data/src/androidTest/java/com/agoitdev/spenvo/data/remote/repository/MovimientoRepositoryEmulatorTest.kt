@@ -12,7 +12,8 @@ import com.agoitdev.spenvo.data.remote.await
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Monto
-import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
+import com.agoitdev.spenvo.data.remote.sync.RegistroConflictosPendientesRoom
+import com.agoitdev.spenvo.data.remote.sync.RegistroEdicionesPendientesRoom
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
@@ -39,7 +40,8 @@ class MovimientoRepositoryEmulatorTest {
     private lateinit var ingresoDao: IngresoDao
     private lateinit var firestore: FirebaseFirestore
     private lateinit var repo: FirebaseMovimientoRepository
-    private lateinit var edicionesPendientes: EdicionesPendientes
+    private lateinit var registroEdicionesPendientes: RegistroEdicionesPendientesRoom
+    private lateinit var registroConflictosPendientes: RegistroConflictosPendientesRoom
 
     @Before
     fun setup() {
@@ -59,8 +61,16 @@ class MovimientoRepositoryEmulatorTest {
         db = Room.inMemoryDatabaseBuilder(context, SpenvoDatabase::class.java).build()
         gastoDao = db.gastoDao()
         ingresoDao = db.ingresoDao()
-        edicionesPendientes = EdicionesPendientes()
-        repo = FirebaseMovimientoRepository(firestore, gastoDao, ingresoDao, edicionesPendientes)
+        registroEdicionesPendientes = RegistroEdicionesPendientesRoom(db.edicionPendienteDao())
+        registroConflictosPendientes = RegistroConflictosPendientesRoom(db.conflictoEdicionDao())
+        repo = FirebaseMovimientoRepository(
+            firestore,
+            db,
+            gastoDao,
+            ingresoDao,
+            registroEdicionesPendientes,
+            registroConflictosPendientes,
+        )
     }
 
     @After
@@ -103,7 +113,7 @@ class MovimientoRepositoryEmulatorTest {
 
         repo.actualizarGasto(gasto("g1", monto = 5000).copy(editedBy = "user-2"))
 
-        val pendiente = edicionesPendientes.obtener("gastos:g1")
+        val pendiente = db.edicionPendienteDao().get("gastos:g1")
         assertEquals("user-2", pendiente?.editorId)
     }
 
@@ -113,7 +123,7 @@ class MovimientoRepositoryEmulatorTest {
 
         repo.eliminarGasto(gasto("g1").copy(editedBy = "user-2", deletedAt = java.time.Instant.now()))
 
-        val pendiente = edicionesPendientes.obtener("gastos:g1")
+        val pendiente = db.edicionPendienteDao().get("gastos:g1")
         assertEquals("user-2", pendiente?.editorId)
     }
 

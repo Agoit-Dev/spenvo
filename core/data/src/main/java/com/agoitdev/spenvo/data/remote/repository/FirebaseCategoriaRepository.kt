@@ -1,5 +1,7 @@
 package com.agoitdev.spenvo.data.remote.repository
 
+import androidx.room.withTransaction
+import com.agoitdev.spenvo.data.local.SpenvoDatabase
 import com.agoitdev.spenvo.data.local.dao.CategoriaDao
 import com.agoitdev.spenvo.data.local.entity.CategoriaEntity
 import com.agoitdev.spenvo.data.local.mapper.toDomain
@@ -9,10 +11,10 @@ import com.agoitdev.spenvo.data.remote.dto.CategoriaDto
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.repository.CategoriaRepository
-import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
-import com.agoitdev.spenvo.domain.sync.VersionPendiente
+import com.agoitdev.spenvo.domain.sync.RegistroEdicionesPendientes
+import com.agoitdev.spenvo.domain.sync.TipoRegistro
+import com.agoitdev.spenvo.domain.sync.claveRegistro
 import com.google.firebase.firestore.FirebaseFirestore
-import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -23,13 +25,15 @@ import kotlinx.coroutines.flow.map
  * permanent Firestore error rolls Room back to the previous snapshot (see
  * `data-consistency.md` write contract). Update/delete also register an
  * unconfirmed pending edit (Slice 4 conflict detection) at the point `previo`
- * is read, for free.
+ * is read, for free — both the marker and the entity land in one Room
+ * transaction (ARCH-M501), so a process death between them can't happen.
  */
 @Singleton
 class FirebaseCategoriaRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
+    private val database: SpenvoDatabase,
     private val categoriaDao: CategoriaDao,
-    private val edicionesPendientes: EdicionesPendientes,
+    private val registroEdicionesPendientes: RegistroEdicionesPendientes,
 ) : CategoriaRepository {
 
     override fun observarCategorias(planId: String): Flow<List<Categoria>> =
@@ -77,38 +81,42 @@ class FirebaseCategoriaRepository @Inject constructor(
 
     @Suppress("TooGenericExceptionCaught")
     override suspend fun actualizarCategoria(categoria: Categoria) {
-        val previo = categoriaDao.get(categoria.id)
-        registrarPendiente(categoria, previo?.editedAt)
-        categoriaDao.upsert(categoria.toEntity())
+        val previo = escribir(categoria)
         try {
             persistRemoto(categoria)
         } catch (e: Exception) {
-            restaurar(previo, categoria.id)
+            rollback(categoria.id, previo)
             throw e
         }
     }
 
     @Suppress("TooGenericExceptionCaught")
     override suspend fun eliminarCategoria(categoria: Categoria) {
-        val previo = categoriaDao.get(categoria.id)
-        registrarPendiente(categoria, previo?.editedAt)
-        categoriaDao.upsert(categoria.toEntity())
+        val previo = escribir(categoria)
         try {
             persistRemoto(categoria)
         } catch (e: Exception) {
-            restaurar(previo, categoria.id)
+            rollback(categoria.id, previo)
             throw e
         }
     }
 
-    private fun registrarPendiente(categoria: Categoria, base: Instant?) {
-        edicionesPendientes.registrarSiCorresponde(
-            clave = EdicionesPendientes.clave(CATEGORIAS_COLLECTION, categoria.id),
+    private suspend fun escribir(categoria: Categoria): CategoriaEntity? = database.withTransaction {
+        val previo = categoriaDao.get(categoria.id)
+        registroEdicionesPendientes.registrarSiCorresponde(
+            clave = claveRegistro(CATEGORIAS_COLLECTION, categoria.id),
             editorId = categoria.editedBy,
-            base = base,
+            base = previo?.editedAt,
             miEditedAt = categoria.editedAt,
-            miVersion = VersionPendiente.DeCategoria(categoria),
+            tipo = TipoRegistro.CATEGORIA,
         )
+        categoriaDao.upsert(categoria.toEntity())
+        previo
+    }
+
+    private suspend fun rollback(id: String, previo: CategoriaEntity?) = database.withTransaction {
+        registroEdicionesPendientes.limpiar(claveRegistro(CATEGORIAS_COLLECTION, id))
+        if (previo != null) categoriaDao.upsert(previo) else categoriaDao.delete(id)
     }
 
     private suspend fun persistRemoto(categoria: Categoria) {
@@ -116,10 +124,6 @@ class FirebaseCategoriaRepository @Inject constructor(
             .document(categoria.id)
             .set(CategoriaDto.fromDomain(categoria).toMap())
             .await()
-    }
-
-    private suspend fun restaurar(previo: CategoriaEntity?, id: String) {
-        if (previo != null) categoriaDao.upsert(previo) else categoriaDao.delete(id)
     }
 
     private companion object {

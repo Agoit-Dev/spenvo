@@ -4,6 +4,7 @@ import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import kotlinx.coroutines.flow.Flow
 
+@Suppress("TooManyFunctions")
 interface MovimientoRepository {
     suspend fun addGasto(gasto: Gasto)
     suspend fun addIngreso(ingreso: Ingreso)
@@ -23,4 +24,14 @@ interface MovimientoRepository {
      */
     suspend fun aplicarGastoRemoto(id: String)
     suspend fun aplicarIngresoRemoto(id: String)
+
+    /**
+     * Conflict resolution (ARCH-M501) — distinct names per entity type: a generic
+     * `resolverConflictoUsandoRemoto(id, clave)` would collide on erased signature for Gasto vs
+     * Ingreso, matching every other method on this interface (never overloaded by type).
+     */
+    suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String)
+    suspend fun resolverConflictoIngresoUsandoLocal(ingreso: Ingreso, clave: String)
+    suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String)
+    suspend fun resolverConflictoIngresoUsandoRemoto(id: String, clave: String)
 }

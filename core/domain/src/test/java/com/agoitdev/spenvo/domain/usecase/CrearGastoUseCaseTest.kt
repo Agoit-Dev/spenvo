@@ -81,6 +81,13 @@ private class FakeGastoRepository : MovimientoRepository {
     override suspend fun eliminarIngreso(ingreso: com.agoitdev.spenvo.domain.model.Ingreso) = Unit
     override suspend fun aplicarGastoRemoto(id: String) = Unit
     override suspend fun aplicarIngresoRemoto(id: String) = Unit
+    override suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoLocal(
+        ingreso: com.agoitdev.spenvo.domain.model.Ingreso,
+        clave: String,
+    ) = Unit
+    override suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoRemoto(id: String, clave: String) = Unit
 
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(emptyList())
 

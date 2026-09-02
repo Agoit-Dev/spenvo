@@ -17,8 +17,15 @@ class RegistroConflictosPendientesRoom @Inject constructor(
 
     override suspend fun conflictoPara(clave: String): ConflictoEdicion? = dao.get(clave)?.toDomain()
 
-    override suspend fun registrar(clave: String, conflicto: ConflictoEdicion) =
-        dao.upsert(ConflictoEdicionEntity(clave, conflicto.registroId, conflicto.tipo, conflicto.local, conflicto.remoto))
+    override suspend fun registrar(clave: String, conflicto: ConflictoEdicion) = dao.upsert(
+        ConflictoEdicionEntity(
+            clave = clave,
+            registroId = conflicto.registroId,
+            tipo = conflicto.tipo,
+            local = conflicto.local,
+            remoto = conflicto.remoto,
+        ),
+    )
 
     override suspend fun resolver(clave: String) = dao.delete(clave)
 }
