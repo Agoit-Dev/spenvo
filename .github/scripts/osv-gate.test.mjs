@@ -1,7 +1,7 @@
 // .github/scripts/osv-gate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSummaryTable, buildErrorSummary, decidePrGate } from './osv-gate.mjs';
+import { buildSummaryTable, buildErrorSummary, decidePrGate, planIssueActions, issueDedupeKey } from './osv-gate.mjs';
 
 const SAMPLE = [
   { vulnId: 'GHSA-1111', ecosystem: 'Maven', packageName: 'com.example:lib', severity: 'MEDIUM' },
@@ -69,4 +69,52 @@ test('decidePrGate is fail-closed on a scan/parse failure, independent of severi
   const result = decidePrGate({ ok: false, error: 'malformed JSON', findings: [] });
   assert.equal(result.blocked, true);
   assert.match(result.reason, /scan|parse/i);
+});
+
+const OPEN_ISSUE_FOR = (vulnId, ecosystem, packageName, number) => ({
+  number,
+  body: `Some text\n<!-- osv-gate:${issueDedupeKey({ vulnId, ecosystem, packageName })} -->`,
+});
+
+test('issueDedupeKey is stable for the same (vulnId, ecosystem, packageName)', () => {
+  const a = issueDedupeKey({ vulnId: 'GHSA-1', ecosystem: 'Maven', packageName: 'x:y' });
+  const b = issueDedupeKey({ vulnId: 'GHSA-1', ecosystem: 'Maven', packageName: 'x:y' });
+  assert.equal(a, b);
+});
+
+test('planIssueActions creates for a new unignored CRITICAL/HIGH finding with no matching open issue', () => {
+  const scanResult = { ok: true, findings: [{ vulnId: 'GHSA-9', ecosystem: 'npm', packageName: 'left-pad', severity: 'CRITICAL' }] };
+  const actions = planIssueActions(scanResult, { openIssues: [] });
+  assert.equal(actions.creates.length, 1);
+  assert.equal(actions.closes.length, 0);
+});
+
+test('planIssueActions also creates for an UNKNOWN finding — same blocking set as the PR gate', () => {
+  const scanResult = { ok: true, findings: [{ vulnId: 'GHSA-U', ecosystem: 'Maven', packageName: 'x:y', severity: 'UNKNOWN' }] };
+  const actions = planIssueActions(scanResult, { openIssues: [] });
+  assert.equal(actions.creates.length, 1);
+});
+
+test('planIssueActions updates instead of creating when a matching open issue exists', () => {
+  const finding = { vulnId: 'GHSA-9', ecosystem: 'npm', packageName: 'left-pad', severity: 'HIGH' };
+  const openIssues = [OPEN_ISSUE_FOR('GHSA-9', 'npm', 'left-pad', 42)];
+  const actions = planIssueActions({ ok: true, findings: [finding] }, { openIssues });
+  assert.equal(actions.creates.length, 0);
+  assert.equal(actions.updates.length, 1);
+  assert.equal(actions.updates[0].number, 42);
+});
+
+test('planIssueActions closes an open issue whose finding no longer appears, only on a successful run', () => {
+  const openIssues = [OPEN_ISSUE_FOR('GHSA-STALE', 'Maven', 'com.example:lib', 7)];
+  const actions = planIssueActions({ ok: true, findings: [] }, { openIssues });
+  assert.equal(actions.closes.length, 1);
+  assert.equal(actions.closes[0].number, 7);
+});
+
+test('planIssueActions never closes, creates, or updates on a failed scan/parse', () => {
+  const openIssues = [OPEN_ISSUE_FOR('GHSA-STALE', 'Maven', 'com.example:lib', 7)];
+  const actions = planIssueActions({ ok: false, error: 'malformed JSON', findings: [] }, { openIssues });
+  assert.equal(actions.closes.length, 0);
+  assert.equal(actions.creates.length, 0);
+  assert.equal(actions.updates.length, 0);
 });

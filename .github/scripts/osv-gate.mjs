@@ -52,3 +52,48 @@ export function decidePrGate(scanResult) {
   }
   return { blocked: false, reason: 'No unignored CRITICAL/HIGH/UNKNOWN findings' };
 }
+
+/** @param {{vulnId: string, ecosystem: string, packageName: string}} f */
+export function issueDedupeKey(f) {
+  return `${f.vulnId}::${f.ecosystem}::${f.packageName}`;
+}
+
+function keyFromIssueBody(body) {
+  const match = /<!-- osv-gate:(.+?) -->/.exec(body ?? '');
+  return match ? match[1] : null;
+}
+
+/**
+ * @param {{ok: boolean, error?: string, findings: {vulnId: string, ecosystem: string, packageName: string, severity: string}[]}} scanResult
+ * @param {{openIssues: {number: number, body: string}[]}} context
+ */
+export function planIssueActions(scanResult, { openIssues }) {
+  const actions = { creates: [], updates: [], closes: [] };
+  if (!scanResult.ok) return actions; // fail-closed: no issue mutation at all on a broken run
+
+  const blocking = scanResult.findings.filter((f) => BLOCKING_SEVERITIES.has(f.severity));
+  const blockingKeys = new Set(blocking.map(issueDedupeKey));
+  const openByKey = new Map(
+    openIssues
+      .map((issue) => [keyFromIssueBody(issue.body), issue])
+      .filter(([key]) => key !== null),
+  );
+
+  for (const finding of blocking) {
+    const key = issueDedupeKey(finding);
+    const existing = openByKey.get(key);
+    if (existing) {
+      actions.updates.push({ number: existing.number, finding, key });
+    } else {
+      actions.creates.push({ finding, key });
+    }
+  }
+
+  for (const [key, issue] of openByKey) {
+    if (!blockingKeys.has(key)) {
+      actions.closes.push({ number: issue.number, key });
+    }
+  }
+
+  return actions;
+}
