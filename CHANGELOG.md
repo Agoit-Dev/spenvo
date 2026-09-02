@@ -117,6 +117,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `:app` now declares `kotlinx-serialization-core` instead of the broader
+  `kotlinx-serialization-json`: its Navigation 3 routes only use `@Serializable`, while the JSON
+  dependency remains correctly scoped to `:core:data`, where Room's conflict-snapshot converters
+  encode and decode JSON. Regenerated `app/gradle.lockfile` to reflect the narrower compile-time
+  dependency.
 - Dependency bump: `composeBom` 2026.02.01 → 2026.08.00 (Compose 1.12), `nav3`
   (`navigation3-runtime`/`navigation3-ui`) 1.1.4 → 1.1.7, `robolectric` 4.15.1 → 4.16.1.
   `kotlin`/`ksp`/`coil` intentionally held back — they're a tightly-coupled trio (Coil 3.5.0+
