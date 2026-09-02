@@ -9,70 +9,11 @@ import com.agoitdev.spenvo.domain.model.TipoCategoria
 import java.time.Instant
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ConflictosPendientesTest {
 
     private val ahora: Instant = Instant.now()
-
-    private fun snapshot(borrado: Boolean = false) = SnapshotConflicto(
-        editadoPor = "user-1",
-        editadoEn = ahora,
-        borrado = borrado,
-        campos = listOf(CampoConflicto("monto", "1000")),
-    )
-
-    private fun conflicto(id: String = "g1") = ConflictoEdicion(
-        registroId = id,
-        tipo = TipoRegistro.GASTO,
-        local = snapshot(),
-        remoto = snapshot(),
-    )
-
-    @Test
-    fun `conflictoPara sin conflictos registrados devuelve null`() {
-        val registro = ConflictosPendientes()
-
-        assertNull(registro.conflictoPara("gastos:g1"))
-    }
-
-    @Test
-    fun `registrar agrega el conflicto y lo emite en el stateflow`() {
-        val registro = ConflictosPendientes()
-        val conflicto = conflicto()
-
-        registro.registrar("gastos:g1", conflicto)
-
-        assertEquals(conflicto, registro.conflictos.value["gastos:g1"])
-        assertEquals(conflicto, registro.conflictoPara("gastos:g1"))
-    }
-
-    @Test
-    fun `resolver quita el conflicto del mapa`() {
-        val registro = ConflictosPendientes()
-        registro.registrar("gastos:g1", conflicto())
-
-        registro.resolver("gastos:g1")
-
-        assertNull(registro.conflictoPara("gastos:g1"))
-        assertTrue(registro.conflictos.value.isEmpty())
-    }
-
-    @Test
-    fun `registrar no afecta otras claves ya presentes`() {
-        val registro = ConflictosPendientes()
-        registro.registrar("gastos:g1", conflicto("g1"))
-
-        registro.registrar("gastos:g2", conflicto("g2"))
-
-        assertEquals(2, registro.conflictos.value.size)
-        assertEquals("g1", registro.conflictoPara("gastos:g1")?.registroId)
-        assertEquals("g2", registro.conflictoPara("gastos:g2")?.registroId)
-    }
-
-    // --- per-entity SnapshotConflicto projections (design's field table) ---
 
     @Test
     fun `gasto aSnapshotConflicto incluye monto fecha categoria y descripcion`() {
@@ -178,22 +119,5 @@ class ConflictosPendientesTest {
             ),
             snapshot.campos,
         )
-    }
-
-    @Test
-    fun `aSnapshotConflicto de VersionPendiente delega en la proyeccion del tipo concreto`() {
-        val gasto = Gasto(
-            id = "g1",
-            planId = "p1",
-            categoriaId = "c1",
-            monto = Monto(100),
-            fecha = LocalDate.of(2026, 1, 1),
-            creadoPor = "user-1",
-            editedBy = "user-1",
-            editedAt = ahora,
-        )
-        val version: VersionPendiente = VersionPendiente.DeGasto(gasto)
-
-        assertEquals(gasto.aSnapshotConflicto(), version.aSnapshotConflicto())
     }
 }

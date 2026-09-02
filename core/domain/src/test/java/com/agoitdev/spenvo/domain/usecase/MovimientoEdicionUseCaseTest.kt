@@ -145,36 +145,11 @@ class EliminarIngresoUseCaseTest {
     }
 }
 
-class AplicarVersionRemotaUseCaseTest {
-
-    private val repo = FakeMovimientoEdicionRepository()
-
-    @Test
-    fun `AplicarGastoRemotoUseCase delega en el repositorio con el id`() = runTest {
-        val useCase = AplicarGastoRemotoUseCase(repo)
-
-        useCase("g1")
-
-        assertEquals(listOf("g1"), repo.gastosRemotosAplicados)
-    }
-
-    @Test
-    fun `AplicarIngresoRemotoUseCase delega en el repositorio con el id`() = runTest {
-        val useCase = AplicarIngresoRemotoUseCase(repo)
-
-        useCase("i1")
-
-        assertEquals(listOf("i1"), repo.ingresosRemotosAplicados)
-    }
-}
-
 private class FakeMovimientoEdicionRepository : MovimientoRepository {
     val gastosActualizados = mutableListOf<Gasto>()
     val gastosEliminados = mutableListOf<Gasto>()
     val ingresosActualizados = mutableListOf<Ingreso>()
     val ingresosEliminados = mutableListOf<Ingreso>()
-    val gastosRemotosAplicados = mutableListOf<String>()
-    val ingresosRemotosAplicados = mutableListOf<String>()
 
     override suspend fun addGasto(gasto: Gasto) = Unit
     override suspend fun addIngreso(ingreso: Ingreso) = Unit
@@ -195,14 +170,11 @@ private class FakeMovimientoEdicionRepository : MovimientoRepository {
         ingresosEliminados.add(ingreso)
     }
 
-    override suspend fun aplicarGastoRemoto(id: String) {
-        gastosRemotosAplicados.add(id)
-    }
-
-    override suspend fun aplicarIngresoRemoto(id: String) {
-        ingresosRemotosAplicados.add(id)
-    }
-
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(emptyList())
     override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(emptyList())
+
+    override suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoLocal(ingreso: Ingreso, clave: String) = Unit
+    override suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) = Unit
+    override suspend fun resolverConflictoIngresoUsandoRemoto(id: String, clave: String) = Unit
 }

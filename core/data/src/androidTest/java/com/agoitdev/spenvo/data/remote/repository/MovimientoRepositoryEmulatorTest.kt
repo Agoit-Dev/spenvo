@@ -7,15 +7,26 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.agoitdev.spenvo.data.local.SpenvoDatabase
 import com.agoitdev.spenvo.data.local.dao.GastoDao
 import com.agoitdev.spenvo.data.local.dao.IngresoDao
+import com.agoitdev.spenvo.data.local.mapper.toDomain
 import com.agoitdev.spenvo.data.local.mapper.toEntity
 import com.agoitdev.spenvo.data.remote.await
+import com.agoitdev.spenvo.data.remote.dto.GastoDto
+import com.agoitdev.spenvo.data.remote.dto.IngresoDto
 import com.agoitdev.spenvo.domain.model.Gasto
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Monto
-import com.agoitdev.spenvo.domain.sync.EdicionesPendientes
+import com.agoitdev.spenvo.data.remote.sync.RegistroConflictosPendientesRoom
+import com.agoitdev.spenvo.data.remote.sync.RegistroEdicionesPendientesRoom
+import com.agoitdev.spenvo.data.remote.sync.procesarSnapshotGastos
+import com.agoitdev.spenvo.data.remote.sync.procesarSnapshotIngresos
+import com.agoitdev.spenvo.domain.sync.ConflictoEdicion
+import com.agoitdev.spenvo.domain.sync.TipoRegistro
+import com.agoitdev.spenvo.domain.sync.aSnapshotConflicto
+import com.agoitdev.spenvo.domain.sync.claveRegistro
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
+import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -39,7 +50,8 @@ class MovimientoRepositoryEmulatorTest {
     private lateinit var ingresoDao: IngresoDao
     private lateinit var firestore: FirebaseFirestore
     private lateinit var repo: FirebaseMovimientoRepository
-    private lateinit var edicionesPendientes: EdicionesPendientes
+    private lateinit var registroEdicionesPendientes: RegistroEdicionesPendientesRoom
+    private lateinit var registroConflictosPendientes: RegistroConflictosPendientesRoom
 
     @Before
     fun setup() {
@@ -59,8 +71,16 @@ class MovimientoRepositoryEmulatorTest {
         db = Room.inMemoryDatabaseBuilder(context, SpenvoDatabase::class.java).build()
         gastoDao = db.gastoDao()
         ingresoDao = db.ingresoDao()
-        edicionesPendientes = EdicionesPendientes()
-        repo = FirebaseMovimientoRepository(firestore, gastoDao, ingresoDao, edicionesPendientes)
+        registroEdicionesPendientes = RegistroEdicionesPendientesRoom(db.edicionPendienteDao())
+        registroConflictosPendientes = RegistroConflictosPendientesRoom(db.conflictoEdicionDao())
+        repo = FirebaseMovimientoRepository(
+            firestore,
+            db,
+            gastoDao,
+            ingresoDao,
+            registroEdicionesPendientes,
+            registroConflictosPendientes,
+        )
     }
 
     @After
@@ -103,7 +123,7 @@ class MovimientoRepositoryEmulatorTest {
 
         repo.actualizarGasto(gasto("g1", monto = 5000).copy(editedBy = "user-2"))
 
-        val pendiente = edicionesPendientes.obtener("gastos:g1")
+        val pendiente = db.edicionPendienteDao().get("gastos:g1")
         assertEquals("user-2", pendiente?.editorId)
     }
 
@@ -113,7 +133,7 @@ class MovimientoRepositoryEmulatorTest {
 
         repo.eliminarGasto(gasto("g1").copy(editedBy = "user-2", deletedAt = java.time.Instant.now()))
 
-        val pendiente = edicionesPendientes.obtener("gastos:g1")
+        val pendiente = db.edicionPendienteDao().get("gastos:g1")
         assertEquals("user-2", pendiente?.editorId)
     }
 
@@ -213,4 +233,128 @@ class MovimientoRepositoryEmulatorTest {
         assertTrue(lanzado)
         assertEquals(null, ingresoDao.get(id)?.deletedAt)
     }
+
+    // --- Conflict resolution (ARCH-M501 P1 fix + coverage) ---
+
+    @Test
+    fun resolverConflictoGastoUsandoRemoto_actualiza_room_y_limpia_edicionPendiente_y_conflicto() = runBlocking {
+        gastoDao.upsert(gasto("g1", monto = 1000).toEntity())
+        val clave = claveRegistro("gastos", "g1")
+        registroEdicionesPendientes.registrarSiCorresponde(clave, "user-2", null, Instant.now(), TipoRegistro.GASTO)
+        registroConflictosPendientes.registrar(clave, conflictoGasto("g1"))
+        firestore.collection("gastos").document("g1")
+            .set(GastoDto.fromDomain(gasto("g1", monto = 5000).copy(editedBy = "user-3", editedAt = Instant.now())).toMap())
+            .await()
+
+        repo.resolverConflictoGastoUsandoRemoto("g1", clave)
+
+        assertEquals(5000L, gastoDao.get("g1")?.montoUnidadesMenores)
+        assertEquals(null, db.edicionPendienteDao().get(clave))
+        assertEquals(null, db.conflictoEdicionDao().get(clave))
+    }
+
+    @Test
+    fun resolverConflictoGastoUsandoRemoto_evita_que_el_conflicto_reaparezca_al_reevaluar_el_mismo_remoto() = runBlocking {
+        // Regression test for the ARCH-M501 P1 bug: resolverConflictoGastoUsandoRemoto used to
+        // clear only the conflict record, never the pending-edit marker that caused it. The stale
+        // marker survived with its original editorId/base, so the next time this exact
+        // already-applied document was re-evaluated (e.g. a metadata-only Firestore re-delivery of
+        // the same doc), decidirSincronizacion compared the incoming editedBy/editedAt against the
+        // stale marker and flagged CONFLICTO again -- even though the user had already explicitly
+        // resolved it by accepting the remote version. This drives the actual production method
+        // (not a re-implementation of its transaction) and then re-runs the real snapshot-processing
+        // path to prove the conflict does not reappear.
+        gastoDao.upsert(gasto("g1", monto = 1000).toEntity())
+        val clave = claveRegistro("gastos", "g1")
+        registroEdicionesPendientes.registrarSiCorresponde(clave, "user-2", null, Instant.now(), TipoRegistro.GASTO)
+        registroConflictosPendientes.registrar(clave, conflictoGasto("g1"))
+        firestore.collection("gastos").document("g1")
+            .set(GastoDto.fromDomain(gasto("g1", monto = 5000).copy(editedBy = "user-3", editedAt = Instant.now())).toMap())
+            .await()
+
+        repo.resolverConflictoGastoUsandoRemoto("g1", clave)
+
+        // Same remote data re-delivered (redundant snapshot event) must NOT reopen the conflict.
+        val aplicado = gastoDao.get("g1")!!.toDomain()
+        procesarSnapshotGastos(db, gastoDao, registroEdicionesPendientes, registroConflictosPendientes, listOf(aplicado))
+
+        assertEquals(null, db.conflictoEdicionDao().get(clave))
+        assertEquals(5000L, gastoDao.get("g1")?.montoUnidadesMenores)
+    }
+
+    @Test
+    fun resolverConflictoIngresoUsandoRemoto_actualiza_room_y_limpia_edicionPendiente_y_conflicto() = runBlocking {
+        ingresoDao.upsert(ingreso("i1", monto = 1000).toEntity())
+        val clave = claveRegistro("ingresos", "i1")
+        registroEdicionesPendientes.registrarSiCorresponde(clave, "user-2", null, Instant.now(), TipoRegistro.INGRESO)
+        registroConflictosPendientes.registrar(clave, conflictoIngreso("i1"))
+        firestore.collection("ingresos").document("i1")
+            .set(IngresoDto.fromDomain(ingreso("i1", monto = 7000).copy(editedBy = "user-3", editedAt = Instant.now())).toMap())
+            .await()
+
+        repo.resolverConflictoIngresoUsandoRemoto("i1", clave)
+
+        assertEquals(7000L, ingresoDao.get("i1")?.montoUnidadesMenores)
+        assertEquals(null, db.edicionPendienteDao().get(clave))
+        assertEquals(null, db.conflictoEdicionDao().get(clave))
+    }
+
+    @Test
+    fun resolverConflictoIngresoUsandoRemoto_evita_que_el_conflicto_reaparezca_al_reevaluar_el_mismo_remoto() = runBlocking {
+        // Ingreso mirror of the Gasto regression test above -- same P1 bug, same fix, same shape.
+        ingresoDao.upsert(ingreso("i1", monto = 1000).toEntity())
+        val clave = claveRegistro("ingresos", "i1")
+        registroEdicionesPendientes.registrarSiCorresponde(clave, "user-2", null, Instant.now(), TipoRegistro.INGRESO)
+        registroConflictosPendientes.registrar(clave, conflictoIngreso("i1"))
+        firestore.collection("ingresos").document("i1")
+            .set(IngresoDto.fromDomain(ingreso("i1", monto = 7000).copy(editedBy = "user-3", editedAt = Instant.now())).toMap())
+            .await()
+
+        repo.resolverConflictoIngresoUsandoRemoto("i1", clave)
+
+        val aplicado = ingresoDao.get("i1")!!.toDomain()
+        procesarSnapshotIngresos(db, ingresoDao, registroEdicionesPendientes, registroConflictosPendientes, listOf(aplicado))
+
+        assertEquals(null, db.conflictoEdicionDao().get(clave))
+        assertEquals(7000L, ingresoDao.get("i1")?.montoUnidadesMenores)
+    }
+
+    @Test
+    fun resolverConflictoGastoUsandoLocal_en_fallo_permanente_restaura_entidad_marcador_y_conflicto() = runBlocking {
+        // Exercises resolverConflictoGastoUsandoLocal's catch block: a permanent Firestore failure
+        // must roll back ALL THREE things the happy path touched -- the entity, the pending-edit
+        // marker it just wrote, and the conflict it was about to consider resolved -- not just the
+        // entity (see transaction #1's existing rollback, which this method deliberately doesn't reuse).
+        val id = "g/invalido" // forces a permanent Firestore write failure, same trick as the other rollback tests
+        gastoDao.upsert(gasto(id, monto = 1000).toEntity())
+        val clave = claveRegistro("gastos", id)
+        val conflictoPrevio = conflictoGasto(id)
+        registroConflictosPendientes.registrar(clave, conflictoPrevio)
+
+        var lanzado = false
+        try {
+            repo.resolverConflictoGastoUsandoLocal(gasto(id, monto = 2000).copy(editedBy = "user-2"), clave)
+        } catch (e: Exception) {
+            lanzado = true
+        }
+
+        assertTrue(lanzado)
+        assertEquals(1000L, gastoDao.get(id)?.montoUnidadesMenores)
+        assertEquals(null, db.edicionPendienteDao().get(clave))
+        assertEquals("user-3", db.conflictoEdicionDao().get(clave)?.remoto?.editadoPor)
+    }
+
+    private fun conflictoGasto(id: String) = ConflictoEdicion(
+        registroId = id,
+        tipo = TipoRegistro.GASTO,
+        local = gasto(id, monto = 1000).aSnapshotConflicto(),
+        remoto = gasto(id, monto = 9000).copy(editedBy = "user-3").aSnapshotConflicto(),
+    )
+
+    private fun conflictoIngreso(id: String) = ConflictoEdicion(
+        registroId = id,
+        tipo = TipoRegistro.INGRESO,
+        local = ingreso(id, monto = 1000).aSnapshotConflicto(),
+        remoto = ingreso(id, monto = 9000).copy(editedBy = "user-3").aSnapshotConflicto(),
+    )
 }

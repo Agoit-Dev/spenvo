@@ -6,8 +6,6 @@ import com.agoitdev.spenvo.data.remote.sync.MovimientoSincronizador
 import com.agoitdev.spenvo.domain.repository.MovimientoRepository
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarGastoRemotoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarIngresoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
@@ -15,6 +13,10 @@ import com.agoitdev.spenvo.domain.usecase.EliminarIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarBalanceAcumuladoPlanUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarMovimientosUseCase
 import com.agoitdev.spenvo.domain.usecase.ObservarResumenMensualPlanUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoGastoUsandoRemotoUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoLocalUseCase
+import com.agoitdev.spenvo.domain.usecase.ResolverConflictoIngresoUsandoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.ValidarMontoUseCase
 import dagger.Binds
 import dagger.Module
@@ -42,6 +44,7 @@ abstract class MovimientoModule {
 
 @Module
 @InstallIn(SingletonComponent::class)
+@Suppress("TooManyFunctions")
 object MovimientoUseCaseModule {
 
     @Provides
@@ -87,14 +90,28 @@ object MovimientoUseCaseModule {
     ): EliminarIngresoUseCase = EliminarIngresoUseCase(movimientoRepository)
 
     @Provides
-    fun provideAplicarGastoRemoto(
+    fun provideResolverConflictoGastoUsandoLocal(
         movimientoRepository: MovimientoRepository,
-    ): AplicarGastoRemotoUseCase = AplicarGastoRemotoUseCase(movimientoRepository)
+        validarMonto: ValidarMontoUseCase,
+    ): ResolverConflictoGastoUsandoLocalUseCase =
+        ResolverConflictoGastoUsandoLocalUseCase(movimientoRepository, validarMonto)
 
     @Provides
-    fun provideAplicarIngresoRemoto(
+    fun provideResolverConflictoIngresoUsandoLocal(
         movimientoRepository: MovimientoRepository,
-    ): AplicarIngresoRemotoUseCase = AplicarIngresoRemotoUseCase(movimientoRepository)
+        validarMonto: ValidarMontoUseCase,
+    ): ResolverConflictoIngresoUsandoLocalUseCase =
+        ResolverConflictoIngresoUsandoLocalUseCase(movimientoRepository, validarMonto)
+
+    @Provides
+    fun provideResolverConflictoGastoUsandoRemoto(
+        movimientoRepository: MovimientoRepository,
+    ): ResolverConflictoGastoUsandoRemotoUseCase = ResolverConflictoGastoUsandoRemotoUseCase(movimientoRepository)
+
+    @Provides
+    fun provideResolverConflictoIngresoUsandoRemoto(
+        movimientoRepository: MovimientoRepository,
+    ): ResolverConflictoIngresoUsandoRemotoUseCase = ResolverConflictoIngresoUsandoRemotoUseCase(movimientoRepository)
 }
 
 @Module
