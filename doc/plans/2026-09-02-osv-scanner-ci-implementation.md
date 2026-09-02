@@ -293,11 +293,26 @@ git commit -m "feat(ci): add CVSS v3.1 base score parser"
 ## Task 4: `osv-classify.mjs` — `classifyFinding`
 
 Wires a single OSV vulnerability record (public OSV schema — `id`, `severity[]`,
-`database_specific`, per `ossf.github.io/osv-schema`) to a severity band. Primary source:
-`database_specific.severity` when recognized (GHSA's `MODERATE` aliases to `MEDIUM`). Fallback: the
-first `CVSS_V3` entry in `severity[]`. CVSS v4 and anything unrecognized fall through to `UNKNOWN` —
-this function's own output for "can't classify" is correct as-is; **the bug this plan is fixing is
-downstream**, in how the gate/issue logic (Tasks 6-8) treats `UNKNOWN` (see Task 6).
+`database_specific`, per `ossf.github.io/osv-schema`) to a severity band. **Conservative by design,
+in two layers:**
+
+1. Evaluates every interpretable source — `database_specific.severity` (when recognized; GHSA's
+   `MODERATE` aliases to `MEDIUM`) and every `CVSS_V3` entry in `severity[]` — and returns the
+   *highest* one, never just the first source present. A single source's own imprecision (a
+   stale/under-reported `database_specific` field sitting next to an accurate CVSS vector, a known
+   real-world OSV/GHSA data quirk) must never downgrade a finding.
+2. If any source was *present but could not be interpreted* (an unrecognized `database_specific`
+   label, a `severity[]` entry whose type isn't `CVSS_V3`, or a `CVSS_V3` entry with a malformed
+   vector), that's real unresolved uncertainty — the result escalates to `UNKNOWN` (blocking)
+   *unless* a recognized source already reached CRITICAL/HIGH on its own, since that's already at
+   least as conservative as `UNKNOWN`.
+
+(Two issues were caught in review before this task's commit, neither ever shipped: an earlier draft
+picked whichever source was checked first — `database_specific` unconditionally over CVSS — which
+let a LOW `database_specific` value silently mask a CRITICAL CVSS score; a second pass then also
+missed that an unreadable source sitting next to an otherwise non-blocking recognized severity
+[e.g. LOW `database_specific` next to an unsupported CVSS v4 vector] still needs to escalate to
+`UNKNOWN`, not quietly resolve to the recognized-but-non-blocking value.)
 
 **Files:**
 - Modify: `.github/scripts/osv-classify.mjs`
@@ -307,14 +322,14 @@ downstream**, in how the gate/issue logic (Tasks 6-8) treats `UNKNOWN` (see Task
 
 ```js
 // append to .github/scripts/osv-classify.test.mjs
-import { classifyFinding } from './osv-classify.mjs';
+import { classifyFinding } from './osv-classify.mjs'; // merge into the existing top-of-file import instead of a second import statement
 
-test('classifyFinding prefers database_specific.severity when recognized', () => {
+test('classifyFinding uses database_specific.severity when it is the only recognized source', () => {
   assert.equal(classifyFinding({ database_specific: { severity: 'CRITICAL' } }), 'CRITICAL');
   assert.equal(classifyFinding({ database_specific: { severity: 'MODERATE' } }), 'MEDIUM');
 });
 
-test('classifyFinding falls back to CVSS_V3 severity[] entry', () => {
+test('classifyFinding uses the CVSS_V3 entry when database_specific is absent/unrecognized', () => {
   const finding = {
     severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' }],
   };
@@ -328,12 +343,44 @@ test('classifyFinding returns UNKNOWN (not an exception) on unsupported or missi
   assert.equal(classifyFinding(null), 'UNKNOWN');
 });
 
-test('classifyFinding: two contradictory severity sources — database_specific wins deterministically', () => {
+test('classifyFinding is conservative on contradictory sources: LOW database_specific next to CRITICAL CVSS still returns CRITICAL', () => {
   const finding = {
     database_specific: { severity: 'LOW' },
-    severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' }], // would be CRITICAL
+    severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' }],
   };
-  assert.equal(classifyFinding(finding), 'LOW');
+  assert.equal(classifyFinding(finding), 'CRITICAL');
+});
+
+test('classifyFinding is conservative regardless of which source is higher: CRITICAL database_specific next to LOW CVSS still returns CRITICAL', () => {
+  const finding = {
+    database_specific: { severity: 'CRITICAL' },
+    severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:P/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N' }], // 1.6, LOW
+  };
+  assert.equal(classifyFinding(finding), 'CRITICAL');
+});
+
+test('classifyFinding escalates to UNKNOWN when a non-blocking recognized severity sits next to an unreadable source (unsupported CVSS type)', () => {
+  const finding = {
+    database_specific: { severity: 'LOW' },
+    severity: [{ type: 'CVSS_V4', score: 'CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N' }],
+  };
+  assert.equal(classifyFinding(finding), 'UNKNOWN');
+});
+
+test('classifyFinding escalates to UNKNOWN when a non-blocking recognized severity sits next to an unreadable source (malformed CVSS_V3 vector)', () => {
+  const finding = {
+    database_specific: { severity: 'MEDIUM' },
+    severity: [{ type: 'CVSS_V3', score: 'not a valid vector' }],
+  };
+  assert.equal(classifyFinding(finding), 'UNKNOWN');
+});
+
+test('classifyFinding does NOT escalate when the recognized severity is already blocking (CRITICAL/HIGH), even next to an unreadable source', () => {
+  const finding = {
+    database_specific: { severity: 'HIGH' },
+    severity: [{ type: 'CVSS_V4', score: 'CVSS:4.0/...' }],
+  };
+  assert.equal(classifyFinding(finding), 'HIGH');
 });
 ```
 
@@ -355,36 +402,68 @@ const KNOWN_DATABASE_SEVERITIES = new Map([
   ['LOW', 'LOW'],
 ]);
 
-/** @param {unknown} finding — a single OSV vulnerability record (ossf.github.io/osv-schema). */
+const SEVERITY_ORDER = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']; // ascending — highest wins
+
+function higherSeverity(a, b) {
+  return SEVERITY_ORDER.indexOf(b) > SEVERITY_ORDER.indexOf(a) ? b : a;
+}
+
+const BLOCKING_BANDS = new Set(['CRITICAL', 'HIGH']);
+
+/**
+ * @param {unknown} finding — a single OSV vulnerability record (ossf.github.io/osv-schema).
+ *
+ * Conservative by design, in two layers:
+ * 1. Evaluates EVERY interpretable severity source and returns the highest one, never just the
+ *    first source present.
+ * 2. If any source was PRESENT but could not be interpreted (unrecognized database_specific label,
+ *    a severity[] entry whose type isn't CVSS_V3, or a malformed CVSS_V3 vector), that's real
+ *    unresolved uncertainty — escalates to UNKNOWN (blocking) UNLESS a recognized source already
+ *    reached CRITICAL/HIGH on its own, since that's already at least as conservative as UNKNOWN.
+ */
 export function classifyFinding(finding) {
+  const candidates = [];
+  let hadUnreadableSource = false;
+
   const dbSeverity = finding?.database_specific?.severity;
   if (typeof dbSeverity === 'string') {
     const mapped = KNOWN_DATABASE_SEVERITIES.get(dbSeverity.toUpperCase());
-    if (mapped) return mapped;
+    if (mapped) candidates.push(mapped);
+    else hadUnreadableSource = true;
   }
 
   const severityEntries = Array.isArray(finding?.severity) ? finding.severity : [];
   for (const entry of severityEntries) {
-    if (entry?.type === 'CVSS_V3') {
-      const score = parseCvss31BaseScore(entry.score);
-      if (score !== null) return severityBandForScore(score);
+    if (entry?.type !== 'CVSS_V3') {
+      hadUnreadableSource = true;
+      continue;
     }
+    const score = parseCvss31BaseScore(entry.score);
+    if (score !== null) candidates.push(severityBandForScore(score));
+    else hadUnreadableSource = true;
   }
 
-  return 'UNKNOWN';
+  if (candidates.length === 0) return 'UNKNOWN';
+
+  const highest = candidates.reduce(higherSeverity);
+  if (hadUnreadableSource && !BLOCKING_BANDS.has(highest)) return 'UNKNOWN';
+  return highest;
 }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `node --test .github/scripts/osv-classify.test.mjs`
-Expected: PASS (11 tests total).
+Expected: PASS (15 tests total).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .github/scripts/osv-classify.mjs .github/scripts/osv-classify.test.mjs
-git commit -m "feat(ci): add classifyFinding, deterministic on contradictory severity sources"
+git add \
+  .github/scripts/osv-classify.mjs \
+  .github/scripts/osv-classify.test.mjs \
+  doc/plans/2026-09-02-osv-scanner-ci-implementation.md
+git commit -m "feat(ci): add conservative OSV finding classification"
 ```
 
 ---

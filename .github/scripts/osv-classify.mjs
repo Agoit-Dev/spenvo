@@ -61,3 +61,60 @@ export function parseCvss31BaseScore(vector) {
 
   return roundup(Math.min(raw, 10));
 }
+
+const KNOWN_DATABASE_SEVERITIES = new Map([
+  ['CRITICAL', 'CRITICAL'],
+  ['HIGH', 'HIGH'],
+  ['MODERATE', 'MEDIUM'],
+  ['MEDIUM', 'MEDIUM'],
+  ['LOW', 'LOW'],
+]);
+
+const SEVERITY_ORDER = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']; // ascending — highest wins
+
+function higherSeverity(a, b) {
+  return SEVERITY_ORDER.indexOf(b) > SEVERITY_ORDER.indexOf(a) ? b : a;
+}
+
+const BLOCKING_BANDS = new Set(['CRITICAL', 'HIGH']);
+
+/**
+ * @param {unknown} finding — a single OSV vulnerability record (ossf.github.io/osv-schema).
+ *
+ * Conservative by design, in two layers:
+ * 1. Evaluates EVERY interpretable severity source (database_specific.severity and every CVSS_V3
+ *    entry in severity[]) and returns the highest one, never just the first source present.
+ * 2. If any source was PRESENT but could not be interpreted (an unrecognized database_specific
+ *    label, a severity[] entry whose type isn't CVSS_V3, or a CVSS_V3 entry with a malformed
+ *    vector), that represents real uncertainty this function can't resolve — the result escalates
+ *    to UNKNOWN (blocking) UNLESS a recognized source already reached CRITICAL/HIGH on its own,
+ *    since that's already at least as conservative as UNKNOWN.
+ */
+export function classifyFinding(finding) {
+  const candidates = [];
+  let hadUnreadableSource = false;
+
+  const dbSeverity = finding?.database_specific?.severity;
+  if (typeof dbSeverity === 'string') {
+    const mapped = KNOWN_DATABASE_SEVERITIES.get(dbSeverity.toUpperCase());
+    if (mapped) candidates.push(mapped);
+    else hadUnreadableSource = true;
+  }
+
+  const severityEntries = Array.isArray(finding?.severity) ? finding.severity : [];
+  for (const entry of severityEntries) {
+    if (entry?.type !== 'CVSS_V3') {
+      hadUnreadableSource = true;
+      continue;
+    }
+    const score = parseCvss31BaseScore(entry.score);
+    if (score !== null) candidates.push(severityBandForScore(score));
+    else hadUnreadableSource = true;
+  }
+
+  if (candidates.length === 0) return 'UNKNOWN';
+
+  const highest = candidates.reduce(higherSeverity);
+  if (hadUnreadableSource && !BLOCKING_BANDS.has(highest)) return 'UNKNOWN';
+  return highest;
+}
