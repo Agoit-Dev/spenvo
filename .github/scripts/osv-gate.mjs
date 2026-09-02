@@ -63,6 +63,29 @@ export function issueDedupeKey(f) {
   return `${f.vulnId}::${f.ecosystem}::${f.packageName}`;
 }
 
+/**
+ * A single logical vulnerability commonly surfaces as multiple raw finding rows: the same
+ * package can resolve to several versions across different configurations within one lockfile,
+ * and/or the same package+vuln repeats across every module's lockfile in a multi-module repo.
+ * Collapses every row sharing an issueDedupeKey into one entry, preserving each row's
+ * version/source as an `occurrences` list so no evidence is lost — the consolidated entry is
+ * what a single GitHub issue create/update/close action should be planned against.
+ * @param {{vulnId: string, ecosystem: string, packageName: string, severity: string, version?: string, source?: string}[]} findings
+ */
+export function consolidateBlockingFindings(findings) {
+  const byKey = new Map();
+  for (const f of findings) {
+    const key = issueDedupeKey(f);
+    if (!byKey.has(key)) {
+      byKey.set(key, { vulnId: f.vulnId, ecosystem: f.ecosystem, packageName: f.packageName, severity: f.severity, occurrences: [] });
+    }
+    if (f.version !== undefined || f.source !== undefined) {
+      byKey.get(key).occurrences.push({ version: f.version, source: f.source });
+    }
+  }
+  return [...byKey.values()];
+}
+
 function keyFromIssueBody(body) {
   const match = /<!-- osv-gate:(.+?) -->/.exec(body ?? '');
   return match ? match[1] : null;
@@ -77,14 +100,15 @@ export function planIssueActions(scanResult, { openIssues }) {
   if (!scanResult.ok) return actions; // fail-closed: no issue mutation at all on a broken run
 
   const blocking = scanResult.findings.filter((f) => BLOCKING_SEVERITIES.has(f.severity));
-  const blockingKeys = new Set(blocking.map(issueDedupeKey));
+  const consolidated = consolidateBlockingFindings(blocking);
+  const blockingKeys = new Set(consolidated.map(issueDedupeKey));
   const openByKey = new Map(
     openIssues
       .map((issue) => [keyFromIssueBody(issue.body), issue])
       .filter(([key]) => key !== null),
   );
 
-  for (const finding of blocking) {
+  for (const finding of consolidated) {
     const key = issueDedupeKey(finding);
     const existing = openByKey.get(key);
     if (existing) {
@@ -139,7 +163,14 @@ export function normalizeOsvScanOutput(raw) {
         if (typeof vuln?.id !== 'string' || !vuln.id) {
           return { ok: false, error: `results[${resultIndex}].packages[${pkgIndex}].vulnerabilities[${vulnIndex}] is missing id`, findings: [] };
         }
-        findings.push({ vulnId: vuln.id, ecosystem, packageName, severity: classifyFinding(vuln) });
+        findings.push({
+          vulnId: vuln.id,
+          ecosystem,
+          packageName,
+          severity: classifyFinding(vuln),
+          version: pkg.package.version,
+          source: result?.source?.path,
+        });
       }
     }
   }
@@ -182,14 +213,21 @@ function listOpenIssues() {
   return JSON.parse(raw);
 }
 
+/** @param {{version?: string, source?: string}[]} occurrences */
+function occurrencesList(occurrences) {
+  if (!occurrences?.length) return '';
+  const lines = occurrences.map((o) => `- ${o.version ?? '?'} — ${o.source ?? '?'}`).join('\n');
+  return `\n\nFound in:\n${lines}`;
+}
+
 function applyIssueActions(actions) {
   for (const { finding, key } of actions.creates) {
     execFileSync('gh', ['issue', 'create', '--title', `[security] ${finding.vulnId} in ${finding.packageName}`,
       '--label', 'security', '--label', 'dependencies',
-      '--body', `${finding.severity} vulnerability ${finding.vulnId} in ${finding.ecosystem} package ${finding.packageName}.\n\n<!-- osv-gate:${key} -->`]);
+      '--body', `${finding.severity} vulnerability ${finding.vulnId} in ${finding.ecosystem} package ${finding.packageName}.${occurrencesList(finding.occurrences)}\n\n<!-- osv-gate:${key} -->`]);
   }
   for (const { number, finding } of actions.updates) {
-    execFileSync('gh', ['issue', 'comment', String(number), '--body', `Still present: ${finding.severity} ${finding.vulnId} in ${finding.packageName}.`]);
+    execFileSync('gh', ['issue', 'comment', String(number), '--body', `Still present: ${finding.severity} ${finding.vulnId} in ${finding.packageName}.${occurrencesList(finding.occurrences)}`]);
   }
   for (const { number } of actions.closes) {
     execFileSync('gh', ['issue', 'close', String(number), '--comment', 'No longer detected by osv-scanner as of this run.']);

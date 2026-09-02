@@ -119,6 +119,78 @@ test('planIssueActions never closes, creates, or updates on a failed scan/parse'
   assert.equal(actions.updates.length, 0);
 });
 
+// A single logical vulnerability commonly surfaces as multiple raw finding rows: the same
+// package resolves to several versions across configurations within one lockfile (e.g. AGP's
+// unified-test-platform-* tooling resolving io.netty:netty-handler to both 4.1.110.Final and
+// 4.1.93.Final), and/or the same package+vuln repeats across this repo's 9 Android module
+// lockfiles. Without dedup, planIssueActions used to plan one create/update per raw row —
+// discovered live via OSV-M805 validation: a single blocking finding produced 18 duplicate
+// GitHub issues in one run (2 resolved versions x 9 lockfiles).
+
+test('planIssueActions consolidates N raw rows sharing the same dedupe key into exactly 1 create', () => {
+  const rowFor = (version, source) => ({
+    vulnId: 'GHSA-9', ecosystem: 'Maven', packageName: 'io.netty:netty-handler', severity: 'HIGH', version, source,
+  });
+  const scanResult = {
+    ok: true,
+    findings: [
+      rowFor('4.1.110.Final', 'app/gradle.lockfile'),
+      rowFor('4.1.93.Final', 'app/gradle.lockfile'),
+      rowFor('4.1.110.Final', 'core/data/gradle.lockfile'),
+    ],
+  };
+  const actions = planIssueActions(scanResult, { openIssues: [] });
+  assert.equal(actions.creates.length, 1);
+  assert.equal(actions.updates.length, 0);
+});
+
+test('planIssueActions consolidates N raw rows sharing the same dedupe key into exactly 1 update, never a create', () => {
+  const rowFor = (source) => ({ vulnId: 'GHSA-9', ecosystem: 'npm', packageName: 'left-pad', severity: 'HIGH', source });
+  const openIssues = [OPEN_ISSUE_FOR('GHSA-9', 'npm', 'left-pad', 42)];
+  const scanResult = { ok: true, findings: [rowFor('a/package-lock.json'), rowFor('b/package-lock.json'), rowFor('c/package-lock.json')] };
+  const actions = planIssueActions(scanResult, { openIssues });
+  assert.equal(actions.creates.length, 0);
+  assert.equal(actions.updates.length, 1);
+  assert.equal(actions.updates[0].number, 42);
+});
+
+test('planIssueActions never produces both a create and an update for the same key, across distinct keys in one run', () => {
+  const netty = (version) => ({ vulnId: 'GHSA-NEW', ecosystem: 'Maven', packageName: 'io.netty:netty-handler', severity: 'HIGH', version });
+  const bc = (version) => ({ vulnId: 'GHSA-OLD', ecosystem: 'Maven', packageName: 'org.bouncycastle:bcprov-jdk18on', severity: 'CRITICAL', version });
+  const openIssues = [OPEN_ISSUE_FOR('GHSA-OLD', 'Maven', 'org.bouncycastle:bcprov-jdk18on', 7)];
+  const scanResult = {
+    ok: true,
+    findings: [netty('4.1.110.Final'), netty('4.1.93.Final'), bc('1.79'), bc('1.81')],
+  };
+  const actions = planIssueActions(scanResult, { openIssues });
+  assert.equal(actions.creates.length, 1, 'exactly one create, for GHSA-NEW');
+  assert.equal(actions.updates.length, 1, 'exactly one update, for GHSA-OLD');
+  assert.equal(actions.creates[0].key, issueDedupeKey({ vulnId: 'GHSA-NEW', ecosystem: 'Maven', packageName: 'io.netty:netty-handler' }));
+  assert.equal(actions.updates[0].key, issueDedupeKey({ vulnId: 'GHSA-OLD', ecosystem: 'Maven', packageName: 'org.bouncycastle:bcprov-jdk18on' }));
+});
+
+test('planIssueActions preserves every occurrence (version/source) when consolidating duplicate rows — no evidence lost', () => {
+  const rowFor = (version, source) => ({
+    vulnId: 'GHSA-9', ecosystem: 'Maven', packageName: 'io.netty:netty-handler', severity: 'HIGH', version, source,
+  });
+  const scanResult = {
+    ok: true,
+    findings: [
+      rowFor('4.1.110.Final', 'app/gradle.lockfile'),
+      rowFor('4.1.93.Final', 'core/data/gradle.lockfile'),
+      rowFor('4.1.110.Final', 'feature/planes/gradle.lockfile'),
+    ],
+  };
+  const actions = planIssueActions(scanResult, { openIssues: [] });
+  const { occurrences } = actions.creates[0].finding;
+  assert.equal(occurrences.length, 3);
+  assert.deepEqual(occurrences, [
+    { version: '4.1.110.Final', source: 'app/gradle.lockfile' },
+    { version: '4.1.93.Final', source: 'core/data/gradle.lockfile' },
+    { version: '4.1.110.Final', source: 'feature/planes/gradle.lockfile' },
+  ]);
+});
+
 test('interpretScannerExitCode: 0 and 1 are trustworthy scan outcomes', () => {
   assert.equal(interpretScannerExitCode(0).ok, true);
   assert.equal(interpretScannerExitCode(1).ok, true);
@@ -156,6 +228,25 @@ test('normalizeOsvScanOutput flattens results/packages/vulnerabilities into find
   assert.equal(result.findings[0].ecosystem, 'Maven');
   assert.equal(result.findings[0].packageName, 'com.example:lib');
   assert.equal(result.findings[0].severity, 'HIGH');
+});
+
+test('normalizeOsvScanOutput carries version and source lockfile path per finding — needed to consolidate duplicate rows without losing evidence', () => {
+  const raw = {
+    results: [
+      {
+        source: { path: 'app/gradle.lockfile' },
+        packages: [
+          {
+            package: { name: 'com.example:lib', ecosystem: 'Maven', version: '1.2.3' },
+            vulnerabilities: [{ id: 'GHSA-1', database_specific: { severity: 'HIGH' } }],
+          },
+        ],
+      },
+    ],
+  };
+  const result = normalizeOsvScanOutput(raw);
+  assert.equal(result.findings[0].version, '1.2.3');
+  assert.equal(result.findings[0].source, 'app/gradle.lockfile');
 });
 
 test('normalizeOsvScanOutput handles a clean run with no results', () => {
