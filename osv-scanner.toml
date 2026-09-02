@@ -1,0 +1,19 @@
+# OSV-Scanner ignore list — see doc/designs/2026-09-02-osv-scanner-ci-design.md.
+#
+# NOT auto-discovered for lockfiles outside this directory: OSV-Scanner only auto-applies a config
+# file placed in the SAME directory as the scanned lockfile, and does not propagate it to child
+# directories (google.github.io/osv-scanner/configuration/). Every scan invocation in this repo's
+# workflows passes --config=/repo/osv-scanner.toml explicitly (see Tasks 10-11) so this one file
+# governs every lockfile regardless of which subdirectory it lives in.
+#
+# Every entry needs: the exact vulnerability ID, a reason with the risk assessment, a relatively
+# short ignoreUntil, and a reference to the authorizing issue/decision when one exists. When
+# ignoreUntil passes, OSV-Scanner treats the finding as active again automatically.
+#
+# Example (remove once a real exception is needed — an empty [[IgnoredVulns]] list is valid and
+# expected most of the time):
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2026-12-01
+# reason = "One sentence: risk assessed, why deferred. Ref: <issue/decision link>."
