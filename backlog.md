@@ -15,6 +15,17 @@ task's implementation departed from what its plan/design doc specified, note it 
 
 ## 📋 To Do
 
+### 🔐 Security & Supply Chain (High Priority)
+*M8 from `ROADMAP.md` — was tracked at the roadmap level only until this slice. Design and plan
+both approved: `doc/designs/2026-09-02-osv-scanner-ci-design.md`,
+`doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.*
+- [ ] **OSV-M801:** Implement the OSV-Scanner CI gate (M8, CI half) — blocking PR gate on
+  CRITICAL/HIGH/UNKNOWN findings, daily scheduled scan with deduplicated GitHub Issue lifecycle,
+  fail-closed severity classification. Per the approved implementation plan's 14 tasks.
+- [ ] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — no design yet;
+  needs its own brainstorm session before any implementation task exists. Deliberately out of
+  `OSV-M801`'s scope.
+
 ### 🔒 Architecture & Robustness (Medium Priority)
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable

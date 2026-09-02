@@ -53,7 +53,10 @@ profile reachable from the whole app.*
   gaps documented and deliberately deferred during fronts 1-3 — are all resolved. Only `UX-H901`
   (duplicate plan-name heading on Home, a product-design judgment call) remains open in the
   backlog, none blocking.
-- [ ] **M8:** osv-scanner in CI + optional MFA. Not started.
+- [ ] **M8:** osv-scanner in CI + optional MFA. The osv-scanner-in-CI half is in progress — design
+  approved (`doc/designs/2026-09-02-osv-scanner-ci-design.md`) and plan approved
+  (`doc/plans/2026-09-02-osv-scanner-ci-implementation.md`), atomic tasks in `backlog.md`. Optional
+  MFA not started, no design yet.
 
 ### ⚪ Phase 9: Future Ideas Backlog (Under Review)
 - [ ] Alternative third-party auth provider integration (OAuth / Google Sign-In) — deliberately left
