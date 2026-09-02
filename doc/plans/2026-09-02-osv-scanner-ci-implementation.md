@@ -490,6 +490,8 @@ const SAMPLE = [
   { vulnId: 'GHSA-1111', ecosystem: 'Maven', packageName: 'com.example:lib', severity: 'MEDIUM' },
   { vulnId: 'GHSA-2222', ecosystem: 'npm', packageName: 'left-pad', severity: 'CRITICAL' },
   { vulnId: 'GHSA-3333', ecosystem: 'Maven', packageName: 'com.example:other', severity: 'UNKNOWN' },
+  { vulnId: 'GHSA-4444', ecosystem: 'npm', packageName: 'right-pad', severity: 'HIGH' },
+  { vulnId: 'GHSA-5555', ecosystem: 'Maven', packageName: 'com.example:third', severity: 'LOW' },
 ];
 
 test('buildSummaryTable includes every finding regardless of severity', () => {
@@ -497,13 +499,22 @@ test('buildSummaryTable includes every finding regardless of severity', () => {
   assert.match(table, /GHSA-1111/);
   assert.match(table, /GHSA-2222/);
   assert.match(table, /GHSA-3333/);
+  assert.match(table, /GHSA-4444/);
+  assert.match(table, /GHSA-5555/);
 });
 
-test('buildSummaryTable orders CRITICAL/HIGH/UNKNOWN before MEDIUM/LOW', () => {
+test('buildSummaryTable orders all 5 severity bands: CRITICAL, HIGH, UNKNOWN, MEDIUM, LOW', () => {
   const table = buildSummaryTable(SAMPLE);
-  const criticalIndex = table.indexOf('GHSA-2222');
-  const mediumIndex = table.indexOf('GHSA-1111');
-  assert.ok(criticalIndex < mediumIndex && criticalIndex !== -1);
+  const indexOf = (id) => table.indexOf(id);
+  assert.ok(indexOf('GHSA-2222') !== -1, 'CRITICAL row present'); // CRITICAL
+  assert.ok(indexOf('GHSA-4444') !== -1, 'HIGH row present'); // HIGH
+  assert.ok(indexOf('GHSA-3333') !== -1, 'UNKNOWN row present'); // UNKNOWN
+  assert.ok(indexOf('GHSA-1111') !== -1, 'MEDIUM row present'); // MEDIUM
+  assert.ok(indexOf('GHSA-5555') !== -1, 'LOW row present'); // LOW
+  assert.ok(indexOf('GHSA-2222') < indexOf('GHSA-4444'), 'CRITICAL before HIGH');
+  assert.ok(indexOf('GHSA-4444') < indexOf('GHSA-3333'), 'HIGH before UNKNOWN');
+  assert.ok(indexOf('GHSA-3333') < indexOf('GHSA-1111'), 'UNKNOWN before MEDIUM');
+  assert.ok(indexOf('GHSA-1111') < indexOf('GHSA-5555'), 'MEDIUM before LOW');
 });
 
 test('buildSummaryTable handles an empty finding list', () => {
@@ -568,13 +579,16 @@ export function buildErrorSummary(error) {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `node --test .github/scripts/osv-gate.test.mjs`
-Expected: PASS (4 tests).
+Expected: PASS (4 tests — one of them, the ordering test, now asserts the complete CRITICAL→HIGH→
+UNKNOWN→MEDIUM→LOW sequence across a 5-band fixture rather than just one pairwise comparison, per
+review: the original 3-entry fixture only proved CRITICAL sorts before MEDIUM, not that UNKNOWN
+actually sorts ahead of MEDIUM/LOW — the specific ordering property this task exists to guarantee).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .github/scripts/osv-gate.mjs .github/scripts/osv-gate.test.mjs
-git commit -m "feat(ci): add osv-gate step-summary renderers, error state never reads as clean"
+git add .github/scripts/osv-gate.mjs .github/scripts/osv-gate.test.mjs doc/plans/2026-09-02-osv-scanner-ci-implementation.md
+git commit -m "feat(ci): add osv-gate step-summary renderers"
 ```
 
 ---
