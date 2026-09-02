@@ -1,7 +1,7 @@
 // .github/scripts/osv-gate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSummaryTable, buildErrorSummary } from './osv-gate.mjs';
+import { buildSummaryTable, buildErrorSummary, decidePrGate } from './osv-gate.mjs';
 
 const SAMPLE = [
   { vulnId: 'GHSA-1111', ecosystem: 'Maven', packageName: 'com.example:lib', severity: 'MEDIUM' },
@@ -43,4 +43,30 @@ test('buildErrorSummary renders the failure distinctly, never as "no vulnerabili
   assert.match(summary, /Scan\/parse failed/);
   assert.match(summary, /code 127/);
   assert.doesNotMatch(summary, /No vulnerabilities found/);
+});
+
+test('decidePrGate blocks on CRITICAL or HIGH findings', () => {
+  const result = decidePrGate({ ok: true, findings: [{ severity: 'HIGH' }] });
+  assert.equal(result.blocked, true);
+});
+
+test('decidePrGate blocks on UNKNOWN findings — fail-closed, not a pass-through', () => {
+  const result = decidePrGate({ ok: true, findings: [{ severity: 'UNKNOWN' }] });
+  assert.equal(result.blocked, true);
+  assert.match(result.reason, /UNKNOWN/);
+});
+
+test('decidePrGate passes when only MEDIUM/LOW findings exist', () => {
+  const result = decidePrGate({ ok: true, findings: [{ severity: 'MEDIUM' }, { severity: 'LOW' }] });
+  assert.equal(result.blocked, false);
+});
+
+test('decidePrGate passes with zero findings', () => {
+  assert.equal(decidePrGate({ ok: true, findings: [] }).blocked, false);
+});
+
+test('decidePrGate is fail-closed on a scan/parse failure, independent of severity', () => {
+  const result = decidePrGate({ ok: false, error: 'malformed JSON', findings: [] });
+  assert.equal(result.blocked, true);
+  assert.match(result.reason, /scan|parse/i);
 });

@@ -185,8 +185,8 @@ of the formula's distinct branches, not fresh independent verification of each n
 - [ ] **Step 1: Write the failing test**
 
 ```js
-// append to .github/scripts/osv-classify.test.mjs
-import { parseCvss31BaseScore } from './osv-classify.mjs';
+// append to .github/scripts/osv-classify.test.mjs — merge `parseCvss31BaseScore` into the existing
+// top-of-file import instead of a second import statement (see Task 4's note on this pattern)
 
 test('parseCvss31BaseScore: Scope Unchanged, verified externally (9.8, CRITICAL)', () => {
   assert.equal(parseCvss31BaseScore('CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H'), 9.8);
@@ -606,8 +606,8 @@ blocked on CRITICAL/HIGH, silently letting an unclassifiable finding through.
 - [ ] **Step 1: Write the failing test**
 
 ```js
-// append to .github/scripts/osv-gate.test.mjs
-import { decidePrGate } from './osv-gate.mjs';
+// append to .github/scripts/osv-gate.test.mjs — merge `decidePrGate` into the existing top-of-file
+// import instead of a second import statement (see Task 4's note on this pattern)
 
 test('decidePrGate blocks on CRITICAL or HIGH findings', () => {
   const result = decidePrGate({ ok: true, findings: [{ severity: 'HIGH' }] });
@@ -672,8 +672,8 @@ Expected: PASS (9 tests total).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .github/scripts/osv-gate.mjs .github/scripts/osv-gate.test.mjs
-git commit -m "fix(ci): decidePrGate blocks on UNKNOWN severity, not just CRITICAL/HIGH"
+git add .github/scripts/osv-gate.mjs .github/scripts/osv-gate.test.mjs doc/plans/2026-09-02-osv-scanner-ci-implementation.md
+git commit -m "feat(ci): add fail-closed OSV PR gate decision"
 ```
 
 ---
@@ -692,8 +692,8 @@ the issue body. Closing is only ever planned when `scanResult.ok === true`.
 - [ ] **Step 1: Write the failing test**
 
 ```js
-// append to .github/scripts/osv-gate.test.mjs
-import { planIssueActions, issueDedupeKey } from './osv-gate.mjs';
+// append to .github/scripts/osv-gate.test.mjs — merge `planIssueActions, issueDedupeKey` into the
+// existing top-of-file import instead of a second import statement (see Task 4's note)
 
 const OPEN_ISSUE_FOR = (vulnId, ecosystem, packageName, number) => ({
   number,
@@ -869,8 +869,9 @@ fixing the normalizer then, before relying on the daily schedule, if the real sh
 - [ ] **Step 2: Write the failing tests**
 
 ```js
-// append to .github/scripts/osv-gate.test.mjs
-import { interpretScannerExitCode, normalizeOsvScanOutput } from './osv-gate.mjs';
+// append to .github/scripts/osv-gate.test.mjs — merge `interpretScannerExitCode,
+// normalizeOsvScanOutput` into the existing top-of-file import instead of a second import
+// statement (see Task 4's note)
 
 test('interpretScannerExitCode: 0 and 1 are trustworthy scan outcomes', () => {
   assert.equal(interpretScannerExitCode(0).ok, true);
@@ -959,8 +960,8 @@ Expected: FAIL — new exports missing.
 - [ ] **Step 4: Write minimal implementation**
 
 ```js
-// append to .github/scripts/osv-gate.mjs
-import { classifyFinding } from './osv-classify.mjs';
+// append to .github/scripts/osv-gate.mjs — add `import { classifyFinding } from
+// './osv-classify.mjs';` at the top of the file with the module's own imports, not mid-file
 
 /** @param {number} exitCode — osv-scanner's own process exit code. */
 export function interpretScannerExitCode(exitCode) {
@@ -1014,9 +1015,9 @@ Expected: PASS (25 tests total).
 - [ ] **Step 6: Add the CLI entrypoint**
 
 ```js
-// append to .github/scripts/osv-gate.mjs
-import { readFileSync, appendFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+// append to .github/scripts/osv-gate.mjs — add these two import lines to the top of the file's
+// import block (first use of node:fs/node:child_process in this file, nothing to merge into, but
+// still belongs at the top with the rest, not mid-file)
 
 function parseArgs(argv) {
   const get = (flag) => argv.find((a) => a.startsWith(`--${flag}=`))?.split('=')[1];

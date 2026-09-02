@@ -35,3 +35,20 @@ export function buildErrorSummary(error) {
     '',
   ].join('\n');
 }
+
+const BLOCKING_SEVERITIES = new Set(['CRITICAL', 'HIGH', 'UNKNOWN']);
+
+/**
+ * @param {{ok: boolean, error?: string, findings: {severity: string}[]}} scanResult
+ * @returns {{blocked: boolean, reason: string}}
+ */
+export function decidePrGate(scanResult) {
+  if (!scanResult.ok) {
+    return { blocked: true, reason: `Scan/parse failed (fail-closed): ${scanResult.error}` };
+  }
+  const blocking = scanResult.findings.filter((f) => BLOCKING_SEVERITIES.has(f.severity));
+  if (blocking.length > 0) {
+    return { blocked: true, reason: `${blocking.length} unignored CRITICAL/HIGH/UNKNOWN finding(s)` };
+  }
+  return { blocked: false, reason: 'No unignored CRITICAL/HIGH/UNKNOWN findings' };
+}
