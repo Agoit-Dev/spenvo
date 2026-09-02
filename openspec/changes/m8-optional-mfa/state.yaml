@@ -1,0 +1,22 @@
+change: m8-optional-mfa
+artifact_store: hybrid
+execution_mode: interactive
+delivery_strategy: ask-on-risk
+review_budget_lines: 400
+
+phases:
+  explore:
+    status: done
+    engram_topic: sdd/m8-optional-mfa/explore
+    engram_observation_id: 136
+  propose:
+    status: blocked
+    blocked_reasons:
+      - identity_platform_billing_upgrade_confirmation_pending
+      - email_verification_scope_decision_pending
+  spec: { status: not_started }
+  design: { status: not_started }
+  tasks: { status: not_started }
+  apply: { status: not_started }
+  verify: { status: not_started }
+  archive: { status: not_started }
