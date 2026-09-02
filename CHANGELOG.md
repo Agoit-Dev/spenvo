@@ -19,6 +19,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `overrides."fast-uri" = ">=3.1.6"`; resolves to `4.1.4` in practice. Verified via `npm ls
   fast-uri --all` (no `invalid`), a full `rules-tests` `npm test` run (76/76 passing), and a
   re-scan confirming all 4 advisories gone and 0 blocking rows.
+- **OSV-M805 follow-up:** `planIssueActions` (`.github/scripts/osv-gate.mjs`) planned one GitHub Issue
+  create/update per raw OSV-Scanner finding row instead of per unique vulnerability, so a single
+  logical finding could fan out into many duplicate issues in one run — a package resolving to
+  multiple versions across configurations within one lockfile, and/or the same package+vuln
+  repeating across this repo's 9 Android module lockfiles, both multiply the row count for the
+  identical `issueDedupeKey`. Caught live during OSV-M805 validation: one blocking finding
+  (`io.netty:netty-handler`, 2 resolved versions × 9 lockfiles) created 18 duplicate `[security]`
+  issues in a single scheduled-workflow run. Added `consolidateBlockingFindings` to collapse every
+  row sharing a dedupe key into one entry before planning create/update actions, carrying every
+  row's version/source lockfile as an `occurrences` list so the resulting issue body still shows
+  every affected location — no evidence lost, exactly one create-or-update per unique key. Also
+  discovered and fixed in the same pass: the repo had no `security`/`dependencies` labels, so
+  `gh issue create --label security` crashed the whole script uncaught (`execFileSync` throwing on
+  a non-zero exit) before creating or closing anything — labels now exist; `applyIssueActions`
+  still has no defensive handling for a missing label, since the label existing is the actual fix.
+  5 new `node:test` cases (`osv-gate.test.mjs`) reproduce the duplication and the evidence-loss risk.
 - **ARCH-M501 follow-up:** `resolverConflictoGastoUsandoRemoto`/`resolverConflictoIngresoUsandoRemoto`
   cleared the conflict record but never the pending-edit marker (`registroEdicionesPendientes`) that
   caused it — a review of the ARCH-M501 slice caught this before it shipped. The stale marker
