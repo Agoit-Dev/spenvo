@@ -19,6 +19,11 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable
   devices.
+  **Phone verification complete:** PASS on Pixel_4 in portrait and both landscape orientations,
+  using gesture and three-button navigation; all four tabs and IME transitions showed no overlap,
+  accumulated padding, or layout jump. The initial landscape black strip was confirmed as an
+  in-progress rotation frame, not a defect. Foldable hinge/posture verification remains pending
+  because no foldable environment was available.
 
 ### 🎨 Minor UX (Low Priority)
 *Findings from front 3's (profile accessible) final review — not blocking, not yet addressed.*
