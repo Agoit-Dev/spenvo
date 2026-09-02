@@ -171,6 +171,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OSV-M801 (M8, in progress — implementation done, not yet enforced):** OSV-Scanner CI gate
+  implemented and validated, both locally and against real GitHub Actions
+  (`.github/workflows/osv-scanner-pr.yml`, `.github/workflows/osv-scanner-scheduled.yml`,
+  `.github/scripts/osv-classify.mjs`, `.github/scripts/osv-gate.mjs`, 40 `node:test` cases). Fail-
+  closed severity classification (`CRITICAL`/`HIGH`/`UNKNOWN` block; a finding this system can't
+  classify is treated as risk, never a pass), strict scan-output normalization (no silent false-
+  green on partial/incomplete JSON), and a scheduled-scan GitHub Issue lifecycle that only ever
+  closes an issue after a fully successful scan+parse. See
+  `doc/designs/2026-09-02-osv-scanner-ci-design.md` and
+  `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
+  **Validated, not yet operative on `main`:** draft PR #33 (`chore/m8-osv-scanner-ci` → `main`)
+  triggered the real `osv-scanner-pr.yml` workflow, which reproduced the exact same result as the
+  local dry-run — 463 blocking rows (CRITICAL/HIGH/UNKNOWN) across 51 unique vulnerabilities in
+  this repo's current transitive dependencies (e.g. `org.bouncycastle:bcprov-jdk18on`,
+  `io.netty:netty-codec*`). The PR failing red is the gate correctly reporting real, pre-existing
+  dependency debt — not a defect in the gate itself. Before this can be marked done: the baseline
+  findings need triage/remediation or a documented, expiring `osv-scanner.toml` exception; the
+  `scan` job needs to become a required status check on `main`'s branch protection (failing today
+  doesn't yet block merges); and `osv-scanner-scheduled.yml`'s Issue-creation path needs a real
+  post-merge validation run (deliberately not exercised yet against this baseline — it would open
+  dozens of issues).
 - Login real + logout sin recreación anónima automática (front 2/3): real email/password
   sign-in and password recovery replace the placeholder registration-only flow. New
   `AuthRepository.iniciarSesionConEmail`/`enviarRecuperacionPassword`, backed by

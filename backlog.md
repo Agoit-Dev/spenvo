@@ -16,12 +16,21 @@ task's implementation departed from what its plan/design doc specified, note it 
 ## 📋 To Do
 
 ### 🔐 Security & Supply Chain (High Priority)
-*M8 from `ROADMAP.md` — was tracked at the roadmap level only until this slice. Design and plan
-both approved: `doc/designs/2026-09-02-osv-scanner-ci-design.md`,
-`doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.*
-- [ ] **OSV-M801:** Implement the OSV-Scanner CI gate (M8, CI half) — blocking PR gate on
-  CRITICAL/HIGH/UNKNOWN findings, daily scheduled scan with deduplicated GitHub Issue lifecycle,
-  fail-closed severity classification. Per the approved implementation plan's 14 tasks.
+*M8 from `ROADMAP.md`. `OSV-M801`'s implementation itself is done and validated — see
+🧪 In Review / QA below. These three are what's left before `OSV-M801` can close.*
+- [ ] **OSV-M803:** Triage the 463 blocking rows / 51 unique vulnerabilities the real PR #33 run
+  found in this repo's current transitive dependencies (`org.bouncycastle:bcprov-jdk18on`,
+  `io.netty:netty-codec*`, and others). For each: remediate (dependency bump/exclusion) or add a
+  justified, time-boxed `osv-scanner.toml` exception (`ignoreUntil` + `reason`, per
+  `doc/designs/2026-09-02-osv-scanner-ci-design.md`'s exception policy). No blanket/mass exceptions
+  without individual risk assessment.
+- [ ] **OSV-M804:** Configure `scan` (from `osv-scanner-pr.yml`) as a required status check in
+  `main`'s branch protection / ruleset. Until this lands, the gate failing red does not actually
+  block a merge — it's informative only.
+- [ ] **OSV-M805:** Run `osv-scanner-scheduled.yml` for real post-merge (`gh workflow run
+  osv-scanner-scheduled.yml --ref main`) and validate its GitHub Issue create/update/close lifecycle
+  end-to-end. Deliberately not exercised yet against the current baseline (`OSV-M803` unresolved) —
+  running it now would open dozens of issues at once.
 - [ ] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — no design yet;
   needs its own brainstorm session before any implementation task exists. Deliberately out of
   `OSV-M801`'s scope.
@@ -43,7 +52,13 @@ both approved: `doc/designs/2026-09-02-osv-scanner-ci-design.md`,
 - [ ] **FEAT-M403:** Add a basic color picker to the category creation/edit `ModalBottomSheet`.
 
 ## 🧪 In Review / QA
-*No tasks pending review this session.*
+- [ ] **OSV-M801:** OSV-Scanner CI gate (M8, CI half) — implementation done and validated, both
+  locally (dry-run against this repo's real 10 lockfiles) and in real GitHub Actions (draft PR #33,
+  `chore/m8-osv-scanner-ci` → `main`, triggered `osv-scanner-pr.yml` for real; identical result to
+  the local run: 463 blocking rows, 51 unique vulnerabilities, exit code 1). Not moved to Done yet —
+  three things remain: `OSV-M803` (triage the baseline findings), `OSV-M804` (make the check
+  required on `main`), `OSV-M805` (validate the scheduled workflow's Issue lifecycle post-merge). See
+  `doc/designs/2026-09-02-osv-scanner-ci-design.md`, `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
 
 ## ✅ Done
 - [x] **BUG-H602:** Fixed the "no plans yet" flicker on `PlanesScreen`'s cold start using the
