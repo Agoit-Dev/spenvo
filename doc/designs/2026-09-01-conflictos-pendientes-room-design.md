@@ -368,6 +368,13 @@ suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) {
         ?: error("El movimiento remoto no es válido")
     database.withTransaction {
         gastoDao.upsert(remoto.toEntity())
+        // Clearing the CONFLICT record alone isn't enough — the pending-EDIT marker registered
+        // when the user's original local edit was made survives with its stale editorId/base
+        // otherwise. The next re-evaluation of this same already-applied document (even a
+        // metadata-only Firestore re-delivery) would compare against that stale marker and flag
+        // CONFLICTO again. Found in post-implementation review, not caught by this design's own
+        // 7 rounds of review — see ARCH-M501's fix commit for the confirmed root cause.
+        registroEdicionesPendientes.limpiar(clave)
         registroConflictosPendientes.resolver(clave)
     }
 }
