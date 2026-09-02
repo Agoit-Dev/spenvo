@@ -15,8 +15,6 @@ import com.agoitdev.spenvo.domain.sync.RegistroConflictosPendientes
 import com.agoitdev.spenvo.domain.sync.TipoRegistro
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarGastoRemotoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarIngresoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoRequest
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoRequest
@@ -60,11 +58,6 @@ class MovimientosViewModel @Suppress("LongParameterList") @Inject constructor(
     private val eliminarGasto: EliminarGastoUseCase,
     private val actualizarIngreso: ActualizarIngresoUseCase,
     private val eliminarIngreso: EliminarIngresoUseCase,
-    // Superseded by resolverConflictoGastoUsandoRemoto/resolverConflictoIngresoUsandoRemoto below
-    // for conflict resolution; kept as constructor params (ARCH-M501, Task 8) since Hilt still
-    // wires them and no other call site in this ViewModel needs them removed out of sequence.
-    @Suppress("UnusedPrivateProperty") private val aplicarGastoRemoto: AplicarGastoRemotoUseCase,
-    @Suppress("UnusedPrivateProperty") private val aplicarIngresoRemoto: AplicarIngresoRemotoUseCase,
     private val resolverConflictoGastoUsandoLocal: ResolverConflictoGastoUsandoLocalUseCase,
     private val resolverConflictoIngresoUsandoLocal: ResolverConflictoIngresoUsandoLocalUseCase,
     private val resolverConflictoGastoUsandoRemoto: ResolverConflictoGastoUsandoRemotoUseCase,

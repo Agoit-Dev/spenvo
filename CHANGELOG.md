@@ -105,6 +105,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chance — safe to re-run in full since `invitarMiembro`/`eliminar` are both keyed by deterministic
   document ids.
 
+### Removed
+
+- **ARCH-M501 cleanup:** deleted `AplicarGastoRemotoUseCase`/`AplicarIngresoRemotoUseCase`, fully
+  superseded by `resolverConflictoGasto/IngresoUsandoLocal/Remoto` (Task 7/8) and confirmed to have
+  zero production callers since Task 8's `MovimientosViewModel` rewrite. Also removed the now-dead
+  `MovimientoRepository.aplicarGastoRemoto`/`aplicarIngresoRemoto` interface methods, their
+  `FirebaseMovimientoRepository` implementations, the two Hilt providers in `MovimientoModule`, and
+  the two now-unused `MovimientosViewModel` constructor params (previously kept behind
+  `@Suppress("UnusedPrivateProperty")`).
+
 ### Changed
 
 - Dependency bump: `composeBom` 2026.02.01 → 2026.08.00 (Compose 1.12), `nav3`

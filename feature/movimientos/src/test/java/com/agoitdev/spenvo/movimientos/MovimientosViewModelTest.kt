@@ -17,8 +17,6 @@ import com.agoitdev.spenvo.domain.sync.SnapshotConflicto
 import com.agoitdev.spenvo.domain.sync.TipoRegistro
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarGastoRemotoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarIngresoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
@@ -91,8 +89,6 @@ class MovimientosViewModelTest {
         eliminarGasto = EliminarGastoUseCase(movimientoRepo),
         actualizarIngreso = ActualizarIngresoUseCase(movimientoRepo, ValidarMontoUseCase()),
         eliminarIngreso = EliminarIngresoUseCase(movimientoRepo),
-        aplicarGastoRemoto = AplicarGastoRemotoUseCase(movimientoRepo),
-        aplicarIngresoRemoto = AplicarIngresoRemotoUseCase(movimientoRepo),
         resolverConflictoGastoUsandoLocal = ResolverConflictoGastoUsandoLocalUseCase(
             movimientoRepo,
             ValidarMontoUseCase(),
@@ -508,8 +504,6 @@ private class FakeMovimientoRepository(
     val gastosEliminados = mutableListOf<Gasto>()
     val ingresosActualizados = mutableListOf<Ingreso>()
     val ingresosEliminados = mutableListOf<Ingreso>()
-    val gastosRemotosAplicados = mutableListOf<String>()
-    val ingresosRemotosAplicados = mutableListOf<String>()
     val gastosResueltosLocal = mutableListOf<Pair<Gasto, String>>()
     val ingresosResueltosLocal = mutableListOf<Pair<Ingreso, String>>()
     val gastosResueltosRemoto = mutableListOf<Pair<String, String>>()
@@ -540,14 +534,6 @@ private class FakeMovimientoRepository(
 
     override suspend fun eliminarIngreso(ingreso: Ingreso) {
         ingresosEliminados.add(ingreso)
-    }
-
-    override suspend fun aplicarGastoRemoto(id: String) {
-        gastosRemotosAplicados.add(id)
-    }
-
-    override suspend fun aplicarIngresoRemoto(id: String) {
-        ingresosRemotosAplicados.add(id)
     }
 
     override fun observeGastos(planId: String): Flow<List<Gasto>> =

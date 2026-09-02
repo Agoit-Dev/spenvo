@@ -26,8 +26,6 @@ import com.agoitdev.spenvo.domain.sync.ConflictoEdicion
 import com.agoitdev.spenvo.domain.sync.RegistroConflictosPendientes
 import com.agoitdev.spenvo.domain.usecase.ActualizarGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.ActualizarIngresoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarGastoRemotoUseCase
-import com.agoitdev.spenvo.domain.usecase.AplicarIngresoRemotoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearGastoUseCase
 import com.agoitdev.spenvo.domain.usecase.CrearIngresoUseCase
 import com.agoitdev.spenvo.domain.usecase.EliminarGastoUseCase
@@ -115,8 +113,6 @@ class HomeScreenTest {
         eliminarGasto = EliminarGastoUseCase(movimientoRepo),
         actualizarIngreso = ActualizarIngresoUseCase(movimientoRepo, ValidarMontoUseCase()),
         eliminarIngreso = EliminarIngresoUseCase(movimientoRepo),
-        aplicarGastoRemoto = AplicarGastoRemotoUseCase(movimientoRepo),
-        aplicarIngresoRemoto = AplicarIngresoRemotoUseCase(movimientoRepo),
         resolverConflictoGastoUsandoLocal = ResolverConflictoGastoUsandoLocalUseCase(
             movimientoRepo,
             ValidarMontoUseCase(),
@@ -293,8 +289,6 @@ private class FakeMovimientoRepositorioHomeScreen : MovimientoRepository {
     override suspend fun eliminarGasto(gasto: Gasto) = Unit
     override suspend fun actualizarIngreso(ingreso: Ingreso) = Unit
     override suspend fun eliminarIngreso(ingreso: Ingreso) = Unit
-    override suspend fun aplicarGastoRemoto(id: String) = Unit
-    override suspend fun aplicarIngresoRemoto(id: String) = Unit
     override fun observeGastos(planId: String): Flow<List<Gasto>> = flowOf(gastos.filter { it.planId == planId })
     override fun observeIngresos(planId: String): Flow<List<Ingreso>> = flowOf(ingresos.filter { it.planId == planId })
     override suspend fun resolverConflictoGastoUsandoLocal(gasto: Gasto, clave: String) = Unit

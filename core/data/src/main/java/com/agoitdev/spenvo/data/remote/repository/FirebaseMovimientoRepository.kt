@@ -121,16 +121,6 @@ class FirebaseMovimientoRepository @Inject constructor(
         }
     }
 
-    override suspend fun aplicarGastoRemoto(id: String) {
-        val data = firestore.collection(GASTOS_COLLECTION).document(id).get().await().data ?: return
-        gastoDao.upsert(GastoDto.fromData(data)?.toDomain()?.toEntity() ?: return)
-    }
-
-    override suspend fun aplicarIngresoRemoto(id: String) {
-        val data = firestore.collection(INGRESOS_COLLECTION).document(id).get().await().data ?: return
-        ingresoDao.upsert(IngresoDto.fromData(data)?.toDomain()?.toEntity() ?: return)
-    }
-
     @Suppress("TooGenericExceptionCaught")
     override suspend fun resolverConflictoGastoUsandoRemoto(id: String, clave: String) {
         val data = firestore.collection(GASTOS_COLLECTION).document(id).get().await().data
