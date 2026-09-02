@@ -216,6 +216,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **UI-THEME-001:** established Spenvo's Material 3 design-system foundation in
+  `:core:designsystem`: explicit Brand Light/Dark schemes, independent `ThemeMode` and `ColorMode`
+  axes with Brand defaults and pre-Android-12 dynamic fallback, a read-only sibling extended-color
+  layer with complete income/expense foreground-container pairs, the full baseline typography
+  scale, explicit shapes, and a deterministic four-variant preview catalog. Current movimiento
+  consumers now resolve semantic financial color pairs instead of importing raw colors. Contract
+  tests cover theme selection on SDK 30/31, typography, shapes, all extended roles, and focused
+  consumer mapping/color-pair behavior. Theme settings and persistence remain deferred.
 - **OSV-M801 (M8, CI half — done):** OSV-Scanner CI gate
   implemented and validated, both locally and against real GitHub Actions
   (`.github/workflows/osv-scanner-pr.yml`, `.github/workflows/osv-scanner-scheduled.yml`,

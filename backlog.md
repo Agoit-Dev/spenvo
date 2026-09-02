@@ -11,7 +11,7 @@ task's implementation departed from what its plan/design doc specified, note it 
 *No externally blocked tasks right now.*
 
 ## 🏃 In Progress
-*No active tasks right now.*
+*No tasks currently in progress.*
 
 ## 📋 To Do
 
@@ -40,6 +40,14 @@ task's implementation departed from what its plan/design doc specified, note it 
 *Nothing active right now.*
 
 ## ✅ Done
+- [x] **UI-THEME-001:** Established Delivery 1 of Spenvo's Material 3 design system: explicit Brand
+  Light/Dark schemes, independent luminosity and color-source configuration, stable financial
+  semantic colors, complete typography and shapes, a deterministic four-variant preview catalog,
+  theme contract tests, and migration/audit of current consumers. Focused consumer mapping and
+  color-pair resolver tests use the existing `:feature:movimientos` unit-test infrastructure. See
+  the approved [design](doc/designs/2026-09-02-spenvo-theming-design.md) and
+  [implementation plan](doc/plans/2026-09-02-spenvo-theming-implementation.md). User-facing theme
+  preferences and persistence remain deferred to Delivery 2.
 - [x] **OSV-M801:** OSV-Scanner CI gate (M8, CI half) — closed. PR #33 (`chore/m8-osv-scanner-ci` →
   `main`) merged with `OSV-M803`'s baseline triage; `OSV-M804` and `OSV-M805` (below) closed the
   remaining two gaps. See `doc/designs/2026-09-02-osv-scanner-ci-design.md`,

@@ -47,6 +47,10 @@ profile reachable from the whole app.*
 - [x] **Conflict State Persistence:** Evaluate migrating the in-memory `EdicionesPendientes` /
   `ConflictosPendientes` records to Room, to avoid losing state on process death. Closed by
   `ARCH-M501` — see `doc/designs/2026-09-01-conflictos-pendientes-room-design.md`.
+- [x] **Material 3 design-system foundation:** Delivered `UI-THEME-001` with explicit Brand
+  Light/Dark schemes, stable financial semantic colors, typography, shapes, previews, tests, and
+  current-consumer migration. Theme preference persistence and settings remain a later delivery;
+  per-category colors remain separately scoped by `FEAT-M402` / `FEAT-M403`.
 - [ ] **Product Evolution:** Evaluate adding customizable per-category color palettes (post-M4
   request).
 - [ ] **Phase 7 robustness (minor debt):** `ARCH-U801`, `ARCH-U802`, `UX-H902`, and `UX-H903` —

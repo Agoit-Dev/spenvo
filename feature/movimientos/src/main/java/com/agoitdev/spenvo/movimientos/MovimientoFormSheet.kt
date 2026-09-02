@@ -16,9 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -317,16 +319,17 @@ private fun SelectorCategoria(
     LazyRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(categorias, key = { it.id }) { categoria ->
             val seleccionada = categoria.id == categoriaSeleccionada
+            val colors = resolveSelectorCategoriaColors(
+                selected = seleccionada,
+                enabled = habilitado,
+                colorScheme = MaterialTheme.colorScheme,
+            )
             Surface(
                 onClick = { onCategoriaChange(categoria.id) },
                 enabled = habilitado,
                 shape = CircleShape,
-                color = if (seleccionada) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-                contentColor = LocalContentColor.current.copy(alpha = if (habilitado) 1f else 0.38f),
+                color = colors.container,
+                contentColor = colors.content,
                 modifier = Modifier.size(48.dp),
             ) {
                 Column(
@@ -340,4 +343,25 @@ private fun SelectorCategoria(
         }
     }
 }
+
+@Immutable
+internal data class SelectorCategoriaColors(
+    val container: Color,
+    val content: Color,
+)
+
+internal fun resolveSelectorCategoriaColors(
+    selected: Boolean,
+    enabled: Boolean,
+    colorScheme: ColorScheme,
+): SelectorCategoriaColors {
+    val container = if (selected) colorScheme.primaryContainer else colorScheme.surfaceVariant
+    val content = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant
+    return SelectorCategoriaColors(
+        container = container,
+        content = content.copy(alpha = if (enabled) 1f else DISABLED_CONTENT_ALPHA),
+    )
+}
+
+private const val DISABLED_CONTENT_ALPHA = 0.38f
 

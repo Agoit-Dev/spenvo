@@ -17,6 +17,18 @@ tests before committing.
    deny-by-default rules, secrets out of the repo, dependency locking.
 5. **Additive i18n**: Spanish default, English keys, translations via `values-XX`.
 
+## Design system and theming
+
+`:core:designsystem` extends Material 3 instead of replacing it. `SpenvoTheme` installs the
+Material color scheme, typography, and shapes; a sibling, read-only `SpenvoTheme.extendedColors`
+tree provides complete income and expense foreground/container pairs for financial semantics.
+
+Luminosity (`ThemeMode.SYSTEM` / `LIGHT` / `DARK`) and color source (`ColorMode.BRAND` / `DYNAMIC`)
+are independent axes. The defaults are System luminosity and Brand colors. Dynamic Material color
+is used only on Android 12+ and falls back automatically to the matching Brand Light/Dark scheme
+below Android 12; financial semantic colors remain stable in either color mode. User-facing theme
+settings and DataStore persistence are intentionally deferred to a later delivery.
+
 ## Layers and modules
 
 ```

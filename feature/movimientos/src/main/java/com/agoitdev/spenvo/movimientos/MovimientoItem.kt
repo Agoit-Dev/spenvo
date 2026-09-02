@@ -23,20 +23,24 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.agoitdev.spenvo.designsystem.theme.IngresoColor
+import com.agoitdev.spenvo.designsystem.theme.SpenvoExtendedColors
+import com.agoitdev.spenvo.designsystem.theme.SpenvoTheme
 import com.agoitdev.spenvo.domain.model.Categoria
 import com.agoitdev.spenvo.domain.model.Ingreso
 import com.agoitdev.spenvo.domain.model.Monto
@@ -52,7 +56,11 @@ internal fun MovimientoItem(
     modifier: Modifier = Modifier,
 ) {
     val esIngreso = movimiento is Ingreso
-    val colorMonto = if (esIngreso) IngresoColor else MaterialTheme.colorScheme.error
+    val colors = resolveMovimientoItemColors(
+        movimiento = movimiento,
+        extendedColors = SpenvoTheme.extendedColors,
+        colorScheme = MaterialTheme.colorScheme,
+    )
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -63,15 +71,11 @@ internal fun MovimientoItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(imageVector = iconoParaMovimiento(categoria?.icono), contentDescription = null)
-            }
+            MovimientoCategoryIcon(
+                iconKey = categoria?.icono,
+                containerColor = colors.categoryIconContainer,
+                contentColor = colors.categoryIconContent,
+            )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -93,18 +97,61 @@ internal fun MovimientoItem(
                 Icon(
                     imageVector = Icons.Filled.Warning,
                     contentDescription = stringResource(R.string.conflict_badge_description),
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = colors.conflict,
                 )
             }
             Spacer(Modifier.width(8.dp))
             Text(
                 text = (if (esIngreso) "+ " else "- ") + formatearMonto(movimiento.monto),
                 style = MaterialTheme.typography.titleMedium,
-                color = colorMonto,
+                color = colors.amount,
             )
         }
     }
 }
+
+@Composable
+private fun MovimientoCategoryIcon(
+    iconKey: String?,
+    containerColor: Color,
+    contentColor: Color,
+) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(containerColor),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = iconoParaMovimiento(iconKey),
+            contentDescription = null,
+            tint = contentColor,
+        )
+    }
+}
+
+@Immutable
+internal data class MovimientoItemColors(
+    val amount: Color,
+    val categoryIconContainer: Color,
+    val categoryIconContent: Color,
+    val conflict: Color,
+)
+
+internal fun resolveMovimientoItemColors(
+    movimiento: Movimiento,
+    extendedColors: SpenvoExtendedColors,
+    colorScheme: ColorScheme,
+): MovimientoItemColors = MovimientoItemColors(
+    amount = colorMontoPara(movimiento, extendedColors),
+    categoryIconContainer = colorScheme.surfaceVariant,
+    categoryIconContent = colorScheme.onSurfaceVariant,
+    conflict = colorScheme.error,
+)
+
+internal fun colorMontoPara(movimiento: Movimiento, colors: SpenvoExtendedColors): Color =
+    if (movimiento is Ingreso) colors.income else colors.expense
 
 private const val CENTIMOS_POR_UNIDAD = 100.0
 
