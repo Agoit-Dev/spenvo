@@ -43,10 +43,11 @@ are decided. Suggested set:
 
 Spenvo is under active development.
 
-- **Latest completed milestone:** M6 — Home dashboard and adaptive list-detail UI.
-- **Current milestone:** M7 — Profile.
-- **Pending manual setup:** verification of Auth sign-in providers and App Check
-  in the Firebase console.
+- **Latest completed milestone:** M8 — OSV-Scanner CI gate (baseline triaged,
+  required status check, scheduled-scan issue lifecycle validated) and
+  optional MFA discovery (deliberately deferred, not implemented).
+- **Current milestone:** none in progress; remaining work is unassigned
+  backlog debt (see `backlog.md`).
 
 See the [changelog](CHANGELOG.md) for completed work and implementation details.
 

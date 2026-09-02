@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Kotlin, Jetpack Compose (Material 3), Navigation 3, Hilt, Room+SQLCipher,
+  Coroutines/Flow, kotlinx-serialization, Firebase (Auth, Firestore, Storage, App Check).
+  Architecture: Multi-module Clean Architecture (:app, :core:domain, :core:data, :core:security,
+  :core:designsystem, :feature:cuenta, :feature:planes, :feature:movimientos, :feature:categorias).
+  Testing: JUnit4 + kotlinx-coroutines-test, hand-written fakes (no MockK), Robolectric +
+  ui-test-junit4 for Compose UI tests (feature:planes, feature:cuenta only so far). Strict TDD.
+  Style: Spanish UI strings (values/ default, values-en/ English), English code/docs, deny-by-default
+  Firestore rules, optimistic Room-first writes reconciled against Firestore.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Flag any billing/infra decision (e.g. Firebase plan upgrades) as an explicit user sign-off item
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns
+      - Never log amounts, emails, or credentials
+      - core:domain must never import androidx.room or com.google.firebase
+    tdd: true
+    test_command: "./gradlew testDebugUnitTest"
+  verify:
+    test_command: "./gradlew testDebugUnitTest"
+    build_command: "./gradlew :app:assembleDebug"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

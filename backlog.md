@@ -19,6 +19,11 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable
   devices.
+  **Phone verification complete:** PASS on Pixel_4 in portrait and both landscape orientations,
+  using gesture and three-button navigation; all four tabs and IME transitions showed no overlap,
+  accumulated padding, or layout jump. The initial landscape black strip was confirmed as an
+  in-progress rotation frame, not a defect. Foldable hinge/posture verification remains pending
+  because no foldable environment was available.
 
 ### 🎨 Minor UX (Low Priority)
 *Findings from front 3's (profile accessible) final review — not blocking, not yet addressed.*
@@ -32,7 +37,7 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **FEAT-M403:** Add a basic color picker to the category creation/edit `ModalBottomSheet`.
 
 ## 🧪 In Review / QA
-*No tasks pending review this session.*
+*Nothing active right now.*
 
 ## ✅ Done
 - [x] **UI-THEME-001:** Established Delivery 1 of Spenvo's Material 3 design system: explicit Brand
@@ -43,6 +48,54 @@ task's implementation departed from what its plan/design doc specified, note it 
   the approved [design](doc/designs/2026-09-02-spenvo-theming-design.md) and
   [implementation plan](doc/plans/2026-09-02-spenvo-theming-implementation.md). User-facing theme
   preferences and persistence remain deferred to Delivery 2.
+- [x] **OSV-M801:** OSV-Scanner CI gate (M8, CI half) — closed. PR #33 (`chore/m8-osv-scanner-ci` →
+  `main`) merged with `OSV-M803`'s baseline triage; `OSV-M804` and `OSV-M805` (below) closed the
+  remaining two gaps. See `doc/designs/2026-09-02-osv-scanner-ci-design.md`,
+  `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
+- [x] **OSV-M804:** `scan` (from `osv-scanner-pr.yml`) is now a required status check on `main`'s
+  branch protection (`required_status_checks.checks: [{context: "scan"}]`, `enforce_admins: false`,
+  no required reviews/push restrictions added — `main` had no protection rule at all before this,
+  and only what `OSV-M804` asked for was added). Verified via the GitHub API response.
+- [x] **OSV-M805:** Ran `osv-scanner-scheduled.yml` for real, end-to-end, on a disposable branch
+  (exception temporarily commented out to produce one real blocking finding) plus a final run on
+  `main`: create (run 1) → update (run 2, same open issue, one new comment, no duplicate) → close
+  (run 3 on `main`, exception intact). Verified the Issue marker, labels, comment bodies, and final
+  `closed`/`COMPLETED` state via the GitHub API.
+  **Deviation:** the first live attempt surfaced two real defects, both fixed and merged before
+  re-validating: (1) the repo had no `security`/`dependencies` labels, so `gh issue create` crashed
+  the whole script uncaught before it could create or close anything — labels created directly, no
+  code change needed; (2) `planIssueActions` planned one create/update per raw OSV-Scanner finding
+  row instead of per unique vulnerability, so a single blocking finding (2 resolved versions × 9
+  module lockfiles) created **18 duplicate issues** in one run — fixed via TDD in a separate PR
+  (#53, `consolidateBlockingFindings`, 5 new `node:test` cases) rather than folded into this
+  validation. Also live-discovered and separately fixed (PR #54, same pattern as `OSV-M803`'s `qs`
+  finding): `fast-uri` had a fresh advisory published on osv.dev mid-session
+  (GHSA-jqff-g426-hqxp and 3 aliases), remediated via `overrides."fast-uri" = ">=3.1.6"`.
+- [x] **OSV-M803:** Triaged the 463 blocking rows / 51 unique vulnerabilities from the PR #33
+  baseline. 26 justified, individually-reasoned `osv-scanner.toml` exceptions (23 dormant
+  `io.netty:*` findings limited to AGP's unused `unified-test-platform-*` tooling,
+  `ignoreUntil = 2026-12-01`; 3 `org.bouncycastle:*` findings live on `lintDebug`/
+  `testDebugUnitTest` classpaths, `ignoreUntil = 2026-10-01`, each citing the exact vulnerable API).
+  2 remediated directly instead of exempted: `rules-tests/package.json` `overrides` pin `uuid` to
+  `>=11.1.1` and `qs` to `>=6.16.0`; verified via `npm ls` (no `invalid` entries), a full
+  `rules-tests` `npm test` run (76/76 passing against the Firestore/Storage emulators), and a
+  re-scan showing 0 blocking rows (`osv-gate.mjs --mode=pr` exits 0).
+- [x] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — **Deferred**,
+  not implemented. `sdd-explore` (`openspec/changes/m8-optional-mfa/exploration.md`) found that
+  enabling Firebase Authentication with Identity Platform (required for any MFA factor) requires
+  no migration and can be done while staying on the free Spark plan; it introduces a 3,000-DAU
+  quota and enables extra features for the whole project. TOTP has no per-use charge; SMS would
+  require Blaze and per-message billing. The deferral is **not economic**: MFA still needs
+  email verification implemented first, and adds enrollment/challenge/recovery flows whose
+  development cost and complexity aren't justified for the current prototype. Auth architecture
+  (`AuthRepository`, `Sesion`, `:feature:cuenta`) is left as-is, with no speculative MFA
+  abstractions added. Reconsider when any of: public launch, real sensitive user data at stake,
+  regulatory requirement, paying users, or scope/complexity dropping enough to justify it. With
+  `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` already done, this closes M8.
+  **Deviation:** the live re-scan (osv.dev is queried live, not embedded in the pinned scanner
+  image) surfaced 2 more blocking findings not present in the original PR #33 snapshot — `qs`
+  GHSA-4mjr-xmp4-gh2g/GHSA-x5fp-wj9c-mxmx, published in the gap between the two scans. Handled the
+  same way (remediated via override, not exempted) rather than deferring to a follow-up task.
 - [x] **BUILD-001:** Narrowed `:app`'s kotlinx-serialization dependency from `json` to `core`, which
   is all its `@Serializable` Navigation 3 routes require; kept JSON scoped to `:core:data`,
   regenerated `app/gradle.lockfile`, and verified the project successfully.

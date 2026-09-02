@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **OSV-M803 follow-up:** `fast-uri` (npm, transitive via `firebase-tools` → `ajv`, `rules-tests`
+  devDependency only) resolved to `3.1.5`, inside the vulnerable `2.3.1–2.4.4` / `3.0.0–3.1.5` /
+  `4.0.0–4.1.2` ranges for GHSA-jqff-g426-hqxp/GHSA-5jgf-p345-68v8/GHSA-f65p-4m7j-42xc/
+  GHSA-fph4-wmhf-6fwf (CVE-2026-76172: percent-encoded URI scheme characters aren't re-escaped or
+  validated, letting a crafted URL normalize to a different host than it appeared to parse to —
+  host-confusion, CVSS 7.5). Published live on osv.dev after the OSV-M803 baseline scan (same
+  live-database-drift pattern as `qs`). `rules-tests/package.json` now constrains
+  `overrides."fast-uri" = ">=3.1.6"`; resolves to `4.1.4` in practice. Verified via `npm ls
+  fast-uri --all` (no `invalid`), a full `rules-tests` `npm test` run (76/76 passing), and a
+  re-scan confirming all 4 advisories gone and 0 blocking rows.
+- **OSV-M805 follow-up:** `planIssueActions` (`.github/scripts/osv-gate.mjs`) planned one GitHub Issue
+  create/update per raw OSV-Scanner finding row instead of per unique vulnerability, so a single
+  logical finding could fan out into many duplicate issues in one run — a package resolving to
+  multiple versions across configurations within one lockfile, and/or the same package+vuln
+  repeating across this repo's 9 Android module lockfiles, both multiply the row count for the
+  identical `issueDedupeKey`. Caught live during OSV-M805 validation: one blocking finding
+  (`io.netty:netty-handler`, 2 resolved versions × 9 lockfiles) created 18 duplicate `[security]`
+  issues in a single scheduled-workflow run. Added `consolidateBlockingFindings` to collapse every
+  row sharing a dedupe key into one entry before planning create/update actions, carrying every
+  row's version/source lockfile as an `occurrences` list so the resulting issue body still shows
+  every affected location — no evidence lost, exactly one create-or-update per unique key. Also
+  discovered and fixed in the same pass: the repo had no `security`/`dependencies` labels, so
+  `gh issue create --label security` crashed the whole script uncaught (`execFileSync` throwing on
+  a non-zero exit) before creating or closing anything — labels now exist; `applyIssueActions`
+  still has no defensive handling for a missing label, since the label existing is the actual fix.
+  5 new `node:test` cases (`osv-gate.test.mjs`) reproduce the duplication and the evidence-loss risk.
 - **ARCH-M501 follow-up:** `resolverConflictoGastoUsandoRemoto`/`resolverConflictoIngresoUsandoRemoto`
   cleared the conflict record but never the pending-edit marker (`registroEdicionesPendientes`) that
   caused it — a review of the ARCH-M501 slice caught this before it shipped. The stale marker
@@ -105,6 +131,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chance — safe to re-run in full since `invitarMiembro`/`eliminar` are both keyed by deterministic
   document ids.
 
+### Docs
+
+- **OSV-M802 (M8, MFA half) — deferred, not implemented.** `sdd-explore` discovery
+  (`openspec/changes/m8-optional-mfa/`) found that enabling Firebase Authentication with Identity
+  Platform (required for any MFA factor) needs no migration and stays free on Spark; it introduces
+  a 3,000-DAU quota and enables extra project-wide features. TOTP has no per-use charge; SMS would
+  require Blaze and per-message billing. The deferral is **not economic**: MFA still needs email
+  verification implemented first, and adds enrollment/challenge/recovery flows whose development
+  cost and complexity aren't justified for the current MVP. Reconsider on public launch, real
+  sensitive user data, a regulatory requirement, paying users, or scope/complexity dropping enough
+  to justify it. No code changed; auth architecture left as-is with no speculative MFA
+  abstractions. With the osv-scanner-in-CI half (`OSV-M801`/`803`/`804`/`805`) already done, this
+  closes M8. See `backlog.md`, `ROADMAP.md`.
+
 ### Removed
 
 - **ARCH-M501 cleanup:** deleted `AplicarGastoRemotoUseCase`/`AplicarIngresoRemotoUseCase`, fully
@@ -184,6 +224,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   consumers now resolve semantic financial color pairs instead of importing raw colors. Contract
   tests cover theme selection on SDK 30/31, typography, shapes, all extended roles, and focused
   consumer mapping/color-pair behavior. Theme settings and persistence remain deferred.
+- **OSV-M801 (M8, CI half — done):** OSV-Scanner CI gate
+  implemented and validated, both locally and against real GitHub Actions
+  (`.github/workflows/osv-scanner-pr.yml`, `.github/workflows/osv-scanner-scheduled.yml`,
+  `.github/scripts/osv-classify.mjs`, `.github/scripts/osv-gate.mjs`, 40 `node:test` cases). Fail-
+  closed severity classification (`CRITICAL`/`HIGH`/`UNKNOWN` block; a finding this system can't
+  classify is treated as risk, never a pass), strict scan-output normalization (no silent false-
+  green on partial/incomplete JSON), and a scheduled-scan GitHub Issue lifecycle that only ever
+  closes an issue after a fully successful scan+parse. See
+  `doc/designs/2026-09-02-osv-scanner-ci-design.md` and
+  `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
+  **Validated, not yet operative on `main`:** draft PR #33 (`chore/m8-osv-scanner-ci` → `main`)
+  triggered the real `osv-scanner-pr.yml` workflow, which reproduced the exact same result as the
+  local dry-run — 463 blocking rows (CRITICAL/HIGH/UNKNOWN) across 51 unique vulnerabilities in
+  this repo's current transitive dependencies (e.g. `org.bouncycastle:bcprov-jdk18on`,
+  `io.netty:netty-codec*`). The PR failing red is the gate correctly reporting real, pre-existing
+  dependency debt — not a defect in the gate itself. Before this can be marked done: the baseline
+  findings need triage/remediation or a documented, expiring `osv-scanner.toml` exception; the
+  `scan` job needs to become a required status check on `main`'s branch protection (failing today
+  doesn't yet block merges); and `osv-scanner-scheduled.yml`'s Issue-creation path needs a real
+  post-merge validation run (deliberately not exercised yet against this baseline — it would open
+  dozens of issues).
+- **OSV-M803:** triaged the 463-blocking-row baseline above. 27 unique CRITICAL/HIGH/UNKNOWN
+  findings (re-verified live against osv.dev, not just the PR #33 snapshot — 2 more had been
+  published since: `qs` GHSA-4mjr-xmp4-gh2g/GHSA-x5fp-wj9c-mxmx) trace to 9 transitive packages,
+  none present on any Android module's `debugRuntimeClasspath`/`releaseRuntimeClasspath` (verified
+  via every module's `gradle.lockfile` configuration tags plus `./gradlew :app:dependencies`):
+  - **26 documented `osv-scanner.toml` exceptions**, each citing the specific vulnerable API: 23
+    `io.netty:*` findings are dormant — pulled only via AGP's `unified-test-platform-*` Android
+    Test Platform tooling, and no task that loads it (`connectedAndroidTest`, a Gradle Managed
+    Device) is ever invoked in this repo (`ignoreUntil = 2026-12-01`, matching the design doc's own
+    cadence). 3 `org.bouncycastle:*` findings (GOST28147 CTR keystream reuse — CRITICAL;
+    `LDAPStoreHelper` LDAP injection; PKIX-draft `CompositeVerifier` empty-signature-sequence
+    bypass) genuinely load into JVMs this repo runs (`androidLintTool` via `lintDebug`,
+    Robolectric's `{strictly 1.81}`-pinned `bcprov-jdk18on` via `testDebugUnitTest` — both required
+    gates), so they get a shorter `ignoreUntil = 2026-10-01` instead.
+  - **2 remediated directly**, no exception needed: `rules-tests/package.json` now constrains
+    `overrides.uuid = ">=11.1.1"` (GHSA-w5hq-g745-h8pq, buffer-bounds check in `v3`/`v5`/`v6`) and
+    `overrides.qs = ">=6.16.0"` (the two findings above), both transitive via `firebase-tools` — the
+    minimum satisfying each fixed line; the lockfile pins the concrete resolved versions
+    (`uuid@11.1.1` for `gaxios`, `uuid@14.0.2` for `universal-analytics`, `qs@6.16.0` throughout).
+    Verified via `npm ls` (no `invalid` entries — the first `uuid` attempt used too narrow a range
+    and needed widening), a full `rules-tests` `npm test` run against the Firestore/Storage
+    emulators (76/76 passing), and a re-scan confirming both advisories are gone and 0 blocking
+    rows remain (`node .github/scripts/osv-gate.mjs --mode=pr` exits 0).
+  `OSV-M804` (required status check) and `OSV-M805` (scheduled-scan post-merge validation) are
+  still open — `OSV-M801` can close once both land.
+- **OSV-M804 + OSV-M805 — `OSV-M801` (M8, CI half) now fully closed:** `scan` is a required status
+  check on `main`'s branch protection (`main` had no protection rule at all before this; only what
+  `OSV-M804` asked for was added — no required reviews or push restrictions). The scheduled
+  workflow's Issue create/update/close lifecycle was validated end-to-end for real on a disposable
+  branch (one exception temporarily disabled to produce a genuine blocking finding): create → update
+  (same issue, one new comment, no duplicate) → close (once the exception was restored). That first
+  live run also caught and fixed two real defects before the validation could pass: the repo had no
+  `security`/`dependencies` labels (`gh issue create` crashed uncaught before creating or closing
+  anything — labels created directly), and `planIssueActions` created 18 duplicate issues for one
+  blocking finding (see the `planIssueActions`/`consolidateBlockingFindings` fix above). M8's MFA
+  half (`OSV-M802`) remains open and out of scope here.
 - Login real + logout sin recreación anónima automática (front 2/3): real email/password
   sign-in and password recovery replace the placeholder registration-only flow. New
   `AuthRepository.iniciarSesionConEmail`/`enviarRecuperacionPassword`, backed by

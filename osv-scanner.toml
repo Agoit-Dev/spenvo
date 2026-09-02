@@ -1,0 +1,162 @@
+# OSV-Scanner ignore list — see doc/designs/2026-09-02-osv-scanner-ci-design.md.
+#
+# NOT auto-discovered for lockfiles outside this directory: OSV-Scanner only auto-applies a config
+# file placed in the SAME directory as the scanned lockfile, and does not propagate it to child
+# directories (google.github.io/osv-scanner/configuration/). Every scan invocation in this repo's
+# workflows passes --config=/repo/osv-scanner.toml explicitly (see Tasks 10-11) so this one file
+# governs every lockfile regardless of which subdirectory it lives in.
+#
+# Every entry needs: the exact vulnerability ID, a reason with the risk assessment, a relatively
+# short ignoreUntil, and a reference to the authorizing issue/decision when one exists. When
+# ignoreUntil passes, OSV-Scanner treats the finding as active again automatically.
+#
+# OSV-M803 baseline triage (2026-09-02, backlog.md). 26 exceptions below cover the CRITICAL/HIGH/
+# UNKNOWN findings from the real PR #33 osv-scanner-pr.yml run (463 blocking rows / 27 unique
+# blocking vuln IDs) that trace to 9 transitive packages never present on any Android module's
+# debugRuntimeClasspath/releaseRuntimeClasspath — verified via every module's gradle.lockfile
+# configuration tags plus `./gradlew :app:dependencies`. A 27th (uuid, GHSA-w5hq-g745-h8pq, npm,
+# rules-tests-only) is remediated directly via an npm override instead — see rules-tests/package.json.
+#
+# --- Group A: io.netty (23 IDs) — pulled only via AGP's unified-test-platform-* Android Test
+# Platform tooling config, present on every Android module's lockfile because AGP wires that config
+# into every module by default. No task that loads it (connectedAndroidTest, a Gradle Managed
+# Device) is ever invoked in this repo: no match for connectedAndroidTest/connectedCheck/
+# managedDevice in any build.gradle.kts or .github/workflows/*.yml. These Netty classes never load
+# into any JVM this project runs. ignoreUntil set to the design doc's own ~3-month cadence.
+
+[[IgnoredVulns]]
+id = "GHSA-3qp7-7mw8-wx86"
+ignoreUntil = 2026-12-01
+reason = "netty-handler IPv6 subnet filter bypass — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-4g8c-wm8x-jfhw"
+ignoreUntil = 2026-12-01
+reason = "netty-handler SslHandler native-SSLEngine crash on malformed packets — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-558v-64gr-wgg4"
+ignoreUntil = 2026-12-01
+reason = "netty-codec Bzip2Decoder infinite loop / event-loop thread hang — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-57rv-r2g8-2cj3"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http HttpClientCodec response desynchronization — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-6jqx-86gh-f27w"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http SPDY SETTINGS frame unbounded settings-map growth — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-93wv-jw9v-4972"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http2 HTTP/2 decompression ByteBuf refcount leak (direct-memory OOM DoS) — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-c653-97m9-rcg9"
+ignoreUntil = 2026-12-01
+reason = "netty-handler wrapped plain TrustManager silently disables hostname verification — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-f6hv-jmp6-3vwv"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http/-http2 HttpContentDecompressor maxAllocation bypass (br/zstd/snappy decompression-bomb DoS) — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-jppx-w49h-x2qq"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http SpdyHttpDecoder ByteBuf reference leak on RST_STREAM (native memory exhaustion) — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-mj4r-2hfc-f8p6"
+ignoreUntil = 2026-12-01
+reason = "netty-codec Lz4FrameDecoder resource exhaustion — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-mvh2-crg5-v77c"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http SPDY zlib header block keeps expanding past maxHeaderSize truncation — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-prj3-ccx8-p6x4"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http2 MadeYouReset HTTP/2 DDoS — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-pwqr-wmgm-9rr8"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http HTTP request smuggling via chunked-extension quoted-string parsing — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-w9fj-cfpg-grvv"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http2 CONTINUATION frame flood DoS via zero-byte frame bypass — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-x4gw-5cx5-pgmh"
+ignoreUntil = 2026-12-01
+reason = "netty-handler SNI handler pre-allocates up to 16 MiB from 9 attacker bytes — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-xpw8-rcwv-8f8p"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http2 HTTP/2 Rapid Reset attack — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-3p8m-j85q-pgmj"
+ignoreUntil = 2026-12-01
+reason = "netty-codec decoders vulnerable to zip-bomb-style DoS — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-45q3-82m4-75jr"
+ignoreUntil = 2026-12-01
+reason = "netty-handler-proxy HTTP header injection via HttpProxyHandler disabled validation — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-4mp9-239f-g9hg"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http WebSockets V07/V08 handshaker missing Connection/Upgrade validation — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-563q-j3cm-6jxm"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http2 HTTP/2 Reset attack with alternate on-the-wire signature — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-c69g-56f8-xwqj"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http2 missing Host-header deduplication in HTTP/2→HTTP/1.x translation (request-routing bypass) — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-q4f6-jm68-57ww"
+ignoreUntil = 2026-12-01
+reason = "netty-codec-http unbounded per-connection queue growth via HTTP/1.1 pipelining (DoS) — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-xq3w-v528-46rv"
+ignoreUntil = 2026-12-01
+reason = "netty-common Windows-specific DoS — dormant, unified-test-platform-only (see Group A note). Ref: backlog.md OSV-M803."
+
+# --- Group B: org.bouncycastle (3 IDs) — unlike Group A, these ARE on classpaths this repo
+# actively executes: androidLintTool (lintDebug, required gate) for the 1.79 line, and Robolectric
+# 4.16.1's {strictly 1.81}-pinned shadows-framework dependency (testDebugUnitTest, required gate)
+# for the 1.81 line. Neither Lint's local-source analysis nor Robolectric's Android-framework
+# shadows call the specific vulnerable BouncyCastle API named per-entry below with attacker-
+# controlled input, but the code is genuinely loaded — shorter ignoreUntil than Group A.
+
+[[IgnoredVulns]]
+id = "GHSA-574f-3g2m-x479"
+ignoreUntil = 2026-10-01
+reason = "CRITICAL — bcprov-jdk18on's GOST28147 engine in CTR mode reuses keystream after 255 blocks, weakening confidentiality of GOST-encrypted data. Live on androidLintTool's 1.79 classpath and Robolectric's strictly-pinned 1.81 test classpath, but neither Lint's static analysis nor Robolectric's shadow framework invokes the GOST28147 engine. Short window given CRITICAL rating. Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-c3fc-8qff-9hwx"
+ignoreUntil = 2026-10-01
+reason = "bcprov-jdk18on's LDAPStoreHelper (CertStore/CRLDistPoint LDAP-fetch helper) is vulnerable to LDAP injection, CWE-90, affects >=1.74 <1.84. Live on androidLintTool's 1.79 classpath and Robolectric's strictly-pinned 1.81 test classpath; neither path calls LDAPStoreHelper with attacker-controlled input. Ref: backlog.md OSV-M803."
+
+[[IgnoredVulns]]
+id = "GHSA-wg6q-6289-32hp"
+ignoreUntil = 2026-10-01
+reason = "bcpkix-jdk18on's PKIX-draft CompositeVerifier accepts an empty signature sequence as valid — a composite/hybrid signature-verification bypass, not a weak encryption algorithm. Live only on androidLintTool's 1.79 classpath during lintDebug; Lint never performs composite-signature verification. Ref: backlog.md OSV-M803."
