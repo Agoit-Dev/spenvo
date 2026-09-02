@@ -12,12 +12,18 @@ phases:
   propose:
     status: deferred
     decision: |
-      User decision 2026-09-02: defer optional MFA for the current MVP stage rather than accept
-      the Firebase Identity Platform/Blaze billing upgrade now. Not indefinitely pending — treated
-      as a closed, documented decision (backlog.md, ROADMAP.md, CHANGELOG.md). Reconsider on:
-      public launch, real sensitive user data at stake, a regulatory requirement, paying users, or
-      a lower-cost MFA option becoming available. M8 closes with this deferral as its outcome; no
-      further SDD phases run for this change unless one of the triggers above reopens it.
+      User decision 2026-09-02: defer optional MFA for the current MVP stage. Corrected basis (an
+      earlier draft wrongly claimed a mandatory Blaze billing upgrade): enabling Firebase
+      Authentication with Identity Platform is a free switch, not a mandatory Blaze cost for TOTP,
+      but it changes the project's operational limits platform-wide (Spark's free-auth allowance
+      drops from 50,000 MAU to a 3,000-DAU cap; SMS specifically does require Blaze + per-message
+      billing). Deferred because that operational change, plus the missing email-verification
+      prerequisite, plus MFA's own state-machine/recovery/UX surface, don't earn their keep at the
+      current prototype stage. Not indefinitely pending — treated as a closed, documented decision
+      (backlog.md, ROADMAP.md, CHANGELOG.md). Reconsider on: public launch, real sensitive user
+      data at stake, a regulatory requirement, paying users, or a lower-cost MFA option becoming
+      available. M8 closes with this deferral as its outcome; no further SDD phases run for this
+      change unless one of the triggers above reopens it.
   spec: { status: not_started }
   design: { status: not_started }
   tasks: { status: not_started }

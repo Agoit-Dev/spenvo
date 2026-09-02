@@ -69,13 +69,18 @@ task's implementation departed from what its plan/design doc specified, note it 
   re-scan showing 0 blocking rows (`osv-gate.mjs --mode=pr` exits 0).
 - [x] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — **Deferred**,
   not implemented. `sdd-explore` (`openspec/changes/m8-optional-mfa/exploration.md`) found MFA
-  (any factor, including TOTP) requires upgrading Firebase to Identity Platform (Blaze plan), plus
-  a currently-missing email-verification prerequisite. Explicit product decision: cost/provider
-  overhead disproportionate for the current MVP stage — deferred, not indefinitely pending.
-  Auth architecture (`AuthRepository`, `Sesion`, `:feature:cuenta`) is left as-is, with no
-  speculative MFA abstractions added. Reconsider when any of: public launch, real sensitive user
-  data at stake, regulatory requirement, paying users, or a lower-cost MFA option becomes
-  available. With `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` already done, this closes M8.
+  (any factor) requires enabling Firebase Authentication with Identity Platform — a free switch,
+  not a mandatory Blaze cost for TOTP, but one that changes the project's operational limits
+  platform-wide (Spark's free-auth allowance drops from 50,000 MAU to a 3,000-DAU cap; SMS
+  specifically does require Blaze + per-message billing). Explicit product decision to defer, not
+  indefinitely pending: activating Identity Platform is still a project-wide operational change,
+  email verification (a hard MFA prerequisite) isn't implemented yet, MFA adds real state-machine/
+  recovery/UX surface, and none of that earns its keep at the current prototype stage — with
+  potential future cost (Blaze past the free tier, or if SMS is ever added) but no cost mandatory
+  today for TOTP-only. Auth architecture (`AuthRepository`, `Sesion`, `:feature:cuenta`) is left
+  as-is, with no speculative MFA abstractions added. Reconsider when any of: public launch, real
+  sensitive user data at stake, regulatory requirement, paying users, or a lower-cost MFA option
+  becomes available. With `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` already done, this closes M8.
   **Deviation:** the live re-scan (osv.dev is queried live, not embedded in the pinned scanner
   image) surfaced 2 more blocking findings not present in the original PR #33 snapshot — `qs`
   GHSA-4mjr-xmp4-gh2g/GHSA-x5fp-wj9c-mxmx, published in the gap between the two scans. Handled the

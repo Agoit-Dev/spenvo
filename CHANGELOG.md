@@ -134,14 +134,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - **OSV-M802 (M8, MFA half) — deferred, not implemented.** `sdd-explore` discovery
-  (`openspec/changes/m8-optional-mfa/`) found that any Firebase MFA factor (TOTP or SMS) requires
-  upgrading the project to Firebase Authentication with Identity Platform (Blaze billing plan),
-  plus a currently-missing email-verification prerequisite. Explicit product decision: this
-  cost/provider overhead is disproportionate for the current MVP stage. Deferred, not indefinitely
-  pending — reconsider on public launch, real sensitive user data, a regulatory requirement, paying
-  users, or a lower-cost MFA option. No code changed; auth architecture left as-is with no
-  speculative MFA abstractions. With the osv-scanner-in-CI half (`OSV-M801`/`803`/`804`/`805`)
-  already done, this closes M8. See `backlog.md`, `ROADMAP.md`.
+  (`openspec/changes/m8-optional-mfa/`) found that any Firebase MFA factor requires enabling
+  Firebase Authentication with Identity Platform — a free switch, not a mandatory Blaze cost for
+  TOTP, but one that changes the project's operational limits platform-wide (Spark's free-auth
+  allowance drops from 50,000 MAU to a 3,000-DAU cap; SMS specifically does require Blaze +
+  per-message billing). Plus a currently-missing email-verification prerequisite. Explicit product
+  decision: that operational change, the missing prerequisite, and MFA's own
+  state-machine/recovery/UX surface don't earn their keep for the current MVP stage — deferred, not
+  indefinitely pending, and not because of a mandatory billing cost. Reconsider on public launch,
+  real sensitive user data, a regulatory requirement, paying users, or a lower-cost MFA option. No
+  code changed; auth architecture left as-is with no speculative MFA abstractions. With the
+  osv-scanner-in-CI half (`OSV-M801`/`803`/`804`/`805`) already done, this closes M8. See
+  `backlog.md`, `ROADMAP.md`.
 
 ### Removed
 

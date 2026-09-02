@@ -21,13 +21,20 @@ Firestore roles (`firestore.rules`) are per-plan documents (`owner(3) > admin(2)
 viewer(0)`) keyed by Firebase Auth `uid`. MFA in Firebase Auth is a property of the `FirebaseUser`
 (account-level), fully decoupled from plan membership — confirmed via rules structure.
 
-Firebase Auth Android MFA support (verified against official docs, Sept 2026): both TOTP and SMS
-second factors require upgrading the Firebase project to **"Firebase Authentication with Identity
-Platform"** (a Blaze/pay-as-you-go plan feature — free up to 50k MAU, SMS billed per message after
-10/day free, TOTP has no per-use cost). MFA also **requires email verification** to be enforced
-first. Android SDK surface: `user.multiFactor.session`, `PhoneAuthProvider` /
-`TotpMultiFactorGenerator`, `user.multiFactor.enroll()`, `FirebaseAuthMultiFactorException` +
-`MultiFactorResolver` for the sign-in-time challenge.
+Firebase Auth Android MFA support (verified against Google Cloud/Firebase docs, Sept 2026): both
+TOTP and SMS second factors require upgrading the Firebase project to **"Firebase Authentication
+with Identity Platform."** Correction from an earlier draft of this document: that upgrade is a
+**free switch**, not a Blaze/billing requirement — Identity Platform has no price tag of its own
+and is available on the Spark (free) plan. What actually changes is the operational envelope: a
+Spark project that upgrades to Identity Platform drops from the standard 50,000-MAU free-auth
+allowance to a **3,000-daily-active-users (DAU) cap**; staying under the standard 50,000-MAU
+no-cost tier (and beyond, at $0.0055/MAU) requires Blaze instead. **TOTP** has no per-use billing
+on either plan. **SMS** is the one piece that does have a hard Blaze requirement: since September
+2024, SMS verification needs the Blaze plan with a billing account attached, billed per SMS sent
+(first 10/day free). MFA also **requires email verification** to be enforced first. Android SDK
+surface: `user.multiFactor.session`, `PhoneAuthProvider` / `TotpMultiFactorGenerator`,
+`user.multiFactor.enroll()`, `FirebaseAuthMultiFactorException` + `MultiFactorResolver` for the
+sign-in-time challenge.
 
 ## Affected Areas
 
@@ -49,32 +56,39 @@ first. Android SDK surface: `user.multiFactor.session`, `PhoneAuthProvider` /
 
 ## Approaches
 
-1. **TOTP-only (authenticator app)** — Pros: no per-use SMS cost, no phone-number PII collection,
-   works offline for code generation, stronger OWASP posture than SMS. Cons: enrollment UX needs
-   QR/secret display + external authenticator app (extra friction for non-technical family
-   members); still needs the Identity Platform upgrade and the missing email-verification
-   prerequisite. Effort: Medium.
-2. **SMS-based MFA** — Pros: familiar UX, no separate app needed. Cons: recurring per-message cost
-   beyond 10/day free, requires collecting a phone number (new field, not in `Sesion`/Firestore
-   user doc today), weaker against SIM-swap per OWASP, same Identity Platform prerequisite plus new
-   PII handling. Effort: Medium-High.
-3. **Defer (keep as open backlog item)** — Pros: zero cost/risk now, avoids committing to a
-   billing-plan change before validating real need. Cons: leaves owner/admin-role accounts in
-   shared plans with no step-up protection beyond a single password. Effort: None.
+1. **TOTP-only (authenticator app)** — Pros: no per-use cost on either plan, no phone-number PII
+   collection, works offline for code generation, stronger OWASP posture than SMS, does not force
+   Blaze. Cons: enrollment UX needs QR/secret display + external authenticator app (extra friction
+   for non-technical family members); still needs the Identity Platform upgrade (accepting its
+   3,000-DAU cap if staying on Spark) and the missing email-verification prerequisite.
+   Effort: Medium.
+2. **SMS-based MFA** — Pros: familiar UX, no separate app needed. Cons: mandatory Blaze plan +
+   billing account (since Sept 2024) plus recurring per-message cost beyond 10/day free, requires
+   collecting a phone number (new field, not in `Sesion`/Firestore user doc today), weaker against
+   SIM-swap per OWASP, same Identity Platform prerequisite plus new PII handling. Effort:
+   Medium-High.
+3. **Defer (keep as open backlog item)** — Pros: zero operational/UX footprint now, avoids
+   committing to the Identity Platform switch and its DAU-cap tradeoff before validating real
+   need. Cons: leaves owner/admin-role accounts in shared plans with no step-up protection beyond
+   a single password. Effort: None.
 
 ## Recommendation
 
-TOTP-only, explicitly excluding SMS this milestone (cost, PII, weaker OWASP profile). Treat "add
-email verification to registration/linking" as a distinct, possibly-separable prerequisite — it is
-independently useful (closes an existing gap where nothing confirms email ownership) and MFA is
-blocked without it either way. Do not proceed to `sdd-propose` until the Blaze/Identity-Platform
-upgrade is explicitly confirmed acceptable — it is a billing/infra decision outside code that
-explore/propose cannot make unilaterally.
+TOTP-only, explicitly excluding SMS this milestone. SMS is the option with a real mandatory Blaze
++ per-message cost; TOTP does not force any billing plan. Treat "add email verification to
+registration/linking" as a distinct, possibly-separable prerequisite — it is independently useful
+(closes an existing gap where nothing confirms email ownership) and MFA is blocked without it
+either way. Do not proceed to `sdd-propose` until the Identity Platform switch is explicitly
+confirmed acceptable — even without a mandatory Blaze cost for TOTP, it is a project-wide
+operational change (Spark's DAU cap drops to 3,000, plus audit-logging/multi-tenancy surface
+changes) outside code that explore/propose cannot decide unilaterally.
 
 ## Risks
 
-- **Billing/infra**: MFA (any factor, including TOTP) requires upgrading the Firebase project to
-  Identity Platform (Blaze plan) — needs explicit user/product sign-off before design work.
+- **Operational/infra**: enabling Identity Platform (required for any MFA factor, TOTP included)
+  changes the project's operating limits — Spark's free-auth allowance drops from 50,000 MAU to a
+  3,000-DAU cap; keeping the 50,000-MAU allowance requires Blaze. This is a platform-wide toggle,
+  not scoped to MFA users only — needs explicit user/product sign-off before design work.
 - **Missing prerequisite**: no email-verification flow exists; Firebase requires it for MFA
   enrollment — this is either in-scope for this change or a hard blocking dependency on a
   preceding change.
@@ -94,11 +108,31 @@ explore/propose cannot make unilaterally.
 
 **No.** Two blockers must be resolved with the user first:
 
-1. Explicit confirmation that the Identity Platform/Blaze upgrade is acceptable.
+1. Explicit confirmation that the Identity Platform operational tradeoff (3,000-DAU cap if
+   staying on Spark, or Blaze to keep 50,000 MAU) is acceptable — not a mandatory billing cost for
+   TOTP, but still a project-wide platform change.
 2. Decision on whether email verification ships as part of this change or as a separate preceding
    change.
 
 Once resolved, `sdd-propose` can proceed with TOTP-only as the recommended default scope.
+
+## Resolution
+
+**Deferred**, 2026-09-02. The user decided not to proceed to `sdd-propose` for the current MVP
+stage. The deferral rests on this corrected basis (not on a mandatory Blaze/billing cost, which an
+earlier draft of this document incorrectly claimed):
+
+- Enabling Identity Platform changes the project's operational limits and conditions platform-wide
+  (the DAU/MAU tradeoff above), even though it carries no mandatory fee for TOTP.
+- Email verification, a hard MFA prerequisite, is not implemented yet.
+- MFA adds real state-machine, recovery, and UX surface (see Risks) — meaningful implementation
+  cost regardless of billing.
+- It does not deliver enough value for the app's current prototype stage.
+- There is potential future cost (Blaze once past the free MAU/DAU tier, or if SMS is ever added)
+  but no cost that is mandatory today for a small MVP choosing TOTP-only.
+
+See `backlog.md` (`OSV-M802`), `ROADMAP.md` (M8 closed), `CHANGELOG.md`, and
+`openspec/changes/m8-optional-mfa/state.yaml` for the recorded outcome.
 
 ---
 

@@ -60,10 +60,14 @@ profile reachable from the whole app.*
   `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`, and `backlog.md`'s
   `OSV-M801`/`OSV-M803`/`OSV-M804`/`OSV-M805` (all ✅ Done). Optional MFA (`OSV-M802`) is
   **deliberately deferred**, not implemented: discovery (`openspec/changes/m8-optional-mfa/`)
-  found any MFA factor requires a Firebase Identity Platform/Blaze billing upgrade plus a missing
-  email-verification prerequisite — disproportionate cost/provider overhead for the current MVP
-  stage. Reconsider on public launch, real sensitive user data, a regulatory requirement, paying
-  users, or a lower-cost MFA option. M8 closes with this deferral as its recorded outcome.
+  found any MFA factor requires enabling Firebase Authentication with Identity Platform — a free
+  switch (not a mandatory Blaze cost for TOTP), but one that changes the project's operational
+  limits platform-wide (Spark's free-auth allowance drops from 50,000 MAU to a 3,000-DAU cap; SMS
+  specifically does require Blaze + per-message billing). Deferred because that operational change
+  plus a missing email-verification prerequisite plus MFA's own state-machine/recovery/UX surface
+  don't earn their keep at the current prototype stage — not because of a mandatory billing cost.
+  Reconsider on public launch, real sensitive user data, a regulatory requirement, paying users, or
+  a lower-cost MFA option. M8 closes with this deferral as its recorded outcome.
 
 ### ⚪ Phase 9: Future Ideas Backlog (Under Review)
 - [ ] Alternative third-party auth provider integration (OAuth / Google Sign-In) — deliberately left
