@@ -83,7 +83,7 @@ and recovery flows are real development scope that explore/propose cannot commit
 
 - **Quota/capability change**: enabling Identity Platform (required for any MFA factor, TOTP
   included) requires no migration and stays free on Spark, but introduces a 3,000-DAU quota and
-  turns on additional project-wide features (SAML/OIDC, blocking functions, audit logging,
+  makes additional project-wide features available (SAML/OIDC, blocking functions, audit logging,
   multi-tenancy) — worth a deliberate sign-off even though it isn't a cost.
 - **Missing prerequisite**: no email-verification flow exists; Firebase requires it for MFA
   enrollment — this is either in-scope for this change or a hard blocking dependency on a
