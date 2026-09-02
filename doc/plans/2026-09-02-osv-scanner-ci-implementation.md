@@ -1151,12 +1151,17 @@ docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/google/osv-scanner:la
 
 Record the exact `ghcr.io/google/osv-scanner@sha256:<digest>` string.
 
+**Resolved (this task's own run):** `ghcr.io/google/osv-scanner@sha256:8108ae94eadea5a02c9bec6e646909d5b790b44bd62d7f5b7f0b1d6d0ffc7734`
+— `docker inspect`'s `org.opencontainers.image.version` label confirms this is `2.5.1`.
+
 - [ ] **Step 2: Resolve `actions/checkout` and `actions/setup-node` commit SHAs for the major
   version pinned**
 
 ```bash
-git ls-remote https://github.com/actions/checkout refs/tags/v4.* | tail -1
-git ls-remote https://github.com/actions/setup-node refs/tags/v4.* | tail -1
+git ls-remote --tags https://github.com/actions/checkout 'refs/tags/v4.*' | sort -t/ -k3 -V | tail -1
+git ls-remote https://github.com/actions/checkout refs/tags/v4   # confirm bare v4 matches the above
+git ls-remote --tags https://github.com/actions/setup-node 'refs/tags/v4.*' | sort -t/ -k3 -V | tail -1
+git ls-remote https://github.com/actions/setup-node refs/tags/v4 # confirm bare v4 matches the above
 ```
 
 (A lightweight tag `vN` like `v4` typically points at the same commit as the newest `v4.x.y` release
@@ -1164,6 +1169,11 @@ tag — confirm both resolve to the same SHA before using the bare `v4` ref's co
 use the newest concrete `v4.x.y` tag's SHA.) Record both resolved SHAs, in the form
 `actions/checkout@<sha> # v4.x.y` (comment noting the human-readable version, since the SHA alone
 isn't self-documenting).
+
+**Resolved (this task's own run — both bare `v4` tags matched their newest concrete `v4.x.y` release
+exactly, no discrepancy):**
+- `actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0`
+- `actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0`
 
 - [ ] **Step 3: No commit** — these three values feed directly into Task 10 and Task 11's YAML.
 
@@ -1190,8 +1200,8 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@<RESOLVED_SHA> # v4.x.y
-      - uses: actions/setup-node@<RESOLVED_SHA> # v4.x.y
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
 
@@ -1200,7 +1210,7 @@ jobs:
         run: |
           set +e
           docker run --rm -v "$PWD:/repo" \
-            ghcr.io/google/osv-scanner@sha256:<RESOLVED_DIGEST> \
+            ghcr.io/google/osv-scanner@sha256:8108ae94eadea5a02c9bec6e646909d5b790b44bd62d7f5b7f0b1d6d0ffc7734 \
             --config=/repo/osv-scanner.toml \
             --format json \
             -L /repo/app/gradle.lockfile \
@@ -1257,8 +1267,8 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@<RESOLVED_SHA> # v4.x.y
-      - uses: actions/setup-node@<RESOLVED_SHA> # v4.x.y
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
 
@@ -1267,7 +1277,7 @@ jobs:
         run: |
           set +e
           docker run --rm -v "$PWD:/repo" \
-            ghcr.io/google/osv-scanner@sha256:<RESOLVED_DIGEST> \
+            ghcr.io/google/osv-scanner@sha256:8108ae94eadea5a02c9bec6e646909d5b790b44bd62d7f5b7f0b1d6d0ffc7734 \
             --config=/repo/osv-scanner.toml \
             --format json \
             -L /repo/app/gradle.lockfile \
@@ -1391,10 +1401,11 @@ renderer that can never read as "clean" (Task 5/8), and Task 12 no longer assume
 works pre-merge — it uses the PR trigger for what's actually testable now and explicitly defers the
 scheduled-workflow check to post-merge.
 
-**Placeholder scan:** `<RESOLVED_SHA>`/`<RESOLVED_DIGEST>` in Tasks 10-11 are not TBDs — Task 9
-produces their real values first, and Tasks 10-11 substitute them at write time, so no broken YAML
-is ever committed (unlike the earlier draft's `<DIGEST_FROM_TASK_9>` placeholder + later fix-up
-commit, which the review correctly flagged as violating this repo's commit-safety rule).
+**Placeholder scan:** Tasks 10-11's YAML now shows the real resolved digest/SHAs directly (Task 9's
+own run resolved `sha256:8108ae94...`, `actions/checkout@11d5960a... # v4.4.0`,
+`actions/setup-node@49933ea5... # v4.4.0`) — no `<RESOLVED_SHA>`/`<RESOLVED_DIGEST>` placeholder
+was ever committed (unlike the earlier draft's `<DIGEST_FROM_TASK_9>` placeholder + later fix-up
+commit, which review correctly flagged as violating this repo's commit-safety rule).
 
 **Type consistency:** `finding` objects carry `{vulnId, ecosystem, packageName, severity}`
 consistently from `normalizeOsvScanOutput` (Task 8) through `buildSummaryTable`/`decidePrGate`/

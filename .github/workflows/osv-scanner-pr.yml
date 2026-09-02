@@ -1,0 +1,46 @@
+name: OSV-Scanner (PR gate)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: Run OSV-Scanner
+        id: scan
+        run: |
+          set +e
+          docker run --rm -v "$PWD:/repo" \
+            ghcr.io/google/osv-scanner@sha256:8108ae94eadea5a02c9bec6e646909d5b790b44bd62d7f5b7f0b1d6d0ffc7734 \
+            --config=/repo/osv-scanner.toml \
+            --format json \
+            -L /repo/app/gradle.lockfile \
+            -L /repo/core/data/gradle.lockfile \
+            -L /repo/core/designsystem/gradle.lockfile \
+            -L /repo/core/domain/gradle.lockfile \
+            -L /repo/core/security/gradle.lockfile \
+            -L /repo/feature/categorias/gradle.lockfile \
+            -L /repo/feature/cuenta/gradle.lockfile \
+            -L /repo/feature/movimientos/gradle.lockfile \
+            -L /repo/feature/planes/gradle.lockfile \
+            -L /repo/rules-tests/package-lock.json \
+            > osv-scan-output.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+        # osv-scanner's own exit code (0=clean, 1=vulnerabilities, 127=execution failed,
+        # 128=no packages found) is captured explicitly via `set +e` around this one command —
+        # `|| true` would discard the distinction between "found vulnerabilities" and "the scanner
+        # itself broke", which the gate script needs (see osv-gate.mjs's interpretScannerExitCode).
+
+      - name: Evaluate gate
+        run: node .github/scripts/osv-gate.mjs --mode=pr --input=osv-scan-output.json --scanner-exit-code=${{ steps.scan.outputs.exit_code }}
