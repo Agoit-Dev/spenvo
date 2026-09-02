@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **OSV-M803 follow-up:** `fast-uri` (npm, transitive via `firebase-tools` → `ajv`, `rules-tests`
+  devDependency only) resolved to `3.1.5`, inside the vulnerable `2.3.1–2.4.4` / `3.0.0–3.1.5` /
+  `4.0.0–4.1.2` ranges for GHSA-jqff-g426-hqxp/GHSA-5jgf-p345-68v8/GHSA-f65p-4m7j-42xc/
+  GHSA-fph4-wmhf-6fwf (CVE-2026-76172: percent-encoded URI scheme characters aren't re-escaped or
+  validated, letting a crafted URL normalize to a different host than it appeared to parse to —
+  host-confusion, CVSS 7.5). Published live on osv.dev after the OSV-M803 baseline scan (same
+  live-database-drift pattern as `qs`). `rules-tests/package.json` now constrains
+  `overrides."fast-uri" = ">=3.1.6"`; resolves to `4.1.4` in practice. Verified via `npm ls
+  fast-uri --all` (no `invalid`), a full `rules-tests` `npm test` run (76/76 passing), and a
+  re-scan confirming all 4 advisories gone and 0 blocking rows.
 - **ARCH-M501 follow-up:** `resolverConflictoGastoUsandoRemoto`/`resolverConflictoIngresoUsandoRemoto`
   cleared the conflict record but never the pending-edit marker (`registroEdicionesPendientes`) that
   caused it — a review of the ARCH-M501 slice caught this before it shipped. The stale marker
