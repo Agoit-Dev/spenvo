@@ -176,6 +176,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OSV-M801 (M8, in progress — implementation done, not yet enforced):** OSV-Scanner CI gate
+  implemented and validated, both locally and against real GitHub Actions
+  (`.github/workflows/osv-scanner-pr.yml`, `.github/workflows/osv-scanner-scheduled.yml`,
+  `.github/scripts/osv-classify.mjs`, `.github/scripts/osv-gate.mjs`, 40 `node:test` cases). Fail-
+  closed severity classification (`CRITICAL`/`HIGH`/`UNKNOWN` block; a finding this system can't
+  classify is treated as risk, never a pass), strict scan-output normalization (no silent false-
+  green on partial/incomplete JSON), and a scheduled-scan GitHub Issue lifecycle that only ever
+  closes an issue after a fully successful scan+parse. See
+  `doc/designs/2026-09-02-osv-scanner-ci-design.md` and
+  `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
+  **Validated, not yet operative on `main`:** draft PR #33 (`chore/m8-osv-scanner-ci` → `main`)
+  triggered the real `osv-scanner-pr.yml` workflow, which reproduced the exact same result as the
+  local dry-run — 463 blocking rows (CRITICAL/HIGH/UNKNOWN) across 51 unique vulnerabilities in
+  this repo's current transitive dependencies (e.g. `org.bouncycastle:bcprov-jdk18on`,
+  `io.netty:netty-codec*`). The PR failing red is the gate correctly reporting real, pre-existing
+  dependency debt — not a defect in the gate itself. Before this can be marked done: the baseline
+  findings need triage/remediation or a documented, expiring `osv-scanner.toml` exception; the
+  `scan` job needs to become a required status check on `main`'s branch protection (failing today
+  doesn't yet block merges); and `osv-scanner-scheduled.yml`'s Issue-creation path needs a real
+  post-merge validation run (deliberately not exercised yet against this baseline — it would open
+  dozens of issues).
+- **OSV-M803:** triaged the 463-blocking-row baseline above. 27 unique CRITICAL/HIGH/UNKNOWN
+  findings (re-verified live against osv.dev, not just the PR #33 snapshot — 2 more had been
+  published since: `qs` GHSA-4mjr-xmp4-gh2g/GHSA-x5fp-wj9c-mxmx) trace to 9 transitive packages,
+  none present on any Android module's `debugRuntimeClasspath`/`releaseRuntimeClasspath` (verified
+  via every module's `gradle.lockfile` configuration tags plus `./gradlew :app:dependencies`):
+  - **26 documented `osv-scanner.toml` exceptions**, each citing the specific vulnerable API: 23
+    `io.netty:*` findings are dormant — pulled only via AGP's `unified-test-platform-*` Android
+    Test Platform tooling, and no task that loads it (`connectedAndroidTest`, a Gradle Managed
+    Device) is ever invoked in this repo (`ignoreUntil = 2026-12-01`, matching the design doc's own
+    cadence). 3 `org.bouncycastle:*` findings (GOST28147 CTR keystream reuse — CRITICAL;
+    `LDAPStoreHelper` LDAP injection; PKIX-draft `CompositeVerifier` empty-signature-sequence
+    bypass) genuinely load into JVMs this repo runs (`androidLintTool` via `lintDebug`,
+    Robolectric's `{strictly 1.81}`-pinned `bcprov-jdk18on` via `testDebugUnitTest` — both required
+    gates), so they get a shorter `ignoreUntil = 2026-10-01` instead.
+  - **2 remediated directly**, no exception needed: `rules-tests/package.json` now constrains
+    `overrides.uuid = ">=11.1.1"` (GHSA-w5hq-g745-h8pq, buffer-bounds check in `v3`/`v5`/`v6`) and
+    `overrides.qs = ">=6.16.0"` (the two findings above), both transitive via `firebase-tools` — the
+    minimum satisfying each fixed line; the lockfile pins the concrete resolved versions
+    (`uuid@11.1.1` for `gaxios`, `uuid@14.0.2` for `universal-analytics`, `qs@6.16.0` throughout).
+    Verified via `npm ls` (no `invalid` entries — the first `uuid` attempt used too narrow a range
+    and needed widening), a full `rules-tests` `npm test` run against the Firestore/Storage
+    emulators (76/76 passing), and a re-scan confirming both advisories are gone and 0 blocking
+    rows remain (`node .github/scripts/osv-gate.mjs --mode=pr` exits 0).
+  `OSV-M804` (required status check) and `OSV-M805` (scheduled-scan post-merge validation) are
+  still open — `OSV-M801` can close once both land.
 - Login real + logout sin recreación anónima automática (front 2/3): real email/password
   sign-in and password recovery replace the placeholder registration-only flow. New
   `AuthRepository.iniciarSesionConEmail`/`enviarRecuperacionPassword`, backed by

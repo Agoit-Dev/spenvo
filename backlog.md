@@ -15,6 +15,20 @@ task's implementation departed from what its plan/design doc specified, note it 
 
 ## 📋 To Do
 
+### 🔐 Security & Supply Chain (High Priority)
+*M8 from `ROADMAP.md`. `OSV-M801`'s implementation itself is done and validated — see
+🧪 In Review / QA below. `OSV-M803` is done (see ✅ Done); these two are what's left before
+`OSV-M801` can close.*
+- [ ] **OSV-M804:** Configure `scan` (from `osv-scanner-pr.yml`) as a required status check in
+  `main`'s branch protection / ruleset. Until this lands, the gate failing red does not actually
+  block a merge — it's informative only.
+- [ ] **OSV-M805:** Run `osv-scanner-scheduled.yml` for real post-merge (`gh workflow run
+  osv-scanner-scheduled.yml --ref main`) and validate its GitHub Issue create/update/close lifecycle
+  end-to-end. `OSV-M803`'s baseline is now clean so this is safe to run without an issue flood.
+- [ ] **OSV-M802:** Product/architecture discovery for optional MFA (M8, MFA half) — no design yet;
+  needs its own brainstorm session before any implementation task exists. Deliberately out of
+  `OSV-M801`'s scope.
+
 ### 🔒 Architecture & Robustness (Medium Priority)
 - [ ] **UI-INS-001:** Audit and verify `WindowInsets` consumption across `PlanScaffold`'s tab
   transitions, to make sure system bars don't cause visual jumps or double padding on foldable
@@ -32,9 +46,28 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **FEAT-M403:** Add a basic color picker to the category creation/edit `ModalBottomSheet`.
 
 ## 🧪 In Review / QA
-*No tasks pending review this session.*
+- [ ] **OSV-M801:** OSV-Scanner CI gate (M8, CI half) — implementation done and validated, both
+  locally (dry-run against this repo's real 10 lockfiles) and in real GitHub Actions (draft PR #33,
+  `chore/m8-osv-scanner-ci` → `main`, triggered `osv-scanner-pr.yml` for real; identical result to
+  the local run: 463 blocking rows, 51 unique vulnerabilities, exit code 1). Not moved to Done yet —
+  `OSV-M803`'s baseline triage is done; two things remain: `OSV-M804` (make the check required on
+  `main`), `OSV-M805` (validate the scheduled workflow's Issue lifecycle post-merge). See
+  `doc/designs/2026-09-02-osv-scanner-ci-design.md`, `doc/plans/2026-09-02-osv-scanner-ci-implementation.md`.
 
 ## ✅ Done
+- [x] **OSV-M803:** Triaged the 463 blocking rows / 51 unique vulnerabilities from the PR #33
+  baseline. 26 justified, individually-reasoned `osv-scanner.toml` exceptions (23 dormant
+  `io.netty:*` findings limited to AGP's unused `unified-test-platform-*` tooling,
+  `ignoreUntil = 2026-12-01`; 3 `org.bouncycastle:*` findings live on `lintDebug`/
+  `testDebugUnitTest` classpaths, `ignoreUntil = 2026-10-01`, each citing the exact vulnerable API).
+  2 remediated directly instead of exempted: `rules-tests/package.json` `overrides` pin `uuid` to
+  `>=11.1.1` and `qs` to `>=6.16.0`; verified via `npm ls` (no `invalid` entries), a full
+  `rules-tests` `npm test` run (76/76 passing against the Firestore/Storage emulators), and a
+  re-scan showing 0 blocking rows (`osv-gate.mjs --mode=pr` exits 0).
+  **Deviation:** the live re-scan (osv.dev is queried live, not embedded in the pinned scanner
+  image) surfaced 2 more blocking findings not present in the original PR #33 snapshot — `qs`
+  GHSA-4mjr-xmp4-gh2g/GHSA-x5fp-wj9c-mxmx, published in the gap between the two scans. Handled the
+  same way (remediated via override, not exempted) rather than deferring to a follow-up task.
 - [x] **BUILD-001:** Narrowed `:app`'s kotlinx-serialization dependency from `json` to `core`, which
   is all its `@Serializable` Navigation 3 routes require; kept JSON scoped to `:core:data`,
   regenerated `app/gradle.lockfile`, and verified the project successfully.
