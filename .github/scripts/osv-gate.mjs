@@ -1,5 +1,10 @@
 // .github/scripts/osv-gate.mjs
 
+import { readFileSync, appendFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
+import { classifyFinding } from './osv-classify.mjs';
+
 const SEVERITY_RANK = { CRITICAL: 0, HIGH: 1, UNKNOWN: 2, MEDIUM: 3, LOW: 4 };
 
 /** @param {{vulnId: string, ecosystem: string, packageName: string, severity: string}[]} findings */
@@ -96,4 +101,118 @@ export function planIssueActions(scanResult, { openIssues }) {
   }
 
   return actions;
+}
+
+/** @param {number} exitCode — osv-scanner's own process exit code. */
+export function interpretScannerExitCode(exitCode) {
+  if (exitCode === 0 || exitCode === 1) return { ok: true };
+  if (exitCode === 127) {
+    return { ok: false, error: 'osv-scanner exited 127 (execution failed) — see google.github.io/osv-scanner/usage/' };
+  }
+  if (exitCode === 128) {
+    return { ok: false, error: 'osv-scanner exited 128 (no packages found — check the scanned paths)' };
+  }
+  return { ok: false, error: `osv-scanner exited with unexpected code ${exitCode}` };
+}
+
+/** @param {unknown} raw — parsed OSV-Scanner --format json output */
+export function normalizeOsvScanOutput(raw) {
+  if (raw === null || typeof raw !== 'object' || !Array.isArray(raw.results)) {
+    return { ok: false, error: 'Unexpected OSV-Scanner JSON shape (missing results[])', findings: [] };
+  }
+
+  const findings = [];
+  for (const [resultIndex, result] of raw.results.entries()) {
+    if (!Array.isArray(result?.packages)) {
+      return { ok: false, error: `results[${resultIndex}] is missing packages[]`, findings: [] };
+    }
+    for (const [pkgIndex, pkg] of result.packages.entries()) {
+      const ecosystem = pkg?.package?.ecosystem;
+      const packageName = pkg?.package?.name;
+      if (typeof ecosystem !== 'string' || typeof packageName !== 'string' || !ecosystem || !packageName) {
+        return { ok: false, error: `results[${resultIndex}].packages[${pkgIndex}] is missing package identity (name/ecosystem)`, findings: [] };
+      }
+      if (!Array.isArray(pkg.vulnerabilities)) {
+        return { ok: false, error: `results[${resultIndex}].packages[${pkgIndex}] is missing vulnerabilities[]`, findings: [] };
+      }
+      for (const [vulnIndex, vuln] of pkg.vulnerabilities.entries()) {
+        if (typeof vuln?.id !== 'string' || !vuln.id) {
+          return { ok: false, error: `results[${resultIndex}].packages[${pkgIndex}].vulnerabilities[${vulnIndex}] is missing id`, findings: [] };
+        }
+        findings.push({ vulnId: vuln.id, ecosystem, packageName, severity: classifyFinding(vuln) });
+      }
+    }
+  }
+  return { ok: true, findings };
+}
+
+function parseArgs(argv) {
+  const get = (flag) => argv.find((a) => a.startsWith(`--${flag}=`))?.split('=')[1];
+  const mode = get('mode');
+  const input = get('input');
+  const scannerExitCode = get('scanner-exit-code');
+  if (mode !== 'pr' && mode !== 'scheduled') throw new Error('--mode must be "pr" or "scheduled"');
+  if (!input) throw new Error('--input=<path-to-osv-scanner-json> is required');
+  if (scannerExitCode === undefined || Number.isNaN(Number(scannerExitCode))) {
+    throw new Error('--scanner-exit-code=<n> is required');
+  }
+  return { mode, input, scannerExitCode: Number(scannerExitCode) };
+}
+
+function loadScanResult(inputPath, scannerExitCode) {
+  const exitInterpretation = interpretScannerExitCode(scannerExitCode);
+  if (!exitInterpretation.ok) return { ok: false, error: exitInterpretation.error, findings: [] };
+
+  try {
+    const raw = JSON.parse(readFileSync(inputPath, 'utf8'));
+    return normalizeOsvScanOutput(raw);
+  } catch (err) {
+    return { ok: false, error: `Could not read/parse ${inputPath}: ${err.message}`, findings: [] };
+  }
+}
+
+function writeStepSummary(markdown) {
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (summaryPath) appendFileSync(summaryPath, markdown);
+  else process.stdout.write(markdown); // local/manual runs without the GitHub env var
+}
+
+function listOpenIssues() {
+  const raw = execFileSync('gh', ['issue', 'list', '--label', 'security', '--state', 'open', '--json', 'number,body'], { encoding: 'utf8' });
+  return JSON.parse(raw);
+}
+
+function applyIssueActions(actions) {
+  for (const { finding, key } of actions.creates) {
+    execFileSync('gh', ['issue', 'create', '--title', `[security] ${finding.vulnId} in ${finding.packageName}`,
+      '--label', 'security', '--label', 'dependencies',
+      '--body', `${finding.severity} vulnerability ${finding.vulnId} in ${finding.ecosystem} package ${finding.packageName}.\n\n<!-- osv-gate:${key} -->`]);
+  }
+  for (const { number, finding } of actions.updates) {
+    execFileSync('gh', ['issue', 'comment', String(number), '--body', `Still present: ${finding.severity} ${finding.vulnId} in ${finding.packageName}.`]);
+  }
+  for (const { number } of actions.closes) {
+    execFileSync('gh', ['issue', 'close', String(number), '--comment', 'No longer detected by osv-scanner as of this run.']);
+  }
+}
+
+function main() {
+  const { mode, input, scannerExitCode } = parseArgs(process.argv.slice(2));
+  const scanResult = loadScanResult(input, scannerExitCode);
+  writeStepSummary(scanResult.ok ? buildSummaryTable(scanResult.findings) : buildErrorSummary(scanResult.error));
+
+  if (mode === 'pr') {
+    const gate = decidePrGate(scanResult);
+    process.stdout.write(`${gate.reason}\n`);
+    process.exit(gate.blocked ? 1 : 0);
+  }
+
+  const openIssues = listOpenIssues();
+  const actions = planIssueActions(scanResult, { openIssues });
+  applyIssueActions(actions);
+  process.exit(scanResult.ok ? 0 : 1);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
 }

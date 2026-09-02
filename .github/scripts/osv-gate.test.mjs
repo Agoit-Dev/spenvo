@@ -1,7 +1,7 @@
 // .github/scripts/osv-gate.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSummaryTable, buildErrorSummary, decidePrGate, planIssueActions, issueDedupeKey } from './osv-gate.mjs';
+import { buildSummaryTable, buildErrorSummary, decidePrGate, planIssueActions, issueDedupeKey, interpretScannerExitCode, normalizeOsvScanOutput } from './osv-gate.mjs';
 
 const SAMPLE = [
   { vulnId: 'GHSA-1111', ecosystem: 'Maven', packageName: 'com.example:lib', severity: 'MEDIUM' },
@@ -117,4 +117,82 @@ test('planIssueActions never closes, creates, or updates on a failed scan/parse'
   assert.equal(actions.closes.length, 0);
   assert.equal(actions.creates.length, 0);
   assert.equal(actions.updates.length, 0);
+});
+
+test('interpretScannerExitCode: 0 and 1 are trustworthy scan outcomes', () => {
+  assert.equal(interpretScannerExitCode(0).ok, true);
+  assert.equal(interpretScannerExitCode(1).ok, true);
+});
+
+test('interpretScannerExitCode: 127 (execution failed) and 128 (no packages found) block', () => {
+  assert.equal(interpretScannerExitCode(127).ok, false);
+  assert.match(interpretScannerExitCode(127).error, /127/);
+  assert.equal(interpretScannerExitCode(128).ok, false);
+  assert.match(interpretScannerExitCode(128).error, /128/);
+});
+
+test('interpretScannerExitCode: any other code is treated as an unexpected failure', () => {
+  assert.equal(interpretScannerExitCode(2).ok, false);
+});
+
+test('normalizeOsvScanOutput flattens results/packages/vulnerabilities into findings', () => {
+  const raw = {
+    results: [
+      {
+        source: { path: 'app/gradle.lockfile' },
+        packages: [
+          {
+            package: { name: 'com.example:lib', ecosystem: 'Maven', version: '1.0.0' },
+            vulnerabilities: [{ id: 'GHSA-1', database_specific: { severity: 'HIGH' } }],
+          },
+        ],
+      },
+    ],
+  };
+  const result = normalizeOsvScanOutput(raw);
+  assert.equal(result.ok, true);
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].vulnId, 'GHSA-1');
+  assert.equal(result.findings[0].ecosystem, 'Maven');
+  assert.equal(result.findings[0].packageName, 'com.example:lib');
+  assert.equal(result.findings[0].severity, 'HIGH');
+});
+
+test('normalizeOsvScanOutput handles a clean run with no results', () => {
+  const result = normalizeOsvScanOutput({ results: [] });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.findings, []);
+});
+
+test('normalizeOsvScanOutput fails closed on malformed top-level structure', () => {
+  assert.equal(normalizeOsvScanOutput(null).ok, false);
+  assert.equal(normalizeOsvScanOutput({ notResults: [] }).ok, false);
+  assert.equal(normalizeOsvScanOutput('not an object').ok, false);
+});
+
+test('normalizeOsvScanOutput fails closed when a result is missing packages[] entirely (not just empty)', () => {
+  const result = normalizeOsvScanOutput({ results: [{ source: { path: 'x' } }] });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /packages/);
+});
+
+test('normalizeOsvScanOutput fails closed when a package is missing vulnerabilities[] entirely', () => {
+  const raw = { results: [{ packages: [{ package: { name: 'x', ecosystem: 'npm' } }] }] };
+  const result = normalizeOsvScanOutput(raw);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /vulnerabilities/);
+});
+
+test('normalizeOsvScanOutput fails closed when a package is missing name/ecosystem', () => {
+  const raw = { results: [{ packages: [{ package: {}, vulnerabilities: [] }] }] };
+  const result = normalizeOsvScanOutput(raw);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /package identity|name|ecosystem/);
+});
+
+test('normalizeOsvScanOutput fails closed when a vulnerability is missing its id', () => {
+  const raw = { results: [{ packages: [{ package: { name: 'x', ecosystem: 'npm' }, vulnerabilities: [{}] }] }] };
+  const result = normalizeOsvScanOutput(raw);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /id/);
 });

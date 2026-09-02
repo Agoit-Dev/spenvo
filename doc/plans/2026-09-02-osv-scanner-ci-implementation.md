@@ -843,7 +843,12 @@ this plan already scheduled for that specific reason.
 
 - [ ] **Step 1: Capture a real OSV-Scanner JSON sample (best-effort)**
 
-If Docker is available locally:
+If Docker is available locally, a `left-pad@1.3.0` lockfile (as originally sketched here) is a
+reasonable first attempt, but note it produced a real, valid, **empty** result (`{"results": []}`)
+when this task actually ran — `left-pad` currently has no OSV advisory, so that capture never
+exercises the nested `packages[]/vulnerabilities[]` shape it exists to verify. **What this task
+actually used**: `lodash@4.17.4`, a well-documented package with multiple real GHSA advisories, to
+get a non-empty capture:
 
 ```bash
 mkdir -p /tmp/osv-known-vuln && cd /tmp/osv-known-vuln
@@ -854,17 +859,21 @@ cat > package-lock.json <<'EOF'
   "lockfileVersion": 3,
   "packages": {
     "": { "name": "osv-sample", "version": "1.0.0" },
-    "node_modules/left-pad": { "version": "1.3.0" }
+    "node_modules/lodash": { "version": "4.17.4" }
   }
 }
 EOF
 docker run --rm -v "$PWD:/repo" ghcr.io/google/osv-scanner:latest --format json -L /repo/package-lock.json > sample-scan-output.json; echo "exit=$?"
 ```
 
-Copy the result into `.github/scripts/fixtures/sample-scan-output.json` and confirm/adjust Step 4's
-field names against it. If Docker isn't available here, rely on the documented shape
-(`google.github.io/osv-scanner/output/`) and treat Task 13 as the empirical confirmation point —
-fixing the normalizer then, before relying on the daily schedule, if the real shape differs.
+This produced a real 10-finding capture (`exit=1`) and is what's committed as
+`.github/scripts/fixtures/sample-scan-output.json`. **The real shape matched this task's own
+assumption exactly** — `results[].packages[].package.{name,ecosystem}` and
+`results[].packages[].vulnerabilities[]` needed no adjustment; the only extras were a harmless
+top-level `experimental_config` key and a per-package `groups` key, neither of which
+`normalizeOsvScanOutput` inspects. If Docker isn't available in a given environment, rely on the
+documented shape (`google.github.io/osv-scanner/output/`) and treat Task 13 as the empirical
+confirmation point instead.
 
 - [ ] **Step 2: Write the failing tests**
 
@@ -1010,14 +1019,17 @@ export function normalizeOsvScanOutput(raw) {
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `node --test .github/scripts/osv-gate.test.mjs`
-Expected: PASS (25 tests total).
+Expected: PASS (40 tests total — 15 from `osv-classify.test.mjs` + 25 from `osv-gate.test.mjs`).
 
 - [ ] **Step 6: Add the CLI entrypoint**
 
 ```js
-// append to .github/scripts/osv-gate.mjs — add these two import lines to the top of the file's
-// import block (first use of node:fs/node:child_process in this file, nothing to merge into, but
-// still belongs at the top with the rest, not mid-file)
+// append to .github/scripts/osv-gate.mjs — add these three import lines to the top of the file's
+// import block (first use of node:fs/node:child_process/node:url in this file, nothing to merge
+// into, but still belongs at the top with the rest, not mid-file):
+//   import { readFileSync, appendFileSync } from 'node:fs';
+//   import { execFileSync } from 'node:child_process';
+//   import { pathToFileURL } from 'node:url';
 
 function parseArgs(argv) {
   const get = (flag) => argv.find((a) => a.startsWith(`--${flag}=`))?.split('=')[1];
@@ -1086,22 +1098,39 @@ function main() {
   process.exit(scanResult.ok ? 0 : 1);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }
 ```
 
+**Why `pathToFileURL` instead of the naive `` `file://${process.argv[1]}` `` string comparison**:
+found during this task's own verification, not by a unit test — the naive form never matches on
+Windows (`import.meta.url` is `file:///C:/Users/.../osv-gate.mjs`; `process.argv[1]` is a bare
+Windows path with backslashes, e.g. `C:\Users\...\osv-gate.mjs`, so the two strings can never be
+equal). `pathToFileURL(...).href` normalizes both sides to the same URL form on every platform.
+The `process.argv[1] &&` guard additionally protects against `pathToFileURL(undefined)` throwing in
+a context where no main script path exists (e.g. this module `import`ed from a REPL or a context
+with no `argv[1]`) — `main()` correctly stays inert in the `node --test` runner on every platform,
+confirmed by manually running the CLI end-to-end (not just its unit tests) after this fix, including
+its fail-closed paths: real captured findings, exit codes 127/128, malformed JSON, an incomplete
+nested structure, and a genuinely clean scan — every case rendered correctly and set the right exit
+code.
+
 - [ ] **Step 7: Run full test suite**
 
 Run: `cd .github/scripts && npm test`
-Expected: PASS (25 tests total — `main()` untouched by tests, gated behind the `import.meta.url`
-CLI check).
+Expected: PASS (40 tests total — 15 from `osv-classify.test.mjs` + 25 from `osv-gate.test.mjs`;
+`main()` itself stays untouched by the test suite, gated behind the `import.meta.url` CLI check).
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add .github/scripts/osv-gate.mjs .github/scripts/osv-gate.test.mjs .github/scripts/fixtures/
-git commit -m "fix(ci): strict normalizeOsvScanOutput, exit-code-aware CLI, no silent false-green"
+git add \
+  .github/scripts/osv-gate.mjs \
+  .github/scripts/osv-gate.test.mjs \
+  .github/scripts/fixtures/sample-scan-output.json \
+  doc/plans/2026-09-02-osv-scanner-ci-implementation.md
+git commit -m "feat(ci): add strict scan normalization and OSV gate CLI"
 ```
 
 ---
