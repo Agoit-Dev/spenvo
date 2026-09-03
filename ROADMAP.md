@@ -51,6 +51,12 @@ profile reachable from the whole app.*
   Light/Dark schemes, stable financial semantic colors, typography, shapes, previews, tests, and
   current-consumer migration. Theme preference persistence and settings remain a later delivery;
   per-category colors remain separately scoped by `FEAT-M402` / `FEAT-M403`.
+- [x] **Theme preferences and settings:** Closed out Delivery 2 of the theming work with
+  `UI-THEME-002` — user-facing `ThemeMode`/`ColorMode` selection persisted locally via a new
+  `appearance` DataStore, a new `:feature:ajustes` Settings screen reachable from every plan
+  screen's avatar menu, splash-gated startup coordination, and immediate apply without recreating
+  the Activity. Instrumented DataStore and manual device verification remain pending on real
+  hardware.
 - [ ] **Product Evolution:** Evaluate adding customizable per-category color palettes (post-M4
   request).
 - [ ] **Phase 7 robustness (minor debt):** `ARCH-U801`, `ARCH-U802`, `UX-H902`, and `UX-H903` —
