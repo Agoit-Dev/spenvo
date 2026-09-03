@@ -25,6 +25,16 @@ task's implementation departed from what its plan/design doc specified, note it 
   in-progress rotation frame, not a defect. Foldable hinge/posture verification remains pending
   because no foldable environment was available.
 
+### 🎨 UI / Design System (Medium Priority)
+- [ ] **UI-THEME-002:** Theme preferences and settings (Delivery 2). User-facing `ThemeMode`/
+  `ColorMode` selection, persisted locally via a dedicated `appearance` DataStore in `:core:data`,
+  exposed through a new `:feature:ajustes` module (`AjustesRoute`, radio-button rows for
+  luminosity/color), applied immediately, with splash-gated startup coordination in a new
+  `AppearanceViewModel`, and a shared `AvatarMenu` (Cuenta/Ajustes) replacing the duplicated avatar
+  button across `PlanesScreen` and the four plan-tab top bars. See the approved
+  [design](doc/designs/2026-09-03-theme-preferences-settings-design.md). Depends on UI-THEME-001
+  (merged, `main@5b24836`); implementation plan and worktree pending.
+
 ### 🎨 Minor UX (Low Priority)
 *Findings from front 3's (profile accessible) final review — not blocking, not yet addressed.*
 - [ ] **UX-H901:** `HomeScreen` shows the plan name twice (the new `TopAppBar` title + `HomeContenido`'s
