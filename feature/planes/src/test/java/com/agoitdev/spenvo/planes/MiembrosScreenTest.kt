@@ -3,6 +3,7 @@ package com.agoitdev.spenvo.planes
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_PLACEHOLDER
 import com.agoitdev.spenvo.domain.model.AccesoPlan
@@ -53,7 +54,7 @@ class MiembrosScreenTest {
     }
 
     @Test
-    fun `tocar el avatar de la topbar invoca onAbrirCuenta`() {
+    fun `tocar el avatar y luego Cuenta invoca onAbrirCuenta`() {
         var invocado = false
         val accesosRepo = FakeAccesoPlanRepositorioMiembrosScreen()
         val usuarioRepo = FakeUsuarioRepositorioMiembrosScreen()
@@ -74,11 +75,46 @@ class MiembrosScreenTest {
                 planId = "p1",
                 avatarUrl = null,
                 onAbrirCuenta = { invocado = true },
+                onAbrirAjustes = {},
                 viewModel = viewModel,
             )
         }
 
         composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Cuenta").performClick()
+
+        assertEquals(true, invocado)
+    }
+
+    @Test
+    fun `tocar el avatar y luego Ajustes invoca onAbrirAjustes`() {
+        var invocado = false
+        val accesosRepo = FakeAccesoPlanRepositorioMiembrosScreen()
+        val usuarioRepo = FakeUsuarioRepositorioMiembrosScreen()
+        val viewModel = MiembrosViewModel(
+            accesosRepository = accesosRepo,
+            invitarMiembro = InvitarMiembroUseCase(
+                accesosRepository = accesosRepo,
+                usuarioRepository = usuarioRepo,
+                pendientesRepository = FakePendientesRepositorioMiembrosScreen(),
+                analyticsRepository = FakeAnalyticsRepositorioMiembrosScreen(),
+            ),
+            usuarioRepository = usuarioRepo,
+            authRepository = FakeAuthRepositorioMiembrosScreen(),
+        )
+
+        composeTestRule.setContent {
+            MiembrosScreen(
+                planId = "p1",
+                avatarUrl = null,
+                onAbrirCuenta = {},
+                onAbrirAjustes = { invocado = true },
+                viewModel = viewModel,
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Ajustes").performClick()
 
         assertEquals(true, invocado)
     }
@@ -128,6 +164,7 @@ class MiembrosScreenTest {
                 planId = "p1",
                 avatarUrl = null,
                 onAbrirCuenta = {},
+                onAbrirAjustes = {},
                 viewModel = viewModel,
             )
         }

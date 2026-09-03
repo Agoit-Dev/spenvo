@@ -15,8 +15,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -44,7 +42,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.agoitdev.spenvo.designsystem.components.AvatarTopBarAction
+import com.agoitdev.spenvo.designsystem.components.AvatarMenu
+import com.agoitdev.spenvo.designsystem.components.AvatarMenuTextos
 import com.agoitdev.spenvo.domain.model.AccesoPlan
 import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.PlanFinanciero
@@ -58,6 +57,7 @@ const val TAG_PLANES_CARGANDO = "planes_cargando"
 fun PlanesScreen(
     onCrearCuenta: () -> Unit,
     onAbrirPlan: (String) -> Unit,
+    onAbrirAjustes: () -> Unit,
     viewModel: PlanesViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -70,18 +70,15 @@ fun PlanesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var mostrarDialogoCrear by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(estadoCrear.error) {
-        estadoCrear.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.consumirError()
-        }
-    }
-    LaunchedEffect(estadoCrear.creado) {
-        if (estadoCrear.creado) {
+    PlanesEfectos(
+        estadoCrear = estadoCrear,
+        snackbarHostState = snackbarHostState,
+        onErrorConsumido = viewModel::consumirError,
+        onCreadoConsumido = {
             mostrarDialogoCrear = false
             viewModel.consumirCreado()
-        }
-    }
+        },
+    )
 
     Scaffold(
         modifier = modifier,
@@ -89,6 +86,7 @@ fun PlanesScreen(
             PlanesTopBar(
                 sesion = sesion,
                 onCrearCuenta = onCrearCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         },
         floatingActionButton = {
@@ -123,23 +121,51 @@ fun PlanesScreen(
     }
 }
 
+/** Extracted from [PlanesScreen] to stay under detekt's `LongMethod` function threshold. */
+@Composable
+private fun PlanesEfectos(
+    estadoCrear: CrearPlanEstado,
+    snackbarHostState: SnackbarHostState,
+    onErrorConsumido: () -> Unit,
+    onCreadoConsumido: () -> Unit,
+) {
+    LaunchedEffect(estadoCrear.error) {
+        estadoCrear.error?.let {
+            snackbarHostState.showSnackbar(it)
+            onErrorConsumido()
+        }
+    }
+    LaunchedEffect(estadoCrear.creado) {
+        if (estadoCrear.creado) {
+            onCreadoConsumido()
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanesTopBar(
     sesion: Sesion,
     onCrearCuenta: () -> Unit,
+    onAbrirAjustes: () -> Unit,
 ) {
     TopAppBar(
         title = { Text(stringResource(R.string.plans_title)) },
         actions = {
-            CuentaMenu(
-                estado = when {
-                    !sesion.estaAutenticada -> null
-                    sesion.email != null -> sesion.email
-                    else -> stringResource(R.string.account_guest_state)
-                },
-                avatarUrl = sesion.photoUrl,
-                onCrearCuenta = onCrearCuenta,
+            AvatarMenu(
+                photoUrl = sesion.photoUrl,
+                contentDescription = stringResource(R.string.account_menu_description),
+                textos = AvatarMenuTextos(
+                    estado = when {
+                        !sesion.estaAutenticada -> null
+                        sesion.email != null -> sesion.email
+                        else -> stringResource(R.string.account_guest_state)
+                    },
+                    cuenta = stringResource(R.string.account_create),
+                    ajustes = stringResource(R.string.settings_menu_item),
+                ),
+                onOpenAccount = onCrearCuenta,
+                onOpenSettings = onAbrirAjustes,
             )
         },
     )
@@ -308,32 +334,4 @@ private fun CrearPlanDialog(
             }
         },
     )
-}
-
-@Composable
-private fun CuentaMenu(estado: String?, avatarUrl: String?, onCrearCuenta: () -> Unit) {
-    var abierto by remember { mutableStateOf(false) }
-    AvatarTopBarAction(
-        photoUrl = avatarUrl,
-        contentDescription = stringResource(R.string.account_menu_description),
-        onClick = { abierto = true },
-    )
-    DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-        if (estado != null) {
-            DropdownMenuItem(
-                text = {
-                    Text(text = estado, style = MaterialTheme.typography.labelLarge)
-                },
-                onClick = { abierto = false },
-                enabled = false,
-            )
-        }
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.account_create)) },
-            onClick = {
-                abierto = false
-                onCrearCuenta()
-            },
-        )
-    }
 }

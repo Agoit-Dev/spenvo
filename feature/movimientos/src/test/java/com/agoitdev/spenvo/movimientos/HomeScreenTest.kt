@@ -128,7 +128,11 @@ class HomeScreenTest {
         registroConflictosPendientes = FakeRegistroConflictosPendientesHomeScreen(),
     )
 
-    private fun montarHome(avatarUrl: String? = null, onAbrirCuenta: () -> Unit = {}) {
+    private fun montarHome(
+        avatarUrl: String? = null,
+        onAbrirCuenta: () -> Unit = {},
+        onAbrirAjustes: () -> Unit = {},
+    ) {
         movimientosViewModel = crearMovimientosViewModel()
         composeTestRule.setContent {
             HomeScreen(
@@ -137,12 +141,13 @@ class HomeScreenTest {
                 viewModel = crearHomeViewModel(),
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         }
     }
 
     @Test
-    fun `tocar el avatar de la topbar invoca onAbrirCuenta`() {
+    fun `tocar el avatar y luego Cuenta invoca onAbrirCuenta`() {
         var invocado = false
         montarHome(onAbrirCuenta = { invocado = true })
 
@@ -150,6 +155,18 @@ class HomeScreenTest {
         // Row merges into a single accessibility node -- performClick() needs the unmerged tree to
         // still address it by its own tag.
         composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Cuenta").performClick()
+
+        assertEquals(true, invocado)
+    }
+
+    @Test
+    fun `tocar el avatar y luego Ajustes invoca onAbrirAjustes`() {
+        var invocado = false
+        montarHome(onAbrirAjustes = { invocado = true })
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Ajustes").performClick()
 
         assertEquals(true, invocado)
     }

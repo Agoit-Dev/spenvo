@@ -9,6 +9,7 @@
     <string name="movements_empty">Todavía no hay movimientos.</string>
     <string name="movements_detail_placeholder">Seleccioná un movimiento para ver el detalle.</string>
     <string name="account_menu_description">Cuenta</string>
+    <string name="settings_menu_item">Ajustes</string>
     <string name="movements_add">Nuevo movimiento</string>
     <string name="movements_edit">Editar movimiento</string>
     <string name="movements_edit_action">Editar</string>

@@ -225,6 +225,7 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
                     PlanesScreen(
                         onCrearCuenta = { backStack.pushUnlessTop(CuentaRoute) },
                         onAbrirPlan = { planId -> backStack.pushUnlessTop(PlanRoute(planId)) },
+                        onAbrirAjustes = { backStack.pushUnlessTop(AjustesRoute) },
                     )
                 }
                 entry<PlanRoute> { route ->
@@ -232,6 +233,7 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
                         route = route,
                         avatarUrl = avatarUrl,
                         onAbrirCuenta = { backStack.pushUnlessTop(CuentaRoute) },
+                        onAbrirAjustes = { backStack.pushUnlessTop(AjustesRoute) },
                     )
                 }
                 entry<CuentaRoute> {
@@ -259,6 +261,7 @@ private fun ContenidoPlanRoute(
     route: PlanRoute,
     avatarUrl: String?,
     onAbrirCuenta: () -> Unit,
+    onAbrirAjustes: () -> Unit,
 ) {
     val movimientosViewModel: MovimientosViewModel = hiltViewModel()
     PlanScaffold(
@@ -268,6 +271,7 @@ private fun ContenidoPlanRoute(
                 movimientosViewModel = movimientosViewModel,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         },
         contenidoMovimientos = {
@@ -275,6 +279,7 @@ private fun ContenidoPlanRoute(
                 planId = route.planId,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
                 viewModel = movimientosViewModel,
             )
         },
@@ -283,6 +288,7 @@ private fun ContenidoPlanRoute(
                 planId = route.planId,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         },
         contenidoMiembros = {
@@ -290,6 +296,7 @@ private fun ContenidoPlanRoute(
                 planId = route.planId,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         },
     )
