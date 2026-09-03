@@ -46,6 +46,11 @@ Spenvo is under active development.
 - **Latest completed milestone:** M8 — OSV-Scanner CI gate (baseline triaged,
   required status check, scheduled-scan issue lifecycle validated) and
   optional MFA discovery (deliberately deferred, not implemented).
+- **Latest completed delivery:** `UI-THEME-001` — Material 3 design-system
+  foundation (`:core:designsystem`): explicit Brand Light/Dark schemes,
+  independent luminosity/color-source configuration, stable financial
+  semantic colors, typography, shapes, and a preview catalog. User-facing
+  theme preferences and persistence are a separate, deferred delivery.
 - **Current milestone:** none in progress; remaining work is unassigned
   backlog debt (see `backlog.md`).
 

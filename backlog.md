@@ -35,6 +35,11 @@ task's implementation departed from what its plan/design doc specified, note it 
 - [ ] **FEAT-M402:** Extend `Categoria`'s domain model and Room entity to support a hex color field
   (`colorHex`).
 - [ ] **FEAT-M403:** Add a basic color picker to the category creation/edit `ModalBottomSheet`.
+- [ ] **UI-THEME-002:** Deliver 2 of the Material 3 design system (`UI-THEME-001`): DataStore-backed
+  `ThemeMode`/`ColorMode` persistence, reactive `Flow` exposure, a settings screen with
+  Sistema/Claro/Oscuro and Spenvo/Dinámico selectors, Dynamic hidden or explained below Android 12,
+  restoration after process death, and Spanish/English strings. See the approved
+  [design](doc/designs/2026-09-02-spenvo-theming-design.md)'s "Delivery 2" section.
 
 ## 🧪 In Review / QA
 *Nothing active right now.*
