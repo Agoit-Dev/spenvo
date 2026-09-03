@@ -60,8 +60,9 @@ import com.agoitdev.spenvo.domain.model.ColorPreference
 import com.agoitdev.spenvo.domain.model.ThemePreference
 import com.agoitdev.spenvo.domain.repository.AppearancePreferencesRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -76,39 +77,41 @@ class AppearanceUseCaseTest {
     }
 
     @Test
-    fun `ObservarAppearanceUseCase delega en el repositorio`() = runBlocking {
+    fun `ObservarAppearanceUseCase delega en el repositorio`() = runTest {
         val esperado = AppearancePreferences(ThemePreference.DARK, ColorPreference.DYNAMIC)
         val repo = FakeAppearanceRepository(flowOf(esperado))
 
-        val resultado = ObservarAppearanceUseCase(repo).invoke()
+        val resultado = ObservarAppearanceUseCase(repo)().first()
 
-        assertEquals(esperado, resultado.let { var v: AppearancePreferences? = null; it.collect { p -> v = p }; v })
+        assertEquals(esperado, resultado)
     }
 
     @Test
-    fun `ActualizarTemaUseCase delega en el repositorio`() = runBlocking {
+    fun `ActualizarTemaUseCase delega en el repositorio`() = runTest {
         val repo = FakeAppearanceRepository(flowOf(AppearancePreferences()))
 
-        ActualizarTemaUseCase(repo).invoke(ThemePreference.DARK)
+        ActualizarTemaUseCase(repo)(ThemePreference.DARK)
 
         assertEquals(listOf(ThemePreference.DARK), repo.temasActualizados)
     }
 
     @Test
-    fun `ActualizarColorUseCase delega en el repositorio`() = runBlocking {
+    fun `ActualizarColorUseCase delega en el repositorio`() = runTest {
         val repo = FakeAppearanceRepository(flowOf(AppearancePreferences()))
 
-        ActualizarColorUseCase(repo).invoke(ColorPreference.DYNAMIC)
+        ActualizarColorUseCase(repo)(ColorPreference.DYNAMIC)
 
         assertEquals(listOf(ColorPreference.DYNAMIC), repo.coloresActualizados)
     }
 }
 
 private class FakeAppearanceRepository(
-    override val preferencias: Flow<AppearancePreferences>,
+    private val preferencias: Flow<AppearancePreferences>,
 ) : AppearancePreferencesRepository {
     val temasActualizados = mutableListOf<ThemePreference>()
     val coloresActualizados = mutableListOf<ColorPreference>()
+
+    override fun observarPreferencias(): Flow<AppearancePreferences> = preferencias
 
     override suspend fun actualizarTema(theme: ThemePreference) {
         temasActualizados += theme
@@ -155,7 +158,7 @@ import com.agoitdev.spenvo.domain.model.ThemePreference
 import kotlinx.coroutines.flow.Flow
 
 interface AppearancePreferencesRepository {
-    val preferencias: Flow<AppearancePreferences>
+    fun observarPreferencias(): Flow<AppearancePreferences>
 
     suspend fun actualizarTema(theme: ThemePreference)
 
@@ -163,7 +166,14 @@ interface AppearancePreferencesRepository {
 }
 ```
 
+Exposed as a method, not a property — matching every sibling repository's Flow-returning read
+(`CategoriaRepository.observarCategorias(planId)`, `AuthRepository.observeSesion()`,
+`PlanFinancieroRepository.observarPlan(planId)`), not a bare `val`.
+
 - [ ] **Step 5: Add the three use cases**
+
+Each uses `operator fun invoke`, matching the convention used by every other use case in this
+module (called as `useCase(x)`, not `useCase.invoke(x)`):
 
 ```kotlin
 package com.agoitdev.spenvo.domain.usecase
@@ -175,7 +185,7 @@ import kotlinx.coroutines.flow.Flow
 class ObservarAppearanceUseCase(
     private val appearanceRepository: AppearancePreferencesRepository,
 ) {
-    fun invoke(): Flow<AppearancePreferences> = appearanceRepository.preferencias
+    operator fun invoke(): Flow<AppearancePreferences> = appearanceRepository.observarPreferencias()
 }
 ```
 
@@ -188,7 +198,7 @@ import com.agoitdev.spenvo.domain.repository.AppearancePreferencesRepository
 class ActualizarTemaUseCase(
     private val appearanceRepository: AppearancePreferencesRepository,
 ) {
-    suspend fun invoke(theme: ThemePreference) = appearanceRepository.actualizarTema(theme)
+    suspend operator fun invoke(theme: ThemePreference) = appearanceRepository.actualizarTema(theme)
 }
 ```
 
@@ -201,7 +211,7 @@ import com.agoitdev.spenvo.domain.repository.AppearancePreferencesRepository
 class ActualizarColorUseCase(
     private val appearanceRepository: AppearancePreferencesRepository,
 ) {
-    suspend fun invoke(color: ColorPreference) = appearanceRepository.actualizarColor(color)
+    suspend operator fun invoke(color: ColorPreference) = appearanceRepository.actualizarColor(color)
 }
 ```
 
@@ -268,7 +278,7 @@ class ThemePreferencesTest {
     fun `sin claves devuelve SYSTEM mas BRAND`() = runBlocking {
         val prefs = crearPreferences()
 
-        val actual = prefs.preferencias.first()
+        val actual = prefs.observarPreferencias().first()
 
         assertEquals(ThemePreference.SYSTEM, actual.theme)
         assertEquals(ColorPreference.BRAND, actual.color)
@@ -281,7 +291,7 @@ class ThemePreferencesTest {
 
         prefs.actualizarTema(ThemePreference.DARK)
 
-        val actual = prefs.preferencias.first()
+        val actual = prefs.observarPreferencias().first()
         assertEquals(ThemePreference.DARK, actual.theme)
         assertEquals(ColorPreference.DYNAMIC, actual.color)
     }
@@ -293,7 +303,7 @@ class ThemePreferencesTest {
 
         prefs.actualizarColor(ColorPreference.DYNAMIC)
 
-        val actual = prefs.preferencias.first()
+        val actual = prefs.observarPreferencias().first()
         assertEquals(ThemePreference.LIGHT, actual.theme)
         assertEquals(ColorPreference.DYNAMIC, actual.color)
     }
@@ -308,7 +318,7 @@ class ThemePreferencesTest {
         rawStore.edit { it[stringPreferencesKey("theme")] = "NOT_A_REAL_VALUE" }
 
         val prefs = ThemePreferences(rawStore)
-        val actual = prefs.preferencias.first()
+        val actual = prefs.observarPreferencias().first()
 
         assertEquals(ThemePreference.SYSTEM, actual.theme)
     }
@@ -322,11 +332,11 @@ class ThemePreferencesTest {
         ) { context.preferencesDataStoreFile(nombre) }
         rawStore.edit { it[stringPreferencesKey("color")] = ColorPreference.DYNAMIC.name }
 
-        val primeraLectura = ThemePreferences(rawStore).preferencias.first()
+        val primeraLectura = ThemePreferences(rawStore).observarPreferencias().first()
         assertEquals(ColorPreference.BRAND, primeraLectura.color)
 
         // The correction must have been written back, not just presented in memory.
-        val segundaInstancia = ThemePreferences(rawStore).preferencias.first()
+        val segundaInstancia = ThemePreferences(rawStore).observarPreferencias().first()
         assertEquals(ColorPreference.BRAND, segundaInstancia.color)
     }
 
@@ -345,7 +355,7 @@ class ThemePreferencesTest {
         primerScope.cancel()
 
         val segundoScope = CoroutineScope(SupervisorJob())
-        val persistido = nuevaInstancia(segundoScope).preferencias.first()
+        val persistido = nuevaInstancia(segundoScope).observarPreferencias().first()
         segundoScope.cancel()
         context.preferencesDataStoreFile(nombreArchivo).delete()
 
@@ -404,7 +414,7 @@ class ThemePreferences internal constructor(
     @Inject
     constructor(@ApplicationContext context: Context) : this(context.appearanceDataStore)
 
-    override val preferencias: Flow<AppearancePreferences> = dataStore.data
+    override fun observarPreferencias(): Flow<AppearancePreferences> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { prefs -> normalizar(prefs) }
 
@@ -875,8 +885,9 @@ class AppearanceViewModelTest {
 }
 
 private class FakeAppearanceRepository(
-    override val preferencias: Flow<AppearancePreferences>,
+    private val preferencias: Flow<AppearancePreferences>,
 ) : AppearancePreferencesRepository {
+    override fun observarPreferencias(): Flow<AppearancePreferences> = preferencias
     override suspend fun actualizarTema(theme: ThemePreference) = Unit
     override suspend fun actualizarColor(color: ColorPreference) = Unit
 }
@@ -934,7 +945,7 @@ class AppearanceViewModel @Inject constructor(
     observarAppearance: ObservarAppearanceUseCase,
 ) : ViewModel() {
 
-    val estado: StateFlow<AppearanceUiState> = observarAppearance.invoke()
+    val estado: StateFlow<AppearanceUiState> = observarAppearance()
         .map { it.aDesignSystem() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppearanceUiState.Loading)
 }
@@ -1267,11 +1278,13 @@ class AjustesViewModelTest {
 }
 
 private class FakeAppearanceRepository(
-    override val preferencias: Flow<AppearancePreferences>,
+    private val preferencias: Flow<AppearancePreferences>,
 ) : AppearancePreferencesRepository {
     val temasActualizados = mutableListOf<ThemePreference>()
     val coloresActualizados = mutableListOf<ColorPreference>()
     var fallarProximaEscritura = false
+
+    override fun observarPreferencias(): Flow<AppearancePreferences> = preferencias
 
     override suspend fun actualizarTema(theme: ThemePreference) {
         if (fallarProximaEscritura) throw java.io.IOException("boom")
@@ -1335,7 +1348,7 @@ class AjustesViewModel @Inject constructor(
     private val errorGuardado = MutableStateFlow(false)
 
     val estado: StateFlow<AjustesUiState> = combine(
-        observarAppearance.invoke(),
+        observarAppearance(),
         errorGuardado,
     ) { preferencias, error ->
         AjustesUiState(theme = preferencias.theme, color = preferencias.color, errorGuardado = error)
@@ -1343,13 +1356,13 @@ class AjustesViewModel @Inject constructor(
 
     fun seleccionarTema(theme: ThemePreference) {
         viewModelScope.launch {
-            runCatching { actualizarTema.invoke(theme) }.onFailure { errorGuardado.value = true }
+            runCatching { actualizarTema(theme) }.onFailure { errorGuardado.value = true }
         }
     }
 
     fun seleccionarColor(color: ColorPreference) {
         viewModelScope.launch {
-            runCatching { actualizarColor.invoke(color) }.onFailure { errorGuardado.value = true }
+            runCatching { actualizarColor(color) }.onFailure { errorGuardado.value = true }
         }
     }
 
