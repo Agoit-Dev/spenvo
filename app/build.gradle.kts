@@ -61,6 +61,7 @@ dependencies {
     implementation(project(":feature:cuenta"))
     implementation(project(":feature:planes"))
     implementation(project(":feature:categorias"))
+    implementation(project(":feature:ajustes"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

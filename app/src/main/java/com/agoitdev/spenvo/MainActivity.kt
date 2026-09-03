@@ -31,6 +31,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.agoitdev.spenvo.ajustes.AjustesScreen
 import com.agoitdev.spenvo.categorias.CategoriasScreen
 import com.agoitdev.spenvo.cuenta.AuthTab
 import com.agoitdev.spenvo.cuenta.CuentaScreen
@@ -239,6 +240,9 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
                         onContinuarComoInvitado = gateViewModel::continuarComoInvitado,
                         onCerrar = { if (backStack.size > 1) backStack.removeLastOrNull() },
                     )
+                }
+                entry<AjustesRoute> {
+                    AjustesScreen()
                 }
             },
         )
