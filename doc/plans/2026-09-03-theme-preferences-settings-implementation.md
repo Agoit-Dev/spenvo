@@ -247,6 +247,7 @@ git commit -m "feat(domain): add appearance preferences contract and use cases"
 ```kotlin
 package com.agoitdev.spenvo.data.appearance
 
+import android.os.Build
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
@@ -324,7 +325,7 @@ class ThemePreferencesTest {
     }
 
     @Test
-    fun `DYNAMIC persistido por debajo de API 31 se normaliza a BRAND en el store`() = runBlocking {
+    fun `DYNAMIC persistido se normaliza segun soporte real de la API`() = runBlocking {
         val nombre = "appearance_dynamic_${System.nanoTime()}"
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val rawStore = PreferenceDataStoreFactory.create(
@@ -332,12 +333,20 @@ class ThemePreferencesTest {
         ) { context.preferencesDataStoreFile(nombre) }
         rawStore.edit { it[stringPreferencesKey("color")] = ColorPreference.DYNAMIC.name }
 
-        val primeraLectura = ThemePreferences(rawStore).observarPreferencias().first()
-        assertEquals(ColorPreference.BRAND, primeraLectura.color)
+        val lectura = ThemePreferences(rawStore).observarPreferencias().first()
+        val rawColorPersistido = rawStore.data.first()[stringPreferencesKey("color")]
 
-        // The correction must have been written back, not just presented in memory.
-        val segundaInstancia = ThemePreferences(rawStore).observarPreferencias().first()
-        assertEquals(ColorPreference.BRAND, segundaInstancia.color)
+        // Branches on the actual running API level so the test is correct on any device instead of
+        // assuming a fixed sub-31 environment. Reads the raw persisted key directly (not through
+        // observarPreferencias() again) so the assertion proves the write landed in the store,
+        // not just that normalizar() recomputes the same value in memory on every call.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            assertEquals(ColorPreference.DYNAMIC, lectura.color)
+            assertEquals(ColorPreference.DYNAMIC.name, rawColorPersistido)
+        } else {
+            assertEquals(ColorPreference.BRAND, lectura.color)
+            assertEquals(ColorPreference.BRAND.name, rawColorPersistido)
+        }
     }
 
     @Test
@@ -365,10 +374,11 @@ class ThemePreferencesTest {
 ```
 
 Note: this test file is instrumented (`androidTest`, real DataStore + real `Build.VERSION.SDK_INT`
-of the test device/emulator). The "DYNAMIC below API 31" test only exercises the normalization path
-when run on an emulator/device at API < 31; on a higher-API runner it degenerates to "DYNAMIC stays
-DYNAMIC," which is still correct behavior for that device. Task 9 records the actual API level the
-instrumented suite ran on.
+of the test device/emulator). The DYNAMIC-normalization test branches on the actual running API
+level (`Build.VERSION.SDK_INT >= Build.VERSION_CODES.S`) rather than assuming a fixed sub-31
+environment, so it asserts correct, meaningful behavior on any device: normalization fires and is
+verified against the raw persisted key on API < 31, and is verified to correctly NOT fire on API
+31+. Task 9 records the actual API level the instrumented suite ran on.
 
 - [ ] **Step 2: Run the test and confirm RED**
 
@@ -441,7 +451,10 @@ class ThemePreferences internal constructor(
             ?: ColorPreference.BRAND
         val dynamicSoportado = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         if (colorCrudo == ColorPreference.DYNAMIC && !dynamicSoportado) {
-            dataStore.edit { it[KEY_COLOR] = ColorPreference.BRAND.name }
+            // A failed corrective write must not take down the whole read flow: the UI still gets
+            // the correct in-memory value for this emission, and the fix retries on the next read
+            // since the stored value is still the anomalous DYNAMIC until a write actually lands.
+            runCatching { dataStore.edit { it[KEY_COLOR] = ColorPreference.BRAND.name } }
             return AppearancePreferences(theme, ColorPreference.BRAND)
         }
         return AppearancePreferences(theme, colorCrudo)
