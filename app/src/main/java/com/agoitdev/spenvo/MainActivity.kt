@@ -52,15 +52,27 @@ data class PlanRoute(val planId: String) : NavKey
 @Serializable
 data object CuentaRoute : NavKey
 
+@Serializable
+data object AjustesRoute : NavKey
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        var appearance: AppearanceUiState = AppearanceUiState.Loading
         setContent {
-            SpenvoTheme {
-                SpenvoApp()
+            val appearanceViewModel: AppearanceViewModel = hiltViewModel()
+            val estadoApariencia by appearanceViewModel.estado.collectAsStateWithLifecycle()
+            appearance = estadoApariencia
+            splashScreen.setKeepOnScreenCondition { appearance == AppearanceUiState.Loading }
+            val estado = estadoApariencia
+            if (debeMostrarContenido(estado)) {
+                check(estado is AppearanceUiState.Ready)
+                SpenvoTheme(themeMode = estado.themeMode, colorMode = estado.colorMode) {
+                    SpenvoApp()
+                }
             }
         }
     }
@@ -106,6 +118,13 @@ fun MutableList<NavKey>.pushUnlessTop(destino: NavKey) {
  * The native splash window ([installSplashScreen]) covers the window before this.
  */
 fun debeMostrarNavegacion(estado: EstadoGate): Boolean = estado != EstadoGate.Cargando
+
+/**
+ * Mirrors [debeMostrarNavegacion]'s shape for the appearance gate: [MainActivity.onCreate] and
+ * its test rely on this exact function to decide whether real content (as opposed to nothing,
+ * left for the splash screen to cover) should be shown, so the two can never silently diverge.
+ */
+fun debeMostrarContenido(estado: AppearanceUiState): Boolean = estado is AppearanceUiState.Ready
 
 /**
  * Which auth form [CuentaScreen] opens on, decided by *how the user got there*: the post-logout
