@@ -521,7 +521,9 @@ git commit -m "feat(data): add ThemePreferences DataStore and appearance DI modu
 ```kotlin
 package com.agoitdev.spenvo.designsystem.components
 
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -546,6 +548,7 @@ class AvatarMenuTest {
             AvatarMenu(
                 photoUrl = null,
                 contentDescription = "Cuenta",
+                estadoLabel = null,
                 accountLabel = "Cuenta",
                 settingsLabel = "Ajustes",
                 onOpenAccount = {},
@@ -557,11 +560,49 @@ class AvatarMenuTest {
     }
 
     @Test
+    fun `estadoLabel nulo no muestra fila de estado`() {
+        composeTestRule.setContent {
+            AvatarMenu(
+                photoUrl = null,
+                contentDescription = "Cuenta",
+                estadoLabel = null,
+                accountLabel = "Cuenta",
+                settingsLabel = "Ajustes",
+                onOpenAccount = {},
+                onOpenSettings = {},
+            )
+        }
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+
+        composeTestRule.onNodeWithText("test@spenvo.com").assertDoesNotExist()
+    }
+
+    @Test
+    fun `estadoLabel no nulo muestra una fila deshabilitada`() {
+        composeTestRule.setContent {
+            AvatarMenu(
+                photoUrl = null,
+                contentDescription = "Cuenta",
+                estadoLabel = "test@spenvo.com",
+                accountLabel = "Cuenta",
+                settingsLabel = "Ajustes",
+                onOpenAccount = {},
+                onOpenSettings = {},
+            )
+        }
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+
+        composeTestRule.onNodeWithText("test@spenvo.com").assertIsDisplayed()
+        composeTestRule.onNodeWithText("test@spenvo.com").assertIsNotEnabled()
+    }
+
+    @Test
     fun `tocar el avatar abre cuenta y ajustes`() {
         composeTestRule.setContent {
             AvatarMenu(
                 photoUrl = null,
                 contentDescription = "Cuenta",
+                estadoLabel = null,
                 accountLabel = "Cuenta",
                 settingsLabel = "Ajustes",
                 onOpenAccount = {},
@@ -583,6 +624,7 @@ class AvatarMenuTest {
             AvatarMenu(
                 photoUrl = null,
                 contentDescription = "Cuenta",
+                estadoLabel = null,
                 accountLabel = "Cuenta",
                 settingsLabel = "Ajustes",
                 onOpenAccount = { cuentaClics++ },
@@ -605,6 +647,7 @@ class AvatarMenuTest {
             AvatarMenu(
                 photoUrl = null,
                 contentDescription = "Cuenta",
+                estadoLabel = null,
                 accountLabel = "Cuenta",
                 settingsLabel = "Ajustes",
                 onOpenAccount = { cuentaClics++ },
@@ -625,6 +668,7 @@ class AvatarMenuTest {
             AvatarMenu(
                 photoUrl = null,
                 contentDescription = "Cuenta",
+                estadoLabel = null,
                 accountLabel = "Cuenta",
                 settingsLabel = "Ajustes",
                 onOpenAccount = {},
@@ -658,6 +702,7 @@ package com.agoitdev.spenvo.designsystem.components
 
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -670,6 +715,7 @@ import androidx.compose.ui.Modifier
 fun AvatarMenu(
     photoUrl: String?,
     contentDescription: String,
+    estadoLabel: String?,
     accountLabel: String,
     settingsLabel: String,
     onOpenAccount: () -> Unit,
@@ -685,6 +731,13 @@ fun AvatarMenu(
         modifier = modifier,
     )
     DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+        if (estadoLabel != null) {
+            DropdownMenuItem(
+                text = { Text(text = estadoLabel, style = MaterialTheme.typography.labelLarge) },
+                onClick = {},
+                enabled = false,
+            )
+        }
         DropdownMenuItem(
             text = { Text(accountLabel) },
             onClick = {
@@ -1794,18 +1847,18 @@ composable (lines 313-339), and replace its call site with `AvatarMenu`:
 AvatarMenu(
     photoUrl = avatarUrl,
     contentDescription = stringResource(R.string.account_menu_description),
-    accountLabel = estado ?: stringResource(R.string.account_create),
+    estadoLabel = estado,
+    accountLabel = stringResource(R.string.account_create),
     settingsLabel = stringResource(R.string.settings_menu_item),
     onOpenAccount = onCrearCuenta,
     onOpenSettings = onAbrirAjustes,
 )
 ```
 
-This intentionally drops the disabled `estado` label row `CuentaMenu` used to show (line 322-330):
-`AvatarMenu`'s two-item contract (Task 3) has no slot for a third, non-clickable label item. Confirm
-with the design that `estado` (guest/account label) moves to the account item's own text, or file a
-follow-up if a genuinely separate label row is still wanted — do not silently reintroduce a third
-menu item without updating Task 3's component contract and tests.
+`estado` is the existing `when` expression computed at the call site (real file lines 136-140):
+`null` while not authenticated, the linked email, or the guest-state string — unchanged from what
+`CuentaMenu` passed. Task 3's `AvatarMenu` now renders it as the same disabled label row `CuentaMenu`
+did, so this preserves the current behavior exactly rather than dropping it.
 
 Import `com.agoitdev.spenvo.designsystem.components.AvatarMenu`; the `AvatarTopBarAction` import
 may become unused here and should be removed if so (`CuentaMenu` was its only local caller —
@@ -1823,12 +1876,17 @@ the `IconButton(onClick = onAbrirCuenta) { AvatarTopBarAction(...) }`-shaped cal
 AvatarMenu(
     photoUrl = avatarUrl,
     contentDescription = stringResource(R.string.account_menu_description),
+    estadoLabel = null,
     accountLabel = stringResource(R.string.account_menu_description),
     settingsLabel = stringResource(R.string.settings_menu_item),
     onOpenAccount = onAbrirCuenta,
     onOpenSettings = onAbrirAjustes,
 )
 ```
+
+`estadoLabel = null` here: none of these 4 screens compute the email/guest identity `PlanesScreen`
+does today (they only receive `avatarUrl`), so this preserves current behavior — no label row on
+these top bars, same as before this change.
 
 Import `com.agoitdev.spenvo.designsystem.components.AvatarMenu` in each of the 4 files; drop the
 now-unused `AvatarTopBarAction` import where it was the only consumer.
@@ -1950,9 +2008,9 @@ per the design's "Explicitly out of scope."
   4), module placement (Task 5), UI controls and Dynamic gating (Task 7), navigation scope across
   `PlanesScreen` + 4 tabs (Task 8), branch-from-`main` and ticket identity were already applied when
   this plan and its worktree were created.
-- Task 3's `AvatarMenu` two-item contract conflicts with `PlanesScreen`'s existing disabled
-  guest-state label row; Task 8 Step 3 flags this explicitly rather than silently dropping it —
-  needs a decision before or during execution, not an assumption.
+- `AvatarMenu` (Task 3) carries an optional `estadoLabel` row, preserving `PlanesScreen`'s existing
+  disabled guest/account-identity row (Task 8 Step 3) instead of dropping it; the 4 plan-tab top
+  bars pass `estadoLabel = null` since they show no such row today (Task 8 Step 4).
 - No placeholder steps; every step carries complete code or an exact command.
 - No new external dependency; only a new local module (`:feature:ajustes`), covered by Task 5's
   lockfile regeneration.
