@@ -533,267 +533,38 @@ git add core/data/src/main/java/com/agoitdev/spenvo/data/appearance/ThemePrefere
 git commit -m "feat(data): add ThemePreferences DataStore and appearance DI module"
 ```
 
-### Task 3: Shared `AvatarMenu`
+### Task 3: Shared `AvatarMenu` — DONE (`f1e7c19`)
+
+Implemented, reviewed, and fixed. Final shape, for reference by later tasks:
 
 **Files:**
-- Create: `core/designsystem/src/main/java/com/agoitdev/spenvo/designsystem/components/AvatarMenu.kt`
-- Test: `core/designsystem/src/test/java/com/agoitdev/spenvo/designsystem/components/AvatarMenuTest.kt`
+- `core/designsystem/src/main/java/com/agoitdev/spenvo/designsystem/components/AvatarMenu.kt`
+- `core/designsystem/src/main/java/com/agoitdev/spenvo/designsystem/components/AvatarMenuTextos.kt`
+- `core/designsystem/src/test/java/com/agoitdev/spenvo/designsystem/components/AvatarMenuTest.kt`
 
-- [ ] **Step 1: Write the failing Compose tests**
-
-```kotlin
-package com.agoitdev.spenvo.designsystem.components
-
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import org.junit.Assert.assertEquals
-import org.junit.Rule
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
-class AvatarMenuTest {
-
-    @get:Rule
-    val composeTestRule = createComposeRule()
-
-    @Test
-    fun `el menu esta cerrado hasta tocar el avatar`() {
-        composeTestRule.setContent {
-            AvatarMenu(
-                photoUrl = null,
-                contentDescription = "Cuenta",
-                estadoLabel = null,
-                accountLabel = "Cuenta",
-                settingsLabel = "Ajustes",
-                onOpenAccount = {},
-                onOpenSettings = {},
-            )
-        }
-
-        composeTestRule.onNodeWithText("Cuenta").assertDoesNotExist()
-    }
-
-    @Test
-    fun `estadoLabel nulo no muestra fila de estado`() {
-        composeTestRule.setContent {
-            AvatarMenu(
-                photoUrl = null,
-                contentDescription = "Cuenta",
-                estadoLabel = null,
-                accountLabel = "Cuenta",
-                settingsLabel = "Ajustes",
-                onOpenAccount = {},
-                onOpenSettings = {},
-            )
-        }
-        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
-
-        composeTestRule.onNodeWithText("test@spenvo.com").assertDoesNotExist()
-    }
-
-    @Test
-    fun `estadoLabel no nulo muestra una fila deshabilitada`() {
-        composeTestRule.setContent {
-            AvatarMenu(
-                photoUrl = null,
-                contentDescription = "Cuenta",
-                estadoLabel = "test@spenvo.com",
-                accountLabel = "Cuenta",
-                settingsLabel = "Ajustes",
-                onOpenAccount = {},
-                onOpenSettings = {},
-            )
-        }
-        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
-
-        composeTestRule.onNodeWithText("test@spenvo.com").assertIsDisplayed()
-        composeTestRule.onNodeWithText("test@spenvo.com").assertIsNotEnabled()
-    }
-
-    @Test
-    fun `tocar el avatar abre cuenta y ajustes`() {
-        composeTestRule.setContent {
-            AvatarMenu(
-                photoUrl = null,
-                contentDescription = "Cuenta",
-                estadoLabel = null,
-                accountLabel = "Cuenta",
-                settingsLabel = "Ajustes",
-                onOpenAccount = {},
-                onOpenSettings = {},
-            )
-        }
-
-        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
-
-        composeTestRule.onNodeWithText("Cuenta").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Ajustes").assertIsDisplayed()
-    }
-
-    @Test
-    fun `Cuenta invoca solamente onOpenAccount`() {
-        var cuentaClics = 0
-        var ajustesClics = 0
-        composeTestRule.setContent {
-            AvatarMenu(
-                photoUrl = null,
-                contentDescription = "Cuenta",
-                estadoLabel = null,
-                accountLabel = "Cuenta",
-                settingsLabel = "Ajustes",
-                onOpenAccount = { cuentaClics++ },
-                onOpenSettings = { ajustesClics++ },
-            )
-        }
-        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
-
-        composeTestRule.onNodeWithText("Cuenta").performClick()
-
-        assertEquals(1, cuentaClics)
-        assertEquals(0, ajustesClics)
-    }
-
-    @Test
-    fun `Ajustes invoca solamente onOpenSettings`() {
-        var cuentaClics = 0
-        var ajustesClics = 0
-        composeTestRule.setContent {
-            AvatarMenu(
-                photoUrl = null,
-                contentDescription = "Cuenta",
-                estadoLabel = null,
-                accountLabel = "Cuenta",
-                settingsLabel = "Ajustes",
-                onOpenAccount = { cuentaClics++ },
-                onOpenSettings = { ajustesClics++ },
-            )
-        }
-        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
-
-        composeTestRule.onNodeWithText("Ajustes").performClick()
-
-        assertEquals(0, cuentaClics)
-        assertEquals(1, ajustesClics)
-    }
-
-    @Test
-    fun `elegir una opcion cierra el menu`() {
-        composeTestRule.setContent {
-            AvatarMenu(
-                photoUrl = null,
-                contentDescription = "Cuenta",
-                estadoLabel = null,
-                accountLabel = "Cuenta",
-                settingsLabel = "Ajustes",
-                onOpenAccount = {},
-                onOpenSettings = {},
-            )
-        }
-        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
-
-        composeTestRule.onNodeWithText("Ajustes").performClick()
-
-        composeTestRule.onNodeWithText("Cuenta").assertDoesNotExist()
-    }
-}
-```
-
-- [ ] **Step 2: Run the test and confirm RED**
-
-```powershell
-.\gradlew.bat :core:designsystem:testDebugUnitTest --tests "*.AvatarMenuTest"
-```
-
-Expected: compilation failure — `AvatarMenu` doesn't exist yet.
-
-- [ ] **Step 3: Implement `AvatarMenu`**
-
-Wraps the existing `AvatarTopBarAction` (`core/designsystem/src/main/java/com/agoitdev/spenvo/designsystem/components/Avatar.kt:104`) directly — no generic avatar slot. Carries no navigation
-knowledge; callers own routing.
+The three caller-supplied strings are bundled into a data class (this module's own convention for
+avoiding `LongParameterList`, matching `ConflictoDialog.kt`'s `ConflictoDialogTextos`):
 
 ```kotlin
 package com.agoitdev.spenvo.designsystem.components
 
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-
-@Composable
-fun AvatarMenu(
-    photoUrl: String?,
-    contentDescription: String,
-    estadoLabel: String?,
-    accountLabel: String,
-    settingsLabel: String,
-    onOpenAccount: () -> Unit,
-    onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var abierto by remember { mutableStateOf(false) }
-
-    AvatarTopBarAction(
-        photoUrl = photoUrl,
-        contentDescription = contentDescription,
-        onClick = { abierto = true },
-        modifier = modifier,
-    )
-    DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-        if (estadoLabel != null) {
-            DropdownMenuItem(
-                text = { Text(text = estadoLabel, style = MaterialTheme.typography.labelLarge) },
-                onClick = {},
-                enabled = false,
-            )
-        }
-        DropdownMenuItem(
-            text = { Text(accountLabel) },
-            onClick = {
-                abierto = false
-                onOpenAccount()
-            },
-        )
-        DropdownMenuItem(
-            text = { Text(settingsLabel) },
-            onClick = {
-                abierto = false
-                onOpenSettings()
-            },
-        )
-    }
-}
+data class AvatarMenuTextos(
+    val estado: String?,
+    val cuenta: String,
+    val ajustes: String,
+)
 ```
 
-- [ ] **Step 4: Run the test and confirm GREEN**
+`AvatarMenu`'s final signature is 6 parameters — `AvatarMenu(photoUrl: String?, contentDescription: String, textos: AvatarMenuTextos, onOpenAccount: () -> Unit, onOpenSettings: () -> Unit, modifier: Modifier = Modifier)`.
+It wraps `AvatarTopBarAction` and `DropdownMenu` together inside one shared `Box(modifier = modifier)`
+(Material3 requires a `DropdownMenu` to share a parent layout with its anchor sibling — without it,
+the popup anchors on whatever layout the caller happens to place `AvatarMenu` inside, which breaks
+the moment a top bar has another action alongside the avatar). The `textos.estado` row, when
+non-null, renders as a plain non-clickable `Text` (not a disabled `DropdownMenuItem` — Material3
+keeps a disabled item focusable in the accessibility tree, so TalkBack would announce it as
+"…, dimmed," which is wrong for a static identity label), tagged `TAG_AVATAR_MENU_ESTADO`.
 
-```powershell
-.\gradlew.bat :core:designsystem:testDebugUnitTest --tests "*.AvatarMenuTest"
-```
-
-Expected: BUILD SUCCESSFUL, 5 tests passed.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add core/designsystem/src/main/java/com/agoitdev/spenvo/designsystem/components/AvatarMenu.kt \
-        core/designsystem/src/test/java/com/agoitdev/spenvo/designsystem/components/AvatarMenuTest.kt
-git commit -m "feat(designsystem): add shared AvatarMenu component"
-```
+Later tasks (Task 8) reference `AvatarMenu(photoUrl, contentDescription, textos = AvatarMenuTextos(...), onOpenAccount, onOpenSettings)` — not the earlier 8-flat-parameter shape.
 
 ### Task 4: `AppearanceViewModel` and splash-gated startup
 
@@ -1873,9 +1644,11 @@ composable (lines 313-339), and replace its call site with `AvatarMenu`:
 AvatarMenu(
     photoUrl = avatarUrl,
     contentDescription = stringResource(R.string.account_menu_description),
-    estadoLabel = estado,
-    accountLabel = stringResource(R.string.account_create),
-    settingsLabel = stringResource(R.string.settings_menu_item),
+    textos = AvatarMenuTextos(
+        estado = estado,
+        cuenta = stringResource(R.string.account_create),
+        ajustes = stringResource(R.string.settings_menu_item),
+    ),
     onOpenAccount = onCrearCuenta,
     onOpenSettings = onAbrirAjustes,
 )
@@ -1902,9 +1675,11 @@ the `IconButton(onClick = onAbrirCuenta) { AvatarTopBarAction(...) }`-shaped cal
 AvatarMenu(
     photoUrl = avatarUrl,
     contentDescription = stringResource(R.string.account_menu_description),
-    estadoLabel = null,
-    accountLabel = stringResource(R.string.account_menu_description),
-    settingsLabel = stringResource(R.string.settings_menu_item),
+    textos = AvatarMenuTextos(
+        estado = null,
+        cuenta = stringResource(R.string.account_menu_description),
+        ajustes = stringResource(R.string.settings_menu_item),
+    ),
     onOpenAccount = onAbrirCuenta,
     onOpenSettings = onAbrirAjustes,
 )
