@@ -35,6 +35,7 @@ local.properties
 .claude/agent-memory-local
 .claude/first-run
 .claude/assistant-daemon-state.json
+.claude/settings.local.json
 
 # --- CONFIGURACIÓN DE FIREBASE ---
 **/google-services.json
