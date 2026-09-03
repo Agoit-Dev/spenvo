@@ -224,6 +224,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   consumers now resolve semantic financial color pairs instead of importing raw colors. Contract
   tests cover theme selection on SDK 30/31, typography, shapes, all extended roles, and focused
   consumer mapping/color-pair behavior. Theme settings and persistence remain deferred.
+- **UI-THEME-002:** delivered Delivery 2 of Spenvo's theming work — user-facing theme preferences
+  (`ThemeMode`: System/Light/Dark; `ColorMode`: Brand/Dynamic color source), persisted locally via
+  a new `appearance` DataStore in `:core:data` with defensive decoding and DYNAMIC-below-API-31
+  self-correction. Exposed through a new `:feature:ajustes` Settings screen, reachable from every
+  plan screen's avatar menu via a new shared `AvatarMenu` that replaces the previously duplicated
+  avatar button across `PlanesScreen` and the four plan-tab top bars. Selections apply immediately
+  without recreating the Activity; startup is gated on the persisted appearance through a new
+  `AppearanceViewModel` to avoid a SYSTEM+BRAND flash before the real value loads. See
+  `doc/designs/2026-09-03-theme-preferences-settings-design.md` and
+  `doc/plans/2026-09-03-theme-preferences-settings-implementation.md`.
 - **OSV-M801 (M8, CI half — done):** OSV-Scanner CI gate
   implemented and validated, both locally and against real GitHub Actions
   (`.github/workflows/osv-scanner-pr.yml`, `.github/workflows/osv-scanner-scheduled.yml`,

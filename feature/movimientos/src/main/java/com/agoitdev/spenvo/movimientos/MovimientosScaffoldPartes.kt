@@ -12,20 +12,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.agoitdev.spenvo.designsystem.components.AvatarTopBarAction
+import com.agoitdev.spenvo.designsystem.components.AvatarMenu
+import com.agoitdev.spenvo.designsystem.components.AvatarMenuTextos
 import com.agoitdev.spenvo.domain.model.TipoCategoria
 
 /** Extracted from `MovimientosScreen.kt` to stay under detekt's `TooManyFunctions` file threshold. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MovimientosTopBar(avatarUrl: String?, onAbrirCuenta: () -> Unit) {
+internal fun MovimientosTopBar(avatarUrl: String?, onAbrirCuenta: () -> Unit, onAbrirAjustes: () -> Unit) {
     TopAppBar(
         title = { Text(stringResource(R.string.movements_title)) },
         actions = {
-            AvatarTopBarAction(
+            AvatarMenu(
                 photoUrl = avatarUrl,
                 contentDescription = stringResource(R.string.account_menu_description),
-                onClick = onAbrirCuenta,
+                textos = AvatarMenuTextos(
+                    estado = null,
+                    cuenta = stringResource(R.string.account_menu_description),
+                    ajustes = stringResource(R.string.settings_menu_item),
+                ),
+                onOpenAccount = onAbrirCuenta,
+                onOpenSettings = onAbrirAjustes,
             )
         },
     )

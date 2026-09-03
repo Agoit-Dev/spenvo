@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.agoitdev.spenvo.data.remote.sync.PlanSincronizacion
 import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_IMAGEN
 import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_PLACEHOLDER
@@ -48,6 +49,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -161,7 +163,7 @@ class PlanesScreenTest {
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
-            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, onAbrirAjustes = {}, viewModel = viewModel)
         }
 
         composeTestRule.onNodeWithTag(TAG_PLANES_CARGANDO).assertIsDisplayed()
@@ -175,7 +177,7 @@ class PlanesScreenTest {
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
-            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, onAbrirAjustes = {}, viewModel = viewModel)
         }
 
         composeTestRule.onNodeWithContentDescription("Cargando planes").assertIsDisplayed()
@@ -187,7 +189,7 @@ class PlanesScreenTest {
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
-            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, onAbrirAjustes = {}, viewModel = viewModel)
         }
 
         composeTestRule.onNodeWithTag(TAG_PLANES_CARGANDO).assertDoesNotExist()
@@ -205,7 +207,7 @@ class PlanesScreenTest {
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
-            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, onAbrirAjustes = {}, viewModel = viewModel)
         }
 
         composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_IMAGEN, useUnmergedTree = true).assertIsDisplayed()
@@ -218,7 +220,7 @@ class PlanesScreenTest {
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
-            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, onAbrirAjustes = {}, viewModel = viewModel)
         }
 
         composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).assertIsDisplayed()
@@ -230,13 +232,53 @@ class PlanesScreenTest {
         val viewModel = crearViewModel()
 
         composeTestRule.setContent {
-            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, viewModel = viewModel)
+            PlanesScreen(onCrearCuenta = {}, onAbrirPlan = {}, onAbrirAjustes = {}, viewModel = viewModel)
         }
 
         composeTestRule.onNodeWithTag(TAG_PLANES_CARGANDO).assertDoesNotExist()
         composeTestRule.onNodeWithText(
             "Todavía no hay planes. Toca + para crear tu primer plan.",
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `tocar el avatar y luego Crear cuenta invoca onCrearCuenta`() {
+        val viewModel = crearViewModel()
+        var invocado = false
+
+        composeTestRule.setContent {
+            PlanesScreen(
+                onCrearCuenta = { invocado = true },
+                onAbrirPlan = {},
+                onAbrirAjustes = {},
+                viewModel = viewModel,
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Crear cuenta").performClick()
+
+        assertEquals(true, invocado)
+    }
+
+    @Test
+    fun `tocar el avatar y luego Ajustes invoca onAbrirAjustes`() {
+        val viewModel = crearViewModel()
+        var invocado = false
+
+        composeTestRule.setContent {
+            PlanesScreen(
+                onCrearCuenta = {},
+                onAbrirPlan = {},
+                onAbrirAjustes = { invocado = true },
+                viewModel = viewModel,
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Ajustes").performClick()
+
+        assertEquals(true, invocado)
     }
 }
 

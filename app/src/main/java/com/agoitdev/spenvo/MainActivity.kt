@@ -31,6 +31,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.agoitdev.spenvo.ajustes.AjustesScreen
 import com.agoitdev.spenvo.categorias.CategoriasScreen
 import com.agoitdev.spenvo.cuenta.AuthTab
 import com.agoitdev.spenvo.cuenta.CuentaScreen
@@ -52,15 +53,27 @@ data class PlanRoute(val planId: String) : NavKey
 @Serializable
 data object CuentaRoute : NavKey
 
+@Serializable
+data object AjustesRoute : NavKey
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        var appearance: AppearanceUiState = AppearanceUiState.Loading
         setContent {
-            SpenvoTheme {
-                SpenvoApp()
+            val appearanceViewModel: AppearanceViewModel = hiltViewModel()
+            val estadoApariencia by appearanceViewModel.estado.collectAsStateWithLifecycle()
+            appearance = estadoApariencia
+            splashScreen.setKeepOnScreenCondition { appearance == AppearanceUiState.Loading }
+            val estado = estadoApariencia
+            if (debeMostrarContenido(estado)) {
+                check(estado is AppearanceUiState.Ready)
+                SpenvoTheme(themeMode = estado.themeMode, colorMode = estado.colorMode) {
+                    SpenvoApp()
+                }
             }
         }
     }
@@ -106,6 +119,13 @@ fun MutableList<NavKey>.pushUnlessTop(destino: NavKey) {
  * The native splash window ([installSplashScreen]) covers the window before this.
  */
 fun debeMostrarNavegacion(estado: EstadoGate): Boolean = estado != EstadoGate.Cargando
+
+/**
+ * Mirrors [debeMostrarNavegacion]'s shape for the appearance gate: [MainActivity.onCreate] and
+ * its test rely on this exact function to decide whether real content (as opposed to nothing,
+ * left for the splash screen to cover) should be shown, so the two can never silently diverge.
+ */
+fun debeMostrarContenido(estado: AppearanceUiState): Boolean = estado is AppearanceUiState.Ready
 
 /**
  * Which auth form [CuentaScreen] opens on, decided by *how the user got there*: the post-logout
@@ -205,6 +225,7 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
                     PlanesScreen(
                         onCrearCuenta = { backStack.pushUnlessTop(CuentaRoute) },
                         onAbrirPlan = { planId -> backStack.pushUnlessTop(PlanRoute(planId)) },
+                        onAbrirAjustes = { backStack.pushUnlessTop(AjustesRoute) },
                     )
                 }
                 entry<PlanRoute> { route ->
@@ -212,6 +233,7 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
                         route = route,
                         avatarUrl = avatarUrl,
                         onAbrirCuenta = { backStack.pushUnlessTop(CuentaRoute) },
+                        onAbrirAjustes = { backStack.pushUnlessTop(AjustesRoute) },
                     )
                 }
                 entry<CuentaRoute> {
@@ -220,6 +242,9 @@ fun SpenvoApp(modifier: Modifier = Modifier, gateViewModel: SesionGateViewModel 
                         onContinuarComoInvitado = gateViewModel::continuarComoInvitado,
                         onCerrar = { if (backStack.size > 1) backStack.removeLastOrNull() },
                     )
+                }
+                entry<AjustesRoute> {
+                    AjustesScreen()
                 }
             },
         )
@@ -236,6 +261,7 @@ private fun ContenidoPlanRoute(
     route: PlanRoute,
     avatarUrl: String?,
     onAbrirCuenta: () -> Unit,
+    onAbrirAjustes: () -> Unit,
 ) {
     val movimientosViewModel: MovimientosViewModel = hiltViewModel()
     PlanScaffold(
@@ -245,6 +271,7 @@ private fun ContenidoPlanRoute(
                 movimientosViewModel = movimientosViewModel,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         },
         contenidoMovimientos = {
@@ -252,6 +279,7 @@ private fun ContenidoPlanRoute(
                 planId = route.planId,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
                 viewModel = movimientosViewModel,
             )
         },
@@ -260,6 +288,7 @@ private fun ContenidoPlanRoute(
                 planId = route.planId,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         },
         contenidoMiembros = {
@@ -267,6 +296,7 @@ private fun ContenidoPlanRoute(
                 planId = route.planId,
                 avatarUrl = avatarUrl,
                 onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
             )
         },
     )

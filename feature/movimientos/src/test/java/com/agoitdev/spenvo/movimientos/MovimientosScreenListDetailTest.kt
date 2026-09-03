@@ -136,6 +136,7 @@ class MovimientosScreenListDetailTest {
         onNuevoMovimiento = {},
         avatarUrl = null,
         onAbrirCuenta = {},
+        onAbrirAjustes = {},
     )
     private val filtro = MovimientosFiltro(
         busqueda = "", onBusquedaChange = {}, tipoSeleccionado = null, onTipoChange = {},
@@ -192,7 +193,7 @@ class MovimientosScreenListDetailTest {
     }
 
     @Test
-    fun `la topbar del layout compacto muestra el avatar y navega al tocarlo`() {
+    fun `la topbar del layout compacto muestra el avatar y navega a Cuenta al tocarlo`() {
         val viewModel = crearViewModel()
         var invocado = false
 
@@ -203,6 +204,7 @@ class MovimientosScreenListDetailTest {
                     onNuevoMovimiento = {},
                     avatarUrl = null,
                     onAbrirCuenta = { invocado = true },
+                    onAbrirAjustes = {},
                 ),
                 filtro = filtro,
                 snackbarHostState = remember { SnackbarHostState() },
@@ -212,6 +214,34 @@ class MovimientosScreenListDetailTest {
         }
 
         composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Cuenta").performClick()
+
+        assertEquals(true, invocado)
+    }
+
+    @Test
+    fun `la topbar del layout compacto navega a Ajustes al tocar el avatar y Ajustes`() {
+        val viewModel = crearViewModel()
+        var invocado = false
+
+        composeTestRule.setContent {
+            MovimientosPantallaCompacta(
+                modifier = Modifier,
+                acciones = MovimientosAcciones(
+                    onNuevoMovimiento = {},
+                    avatarUrl = null,
+                    onAbrirCuenta = {},
+                    onAbrirAjustes = { invocado = true },
+                ),
+                filtro = filtro,
+                snackbarHostState = remember { SnackbarHostState() },
+                lista = listaEstado(),
+                formularioParametros = formularioParametros(FormularioMovimiento.Cerrado, viewModel),
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Ajustes").performClick()
 
         assertEquals(true, invocado)
     }

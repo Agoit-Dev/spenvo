@@ -37,7 +37,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.agoitdev.spenvo.designsystem.components.AvatarTopBarAction
+import com.agoitdev.spenvo.designsystem.components.AvatarMenu
+import com.agoitdev.spenvo.designsystem.components.AvatarMenuTextos
 import com.agoitdev.spenvo.domain.model.Monto
 import com.agoitdev.spenvo.domain.model.ResumenMensualPlan
 import com.agoitdev.spenvo.domain.model.TipoCategoria
@@ -56,6 +57,7 @@ fun HomeScreen(
     movimientosViewModel: MovimientosViewModel,
     avatarUrl: String?,
     onAbrirCuenta: () -> Unit,
+    onAbrirAjustes: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -86,7 +88,12 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            HomeTopBar(nombrePlan = plan?.nombre.orEmpty(), avatarUrl = avatarUrl, onAbrirCuenta = onAbrirCuenta)
+            HomeTopBar(
+                nombrePlan = plan?.nombre.orEmpty(),
+                avatarUrl = avatarUrl,
+                onAbrirCuenta = onAbrirCuenta,
+                onAbrirAjustes = onAbrirAjustes,
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
@@ -118,14 +125,25 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeTopBar(nombrePlan: String, avatarUrl: String?, onAbrirCuenta: () -> Unit) {
+private fun HomeTopBar(
+    nombrePlan: String,
+    avatarUrl: String?,
+    onAbrirCuenta: () -> Unit,
+    onAbrirAjustes: () -> Unit,
+) {
     TopAppBar(
         title = { Text(text = nombrePlan) },
         actions = {
-            AvatarTopBarAction(
+            AvatarMenu(
                 photoUrl = avatarUrl,
                 contentDescription = stringResource(R.string.account_menu_description),
-                onClick = onAbrirCuenta,
+                textos = AvatarMenuTextos(
+                    estado = null,
+                    cuenta = stringResource(R.string.account_menu_description),
+                    ajustes = stringResource(R.string.settings_menu_item),
+                ),
+                onOpenAccount = onAbrirCuenta,
+                onOpenSettings = onAbrirAjustes,
             )
         },
     )

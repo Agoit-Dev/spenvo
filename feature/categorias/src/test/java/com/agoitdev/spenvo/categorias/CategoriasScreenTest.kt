@@ -2,6 +2,7 @@ package com.agoitdev.spenvo.categorias
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.agoitdev.spenvo.data.remote.sync.CategoriaSincronizacion
 import com.agoitdev.spenvo.designsystem.components.TAG_AVATAR_TOPBAR_PLACEHOLDER
@@ -51,7 +52,7 @@ class CategoriasScreenTest {
     }
 
     @Test
-    fun `tocar el avatar de la topbar invoca onAbrirCuenta`() {
+    fun `tocar el avatar y luego Cuenta invoca onAbrirCuenta`() {
         var invocado = false
         val categoriaRepo = FakeCategoriaRepositorioCategoriasScreen()
         val viewModel = CategoriasViewModel(
@@ -68,6 +69,7 @@ class CategoriasScreenTest {
                 planId = "p1",
                 avatarUrl = null,
                 onAbrirCuenta = { invocado = true },
+                onAbrirAjustes = {},
                 viewModel = viewModel,
             )
         }
@@ -76,6 +78,36 @@ class CategoriasScreenTest {
         // Row merges into a single accessibility node -- performClick() needs the unmerged tree to
         // still address it by its own tag.
         composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Cuenta").performClick()
+
+        assertEquals(true, invocado)
+    }
+
+    @Test
+    fun `tocar el avatar y luego Ajustes invoca onAbrirAjustes`() {
+        var invocado = false
+        val categoriaRepo = FakeCategoriaRepositorioCategoriasScreen()
+        val viewModel = CategoriasViewModel(
+            observarCategoriasPorTipo = ObservarCategoriasPorTipoUseCase(categoriaRepo),
+            crearCategoria = CrearCategoriaUseCase(categoriaRepo),
+            actualizarCategoria = ActualizarCategoriaUseCase(categoriaRepo),
+            eliminarCategoria = EliminarCategoriaUseCase(categoriaRepo),
+            sincronizador = FakeCategoriaSincronizacionCategoriasScreen(),
+            authRepository = FakeAuthRepositorioCategoriasScreen(),
+        )
+
+        composeTestRule.setContent {
+            CategoriasScreen(
+                planId = "p1",
+                avatarUrl = null,
+                onAbrirCuenta = {},
+                onAbrirAjustes = { invocado = true },
+                viewModel = viewModel,
+            )
+        }
+
+        composeTestRule.onNodeWithTag(TAG_AVATAR_TOPBAR_PLACEHOLDER, useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText("Ajustes").performClick()
 
         assertEquals(true, invocado)
     }

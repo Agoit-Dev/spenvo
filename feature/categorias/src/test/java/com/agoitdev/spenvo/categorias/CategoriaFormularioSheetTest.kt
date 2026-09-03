@@ -77,6 +77,7 @@ class CategoriaFormularioSheetTest {
                 planId = "p1",
                 avatarUrl = null,
                 onAbrirCuenta = {},
+                onAbrirAjustes = {},
                 viewModel = viewModel,
             )
         }

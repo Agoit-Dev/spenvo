@@ -9,6 +9,7 @@
     <string name="movements_empty">No transactions yet.</string>
     <string name="movements_detail_placeholder">Select a transaction to see its detail.</string>
     <string name="account_menu_description">Account</string>
+    <string name="settings_menu_item">Settings</string>
     <string name="movements_add">New transaction</string>
     <string name="movements_edit">Edit transaction</string>
     <string name="movements_edit_action">Edit</string>

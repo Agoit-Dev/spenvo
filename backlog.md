@@ -53,6 +53,21 @@ task's implementation departed from what its plan/design doc specified, note it 
   the approved [design](doc/designs/2026-09-02-spenvo-theming-design.md) and
   [implementation plan](doc/plans/2026-09-02-spenvo-theming-implementation.md). User-facing theme
   preferences and persistence remain deferred to Delivery 2.
+- [x] **UI-THEME-002:** Delivered Delivery 2 of the theming work: user-facing `ThemeMode`/`ColorMode`
+  selection persisted locally via a new `appearance` DataStore in `:core:data` (defensive decoding,
+  DYNAMIC-below-API-31 self-correction), exposed through the new `:feature:ajustes` module
+  (`AjustesRoute`, radio-button rows for luminosity/color), applied immediately, with splash-gated
+  startup coordination in a new `AppearanceViewModel` and a shared `AvatarMenu` (Cuenta/Ajustes)
+  replacing the previously duplicated avatar button across `PlanesScreen` and the four plan-tab top
+  bars. See the approved [design](doc/designs/2026-09-03-theme-preferences-settings-design.md) and
+  [implementation plan](doc/plans/2026-09-03-theme-preferences-settings-implementation.md).
+  **Verification gap:** all repo-wide gates (`assembleDebug`, `testDebugUnitTest`, `lintDebug`,
+  `detekt`) are green and the instrumented `:core:data:assembleDebugAndroidTest` APK compiles
+  cleanly, but no device/emulator was available in this environment — the real instrumented
+  `ThemePreferencesTest` suite (6 tests, including API-level-dependent DYNAMIC normalization) and
+  the manual on-device verification checklist (Ajustes reachability, dynamic-color gating below/at
+  API 31, immediate apply, write-failure Snackbar/rollback, process-death restore) still need to run
+  on real hardware before this feature is considered fully verified.
 - [x] **OSV-M801:** OSV-Scanner CI gate (M8, CI half) — closed. PR #33 (`chore/m8-osv-scanner-ci` →
   `main`) merged with `OSV-M803`'s baseline triage; `OSV-M804` and `OSV-M805` (below) closed the
   remaining two gaps. See `doc/designs/2026-09-02-osv-scanner-ci-design.md`,

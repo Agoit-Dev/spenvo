@@ -47,11 +47,13 @@ import com.agoitdev.spenvo.domain.model.TipoCategoria
 import com.agoitdev.spenvo.domain.sync.ConflictoEdicion
 import java.time.LocalDate
 
+@Suppress("LongParameterList")
 @Composable
 fun MovimientosScreen(
     planId: String,
     avatarUrl: String?,
     onAbrirCuenta: () -> Unit,
+    onAbrirAjustes: () -> Unit,
     viewModel: MovimientosViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -79,6 +81,7 @@ fun MovimientosScreen(
             onNuevoMovimiento = { formulario = FormularioMovimiento.Nuevo },
             avatarUrl = avatarUrl,
             onAbrirCuenta = onAbrirCuenta,
+            onAbrirAjustes = onAbrirAjustes,
         ),
         filtro = MovimientosFiltro(
             busqueda = busqueda,
@@ -247,6 +250,7 @@ internal data class MovimientosAcciones(
     val onNuevoMovimiento: () -> Unit,
     val avatarUrl: String?,
     val onAbrirCuenta: () -> Unit,
+    val onAbrirAjustes: () -> Unit,
 )
 
 internal data class MovimientosFiltro(
@@ -274,7 +278,13 @@ private fun MovimientosScaffold(
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { MovimientosTopBar(avatarUrl = acciones.avatarUrl, onAbrirCuenta = acciones.onAbrirCuenta) },
+        topBar = {
+            MovimientosTopBar(
+                avatarUrl = acciones.avatarUrl,
+                onAbrirCuenta = acciones.onAbrirCuenta,
+                onAbrirAjustes = acciones.onAbrirAjustes,
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = acciones.onNuevoMovimiento) {
                 Icon(imageVector = Icons.Filled.Add, contentDescription = stringResource(R.string.movements_add))
