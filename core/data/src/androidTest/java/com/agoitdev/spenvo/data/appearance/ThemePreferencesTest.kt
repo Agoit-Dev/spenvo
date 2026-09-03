@@ -1,5 +1,6 @@
 package com.agoitdev.spenvo.data.appearance
 
+import android.os.Build
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -86,12 +87,21 @@ class ThemePreferencesTest {
         ) { context.preferencesDataStoreFile(nombre) }
         rawStore.edit { it[stringPreferencesKey("color")] = ColorPreference.DYNAMIC.name }
 
-        val primeraLectura = ThemePreferences(rawStore).observarPreferencias().first()
-        assertEquals(ColorPreference.BRAND, primeraLectura.color)
+        val lectura = ThemePreferences(rawStore).observarPreferencias().first()
+        val colorCrudoPersistido = rawStore.data.first()[stringPreferencesKey("color")]
 
-        // The correction must have been written back, not just presented in memory.
-        val segundaInstancia = ThemePreferences(rawStore).observarPreferencias().first()
-        assertEquals(ColorPreference.BRAND, segundaInstancia.color)
+        val dynamicSoportado = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        if (dynamicSoportado) {
+            // On API >= 31 DYNAMIC is actually supported: no correction should fire.
+            assertEquals(ColorPreference.DYNAMIC, lectura.color)
+            assertEquals(ColorPreference.DYNAMIC.name, colorCrudoPersistido)
+        } else {
+            // Below API 31 the anomaly must be corrected both in the emitted value and in the
+            // store itself — reading the raw key proves the write actually landed, not just that
+            // it was recomputed in memory.
+            assertEquals(ColorPreference.BRAND, lectura.color)
+            assertEquals(ColorPreference.BRAND.name, colorCrudoPersistido)
+        }
     }
 
     @Test

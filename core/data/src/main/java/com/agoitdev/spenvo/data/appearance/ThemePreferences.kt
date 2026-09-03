@@ -58,7 +58,10 @@ class ThemePreferences internal constructor(
             ?: ColorPreference.BRAND
         val dynamicSoportado = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         if (colorCrudo == ColorPreference.DYNAMIC && !dynamicSoportado) {
-            dataStore.edit { it[KEY_COLOR] = ColorPreference.BRAND.name }
+            // A write failure here must not kill the flow: the UI still gets the corrected value
+            // for this emission, and the anomaly (still DYNAMIC in the store) triggers a retry on
+            // the next natural read.
+            runCatching { dataStore.edit { it[KEY_COLOR] = ColorPreference.BRAND.name } }
             return AppearancePreferences(theme, ColorPreference.BRAND)
         }
         return AppearancePreferences(theme, colorCrudo)
